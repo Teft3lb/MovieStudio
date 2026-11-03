@@ -19,6 +19,15 @@ const DEPARTMENT_ORDER: Array[String] = [
 	"marketing",
 ]
 
+const LEGACY_PROFESSION_IDS: Array[String] = [
+	"actor",
+	"director",
+	"screenwriter",
+	"camera_operator",
+	"producer",
+	"technician",
+]
+
 const SKILL_TITLES: Dictionary = {
 	"acting": "Актёрское мастерство",
 	"directing": "Режиссура",
@@ -111,8 +120,8 @@ const PROFESSIONS: Dictionary = {
 		],
 	},
 	"camera_operator": {
-		"title": "Кинооператор", "department": "production", "primary_skill": "camera_work",
-		"base_salary": 90, "task": "Готовит камеру и снимает материал",
+		"title": "Оператор", "department": "production", "primary_skill": "camera_work",
+		"base_salary": 90, "task": "Готовит операторское оборудование",
 		"goal": "Стать главным оператором студии",
 		"biographies": [
 			"Увлечён светом и композицией, любит искать необычный ракурс.",
@@ -499,6 +508,14 @@ static func get_skill_titles() -> Dictionary:
 
 
 static func get_schedule(profession_id: String) -> Dictionary:
+	if LEGACY_PROFESSION_IDS.has(profession_id):
+		return {
+			"shift_start_hour": 8,
+			"shift_end_hour": 17,
+			"break_start_hour": 12,
+			"break_end_hour": 13,
+		}
+
 	var department_id: String = str(get_profession(profession_id).get("department", "creative"))
 	match department_id:
 		"catering":
