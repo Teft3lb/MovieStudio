@@ -13,6 +13,9 @@ const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_management_system.gd"
 )
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 const INITIAL_PROFESSIONS: Array[String] = [
 	"actor",
@@ -22,17 +25,6 @@ const INITIAL_PROFESSIONS: Array[String] = [
 	"camera_operator",
 	"producer",
 ]
-
-const SKILL_TITLES: Dictionary = {
-	"acting": "Актёрское мастерство",
-	"directing": "Режиссура",
-	"writing": "Сценарное мастерство",
-	"camera_work": "Работа с камерой",
-	"management": "Управление",
-	"technical": "Технические навыки",
-	"creativity": "Креативность",
-	"reliability": "Надёжность",
-}
 
 var employees: Array = []
 var market_candidates: Array = []
@@ -82,6 +74,7 @@ func _ready() -> void:
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	_game_clock.day_advanced.connect(_on_game_day_advanced)
+	_game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
 
 	_spawn_initial_roster()
 	_build_roster_panel()
@@ -375,9 +368,10 @@ func _refresh_market_panel() -> void:
 		button.custom_minimum_size = Vector2(345.0, 64.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_size_override("font_size", 12)
-		button.text = "%s — %s\n%s: %d / 100  ·  Запрос: %d ед. / день" % [
+		button.text = "%s — %s\n%s · %s: %d / 100  ·  Запрос: %d ед. / день" % [
 			candidate.get_full_name(),
 			candidate.get_profession_title(),
+			candidate.get_department_title(),
 			candidate.get_primary_skill_title(),
 			roundi(candidate.get_primary_skill_value()),
 			candidate.daily_salary,
@@ -537,8 +531,9 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
 		_needs_system.call("advance_minute", employee, hour)
 
-	_refresh_roster()
-	_refresh_detail_panel()
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_roster()
+		_refresh_detail_panel()
 
 
 func _on_game_day_advanced(day: int) -> void:
@@ -556,6 +551,11 @@ func _on_game_day_advanced(day: int) -> void:
 				_selected_market_candidate_id = ""
 		_refresh_market_panel()
 
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_after_staffing_day()
+
+
+func _refresh_after_staffing_day() -> void:
 	if _selected_employee_id.is_empty() and _selected_market_candidate_id.is_empty():
 		if not employees.is_empty():
 			_select_employee(str(employees[0].id))
@@ -565,6 +565,11 @@ func _on_game_day_advanced(day: int) -> void:
 	else:
 		_refresh_roster()
 		_refresh_detail_panel()
+
+
+func _on_manual_advance_finished(_minutes_advanced: int) -> void:
+	_refresh_market_panel()
+	_refresh_after_staffing_day()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -716,8 +721,9 @@ func _refresh_detail_panel() -> void:
 	var personality: Dictionary = employee.personality
 
 	_detail_name_label.text = employee.get_full_name().to_upper()
-	_detail_profession_label.text = "%s  ·  Возраст: %d" % [
+	_detail_profession_label.text = "%s  ·  %s  ·  Возраст: %d" % [
 		employee.get_profession_title(),
+		employee.get_department_title(),
 		employee.age,
 	]
 	_detail_biography_label.text = employee.biography
@@ -808,9 +814,10 @@ func _refresh_detail_panel() -> void:
 	_stress_bar.value = stress
 
 	var skill_lines: Array[String] = []
-	for skill_id in SKILL_TITLES.keys():
+	var skill_titles: Dictionary = PROFESSION_CATALOG_SCRIPT.get_skill_titles()
+	for skill_id in skill_titles.keys():
 		skill_lines.append("%s: %d / 100" % [
-			SKILL_TITLES[skill_id],
+			skill_titles[skill_id],
 			roundi(float(skills.get(skill_id, 0.0))),
 		])
 	_detail_skills_label.text = "\n".join(skill_lines)
