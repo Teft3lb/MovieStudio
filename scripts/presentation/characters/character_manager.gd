@@ -346,13 +346,15 @@ func _refresh_market_panel() -> void:
 		return
 
 	_market_header.text = "КАДРОВЫЙ РЫНОК  ·  %d" % market_candidates.size()
-	_market_status_label.text = (
-		"Новые специалисты появляются каждые 7 игровых дней. "
-		+ "До обновления: %d дн."
-		% int(_employment_system.call(
+	var days_until_refresh: int = int(
+		_employment_system.call(
 			"get_market_days_until_refresh",
 			int(_game_clock.current_day)
-		))
+		)
+	)
+	_market_status_label.text = (
+		"Новые специалисты появляются каждые 7 игровых дней. "
+		+ "До обновления: %d дн." % days_until_refresh
 	)
 
 	for child in _market_list.get_children():
@@ -549,10 +551,13 @@ func _on_game_day_advanced(day: int) -> void:
 
 	if _selected_employee_id.is_empty() and _selected_market_candidate_id.is_empty():
 		if not employees.is_empty():
-			_selected_employee_id = str(employees[0].id)
-
-	_refresh_roster()
-	_refresh_detail_panel()
+			_select_employee(str(employees[0].id))
+		else:
+			_refresh_roster()
+			_refresh_detail_panel()
+	else:
+		_refresh_roster()
+		_refresh_detail_panel()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -862,10 +867,8 @@ func _on_hire_button_pressed() -> void:
 	_add_roster_button(employee)
 
 	_selected_market_candidate_id = ""
-	_selected_employee_id = str(employee.id)
 	_refresh_market_panel()
-	_refresh_roster()
-	_refresh_detail_panel()
+	_select_employee(str(employee.id))
 	_show_employee_message(str(result.get("message", "Сотрудник принят в штат.")))
 
 
@@ -898,10 +901,10 @@ func _confirm_dismiss_employee() -> void:
 	_remove_employee_actor(employee_id)
 	_selected_employee_id = ""
 	if not employees.is_empty():
-		_selected_employee_id = str(employees[0].id)
-
-	_refresh_roster()
-	_refresh_detail_panel()
+		_select_employee(str(employees[0].id))
+	else:
+		_refresh_roster()
+		_refresh_detail_panel()
 	_show_employee_message(str(result.get("message", "Сотрудник уволен.")))
 
 
