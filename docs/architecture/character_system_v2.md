@@ -1,8 +1,8 @@
 # Character System v2
 
 **Status:** first interactive employee-management prototype.  
-**Branch:** \`feature/character-system-v2\`.  
-**Base:** \`feature/character-system-v1\`.
+**Branch:** `feature/character-system-v2`.  
+**Base:** `feature/character-system-v1`.
 
 ## Goals
 
@@ -11,7 +11,7 @@ Turn the initial six employees from moving scene props into inspectable simulati
 ## World selection
 
 Each CharacterActor:
-- belongs to the \`studio_employee\` group;
+- belongs to the `studio_employee` group;
 - owns a capsule StaticBody3D hitbox on collision layer 2;
 - exposes a stable character ID;
 - owns a hidden torus selection marker that appears while selected.
