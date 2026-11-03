@@ -35,7 +35,8 @@ func generate_candidates(count: int, current_day: int) -> Array:
 		var profession_id: String = PROFESSION_IDS[
 			_rng.randi_range(0, PROFESSION_IDS.size() - 1)
 		]
-		var candidate_id: String = "CAND-%03d-%02d" % [
+		var candidate_id: String = "CAND-D%03d-%02d-%02d" % [
+			current_day,
 			_market_cycle,
 			index + 1,
 		]
