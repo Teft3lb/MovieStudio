@@ -7,6 +7,9 @@ const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
 const GAME_CLOCK_SCRIPT = preload("res://scripts/core/game_clock.gd")
+const CHARACTER_ACTOR_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_actor.gd"
+)
 
 
 func _initialize() -> void:
@@ -46,6 +49,8 @@ func _initialize() -> void:
 		"Generation with the same seed and inputs must be deterministic."
 	)
 
+	_test_character_movement_scaling(first)
+
 	print("CharacterSystemSmokeTest: PASS")
 	quit(0)
 
@@ -77,4 +82,53 @@ func _test_simulation_speed() -> void:
 		"6x speed must multiply simulation delta by six."
 	)
 
+	clock.free()
+
+
+func _test_character_movement_scaling(character_data: Variant) -> void:
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+
+	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(actor)
+
+	var route: Array[Vector3] = [
+		Vector3.ZERO,
+		Vector3(100.0, 0.0, 0.0),
+	]
+	actor.call("setup", character_data, route, clock, 1.0)
+
+	clock.call("set_speed_mode", 0)
+	var previous_position: Vector3 = actor.position
+	actor.call("_process", 0.25)
+	assert(
+		actor.position.is_equal_approx(previous_position),
+		"Character movement must stop while simulation is paused."
+	)
+
+	clock.call("set_speed_mode", 1)
+	previous_position = actor.position
+	actor.call("_process", 0.25)
+	assert(
+		is_equal_approx(actor.position.distance_to(previous_position), 0.25),
+		"Character movement must use normal simulation delta at 1x."
+	)
+
+	clock.call("set_speed_mode", 2)
+	previous_position = actor.position
+	actor.call("_process", 0.25)
+	assert(
+		is_equal_approx(actor.position.distance_to(previous_position), 0.75),
+		"Character movement must triple at 3x."
+	)
+
+	clock.call("set_speed_mode", 3)
+	previous_position = actor.position
+	actor.call("_process", 0.25)
+	assert(
+		is_equal_approx(actor.position.distance_to(previous_position), 1.5),
+		"Character movement must multiply by six at 6x."
+	)
+
+	actor.free()
 	clock.free()
