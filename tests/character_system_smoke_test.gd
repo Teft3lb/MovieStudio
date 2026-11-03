@@ -6,9 +6,12 @@ const CHARACTER_DATA_SCRIPT = preload(
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
+const GAME_CLOCK_SCRIPT = preload("res://scripts/core/game_clock.gd")
 
 
 func _initialize() -> void:
+	_test_simulation_speed()
+
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 
 	var rng_a := RandomNumberGenerator.new()
@@ -45,3 +48,33 @@ func _initialize() -> void:
 
 	print("CharacterSystemSmokeTest: PASS")
 	quit(0)
+
+
+func _test_simulation_speed() -> void:
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+
+	clock.call("set_speed_mode", 0)
+	assert(
+		is_zero_approx(float(clock.call("get_simulation_delta", 0.25))),
+		"Paused simulation must produce zero simulation delta."
+	)
+
+	clock.call("set_speed_mode", 1)
+	assert(
+		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 0.25),
+		"Normal speed must preserve real delta."
+	)
+
+	clock.call("set_speed_mode", 2)
+	assert(
+		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 0.75),
+		"3x speed must triple simulation delta."
+	)
+
+	clock.call("set_speed_mode", 3)
+	assert(
+		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 1.5),
+		"6x speed must multiply simulation delta by six."
+	)
+
+	clock.free()
