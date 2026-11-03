@@ -1,8 +1,9 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/presentation/orbit_camera_controller.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/core/game_clock.gd" id="3_clock"]
+[ext_resource type="Script" path="res://scripts/presentation/characters/character_manager.gd" id="4_characters"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(100, 100)
@@ -64,3 +65,6 @@ material_override = SubResource("Material_office")
 position = Vector3(10, 0.02, 0)
 mesh = SubResource("BoxMesh_road")
 material_override = SubResource("Material_road")
+
+[node name="CharacterManager" type="Node3D" parent="."]
+script = ExtResource("4_characters")
