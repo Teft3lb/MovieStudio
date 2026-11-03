@@ -227,7 +227,7 @@ func _build_roster_panel() -> void:
 
 	var panel := PanelContainer.new()
 	panel.name = "EmployeeRosterPanel"
-	panel.position = Vector2(16.0, 154.0)
+	panel.position = Vector2(16.0, 220.0)
 	panel.custom_minimum_size = Vector2(330.0, 0.0)
 	canvas.add_child(panel)
 
@@ -290,7 +290,7 @@ func _build_market_panel() -> void:
 
 	_market_panel = PanelContainer.new()
 	_market_panel.name = "EmployeeMarketPanel"
-	_market_panel.position = Vector2(360.0, 154.0)
+	_market_panel.position = Vector2(360.0, 220.0)
 	_market_panel.custom_minimum_size = Vector2(370.0, 0.0)
 	_market_panel.visible = false
 	canvas.add_child(_market_panel)
