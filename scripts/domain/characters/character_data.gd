@@ -133,7 +133,6 @@ func get_ui_summary() -> Dictionary:
 		"morale": roundi(float(needs.get("morale", 0.75)) * 100.0),
 		"primary_skill_title": get_primary_skill_title(),
 		"primary_skill_value": roundi(get_primary_skill_value()),
-		"morale": roundi(float(needs.get("morale", 0.75)) * 100.0),
 		"daily_salary": daily_salary,
 	}
 
