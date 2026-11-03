@@ -107,6 +107,8 @@ The test checks:
 1. generation creates a valid identity and expected actor skill;
 2. appearance parameters exist;
 3. to_dict() / from_dict() preserve key state;
-4. identical seeds and inputs produce identical character data.
+4. identical seeds and inputs produce identical character data;
+5. the shared simulation clock returns the expected scaled delta at pause, 1×, 3× and 6×;
+6. character movement stops at pause and scales proportionally at 1×, 3× and 6×.
 
 The interactive test is to launch the main scene and verify six visible characters, readable name tags, walking animation and roster entries.
