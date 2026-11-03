@@ -360,8 +360,8 @@ func _refresh_market_panel() -> void:
 		)
 	)
 	_market_status_label.text = (
-		"Новые специалисты появляются каждые 7 игровых дней. "
-		+ "До обновления: %d дн." % days_until_refresh
+		"Новые специалисты появляются каждые 7 игровых дней. До обновления: %d дн."
+		% days_until_refresh
 	)
 
 	for child in _market_list.get_children():
