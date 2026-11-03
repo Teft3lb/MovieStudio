@@ -216,6 +216,12 @@ func _route_for(index: int) -> Array[Vector3]:
 				Vector3(-8.0, 0.0, -13.0),
 			]
 
+	var route_group: int = floori(float(index) / 6.0)
+	if route_group > 0:
+		var lane_offset: Vector3 = Vector3(0.0, 0.0, float(route_group) * 3.5)
+		for waypoint_index in range(route.size()):
+			route[waypoint_index] += lane_offset
+
 	return route
 
 
