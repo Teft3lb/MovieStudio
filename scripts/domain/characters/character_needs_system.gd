@@ -1,20 +1,14 @@
 extends RefCounted
 class_name CharacterNeedsSystem
 
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
+
 const SHIFT_START_HOUR: int = 8
 const SHIFT_END_HOUR: int = 17
 const BREAK_START_HOUR: int = 12
 const BREAK_END_HOUR: int = 13
-
-const TASK_BY_PROFESSION: Dictionary = {
-	"actor": "Репетирует сцены",
-	"director": "Разрабатывает постановку",
-	"screenwriter": "Работает над сценарием",
-	"camera_operator": "Готовит операторское оборудование",
-	"producer": "Координирует производство",
-	"technician": "Обслуживает оборудование",
-}
-
 
 func refresh_work_state(character: Variant, hour: int) -> void:
 	var needs: Dictionary = character.needs
@@ -31,8 +25,8 @@ func refresh_work_state(character: Variant, hour: int) -> void:
 		character.current_task = "Восстанавливает силы"
 	else:
 		character.work_state = "working"
-		character.current_task = str(
-			TASK_BY_PROFESSION.get(character.profession_id, "Выполняет рабочие задачи")
+		character.current_task = PROFESSION_CATALOG_SCRIPT.get_default_task(
+			character.profession_id
 		)
 
 
