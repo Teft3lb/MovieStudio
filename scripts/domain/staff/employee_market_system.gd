@@ -4,15 +4,9 @@ class_name EmployeeMarketSystem
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
-
-const PROFESSION_IDS: Array[String] = [
-	"actor",
-	"director",
-	"screenwriter",
-	"camera_operator",
-	"producer",
-	"technician",
-]
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 var _generator: RefCounted
 var _rng: RandomNumberGenerator
@@ -31,9 +25,17 @@ func generate_candidates(count: int, current_day: int) -> Array:
 	var used_names: Dictionary = {}
 	_market_cycle += 1
 
+	var department_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_department_ids()
+	var all_profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
+
 	for index in range(maxi(count, 0)):
-		var profession_id: String = PROFESSION_IDS[
-			_rng.randi_range(0, PROFESSION_IDS.size() - 1)
+		var profession_pool: Array[String] = all_profession_ids
+		if index < department_ids.size():
+			profession_pool = PROFESSION_CATALOG_SCRIPT.get_profession_ids_for_department(
+				department_ids[index]
+			)
+		var profession_id: String = profession_pool[
+			_rng.randi_range(0, profession_pool.size() - 1)
 		]
 		var candidate_id: String = "CAND-D%03d-%02d-%02d" % [
 			current_day,
