@@ -26,7 +26,7 @@ func setup(
 
 	_visual = CHARACTER_VISUAL_SCRIPT.new()
 	var character_payload: Dictionary = data.call("to_dict")
-	_visual.setup(character_payload)
+	_visual.call("setup", character_payload)
 	add_child(_visual)
 
 	_create_name_tag()
