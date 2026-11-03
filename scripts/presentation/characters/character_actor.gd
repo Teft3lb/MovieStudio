@@ -11,6 +11,7 @@ var _route_index: int = 1
 var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
+var _selection_ring: MeshInstance3D
 
 
 func setup(
@@ -23,6 +24,7 @@ func setup(
 	_route = waypoints.duplicate()
 	_game_clock = game_clock
 	_move_speed = maxf(move_speed, 0.1)
+	add_to_group("studio_employee")
 
 	if not _route.is_empty():
 		position = _route[0]
@@ -33,6 +35,8 @@ func setup(
 	add_child(_visual)
 
 	_create_name_tag()
+	_create_selection_ring()
+	_create_selection_hitbox()
 
 
 func _process(delta: float) -> void:
@@ -67,6 +71,17 @@ func _process(delta: float) -> void:
 	_advance_visual(simulation_delta)
 
 
+func get_character_id() -> String:
+	if character_data == null:
+		return ""
+	return str(character_data.id)
+
+
+func set_selected(value: bool) -> void:
+	if is_instance_valid(_selection_ring):
+		_selection_ring.visible = value
+
+
 func _advance_visual(simulation_delta: float) -> void:
 	if is_instance_valid(_visual):
 		_visual.call("advance_simulation", simulation_delta)
@@ -90,3 +105,42 @@ func _create_name_tag() -> void:
 	label.modulate = Color(1.0, 0.96, 0.86)
 	label.no_depth_test = true
 	add_child(label)
+
+
+func _create_selection_ring() -> void:
+	var ring_mesh := TorusMesh.new()
+	ring_mesh.inner_radius = 0.48
+	ring_mesh.outer_radius = 0.58
+	ring_mesh.rings = 24
+	ring_mesh.ring_segments = 8
+
+	_selection_ring = MeshInstance3D.new()
+	_selection_ring.name = "SelectionRing"
+	_selection_ring.mesh = ring_mesh
+	_selection_ring.position = Vector3(0.0, 0.035, 0.0)
+	_selection_ring.visible = false
+
+	var ring_material := StandardMaterial3D.new()
+	ring_material.albedo_color = Color(1.0, 0.76, 0.2)
+	ring_material.roughness = 0.45
+	ring_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_selection_ring.material_override = ring_material
+	add_child(_selection_ring)
+
+
+func _create_selection_hitbox() -> void:
+	var hit_body := StaticBody3D.new()
+	hit_body.name = "SelectionHitbox"
+	hit_body.collision_layer = 2
+	hit_body.collision_mask = 0
+
+	var hit_shape := CollisionShape3D.new()
+	hit_shape.name = "Capsule"
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.46
+	capsule.height = 2.65
+	hit_shape.shape = capsule
+	hit_shape.position = Vector3(0.0, 1.3, 0.0)
+
+	hit_body.add_child(hit_shape)
+	add_child(hit_body)
