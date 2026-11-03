@@ -21,7 +21,7 @@ func _build_debug_hud() -> void:
 
 	var panel := PanelContainer.new()
 	panel.position = Vector2(16.0, 16.0)
-	panel.custom_minimum_size = Vector2(390.0, 0.0)
+	panel.custom_minimum_size = Vector2(330.0, 0.0)
 	canvas_layer.add_child(panel)
 
 	var layout := VBoxContainer.new()
@@ -46,16 +46,16 @@ func _build_debug_hud() -> void:
 	_add_speed_button(buttons, "6×", GameClock.SpeedMode.VERY_FAST)
 
 	var fast_forward_heading := Label.new()
-	fast_forward_heading.text = "ТЕСТОВАЯ ПЕРЕМОТКА · РАБОТАЕТ ДАЖЕ НА ПАУЗЕ"
+	fast_forward_heading.text = "ТЕСТОВАЯ ПЕРЕМОТКА (даже на паузе)"
 	layout.add_child(fast_forward_heading)
 
 	var fast_forward_buttons := HBoxContainer.new()
 	layout.add_child(fast_forward_buttons)
 
-	_add_fast_forward_button(fast_forward_buttons, "+1 час", 60)
-	_add_fast_forward_button(fast_forward_buttons, "+1 день", 24 * 60)
-	_add_fast_forward_button(fast_forward_buttons, "+7 дней", 7 * 24 * 60)
-	_add_fast_forward_button(fast_forward_buttons, "+30 дней", 30 * 24 * 60)
+	_add_fast_forward_button(fast_forward_buttons, "+1ч", 60)
+	_add_fast_forward_button(fast_forward_buttons, "+1д", 24 * 60)
+	_add_fast_forward_button(fast_forward_buttons, "+7д", 7 * 24 * 60)
+	_add_fast_forward_button(fast_forward_buttons, "+30д", 30 * 24 * 60)
 
 	_fast_forward_status_label = Label.new()
 	_fast_forward_status_label.add_theme_font_size_override("font_size", 11)
@@ -69,6 +69,7 @@ func _add_fast_forward_button(
 ) -> void:
 	var button := Button.new()
 	button.text = button_text
+	button.tooltip_text = "Перемотать игровое время на %d минут" % minutes
 	button.pressed.connect(_on_fast_forward_button_pressed.bind(minutes))
 	parent.add_child(button)
 
