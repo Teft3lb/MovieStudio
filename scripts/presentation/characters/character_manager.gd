@@ -162,6 +162,7 @@ func _remove_employee_actor(employee_id: String) -> void:
 		roster_button.queue_free()
 	_roster_buttons.erase(employee_id)
 
+
 func _route_for(index: int) -> Array[Vector3]:
 	var route: Array[Vector3] = []
 
