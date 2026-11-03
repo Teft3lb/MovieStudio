@@ -19,9 +19,11 @@ const INITIAL_PROFESSIONS: Array[String] = [
 
 var employees: Array = []
 var _generator: RefCounted
+var _game_clock: Node
 
 
 func _ready() -> void:
+	_game_clock = get_node("../GameClock")
 	_spawn_initial_roster()
 	_build_roster_panel()
 
@@ -45,7 +47,7 @@ func _spawn_initial_roster() -> void:
 
 		var actor: Variant = CHARACTER_ACTOR_SCRIPT.new()
 		actor.name = "Employee_%02d" % (index + 1)
-		actor.setup(data, _route_for(index), rng.randf_range(1.0, 1.45))
+		actor.setup(data, _route_for(index), _game_clock, rng.randf_range(1.0, 1.45))
 		add_child(actor)
 
 
