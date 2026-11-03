@@ -9,6 +9,9 @@ const EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_CONTRACT_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_contract.gd"
 )
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 
 func _initialize() -> void:
@@ -40,6 +43,7 @@ func _initialize() -> void:
 		"Every starting employee must receive a permanent contract."
 	)
 
+	_test_profession_catalog(generator, rng)
 	_test_contract_serialization(management)
 	_test_hiring(management)
 	_test_dismissal(management)
@@ -48,6 +52,61 @@ func _initialize() -> void:
 
 	print("EmployeeManagementSmokeTest: PASS")
 	quit(0)
+
+
+func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) -> void:
+	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
+	assert(
+		profession_ids.size() >= 35,
+		"The profession catalog must include creative, production and service roles."
+	)
+
+	for profession_id in profession_ids:
+		var candidate: Variant = generator.call(
+			"generate", rng, "PROF-TEST-%s" % profession_id, profession_id
+		)
+		assert(
+			candidate.profession_id == profession_id,
+			"Generated employee must retain the requested profession."
+		)
+		assert(
+			not candidate.get_profession_title().is_empty(),
+			"Every profession must have a localized title."
+		)
+		assert(
+			not candidate.get_department_title().is_empty(),
+			"Every profession must belong to a department."
+		)
+		assert(
+			candidate.skills.has(candidate.get_primary_skill_id()),
+			"Every profession must map to an existing primary skill."
+		)
+		assert(
+			candidate.daily_salary > 0,
+			"Every profession must generate a positive salary expectation."
+		)
+
+	var market_departments: Dictionary = {}
+	for candidate in PROFESSION_CATALOG_SCRIPT.get_department_ids():
+		market_departments[str(candidate)] = false
+
+	var market_system: Variant = load(
+		"res://scripts/domain/staff/employee_market_system.gd"
+	).new()
+	market_system.call("setup", 20261104)
+	var candidates: Array = market_system.call("generate_candidates", 8, 1)
+	for candidate in candidates:
+		market_departments[str(
+			PROFESSION_CATALOG_SCRIPT.get_profession(
+				candidate.profession_id
+			).get("department", "")
+		)] = true
+
+	for department_id in market_departments.keys():
+		assert(
+			bool(market_departments[department_id]),
+			"The initial market must represent every employee department."
+		)
 
 
 func _test_contract_serialization(management: Variant) -> void:
