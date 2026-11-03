@@ -124,7 +124,7 @@ func _spawn_initial_roster() -> void:
 		"initialize",
 		employees,
 		int(_game_clock.current_day),
-		20261104,
+		20261104 + 104729,
 		8
 	)
 	market_candidates = _employment_system.market_candidates
