@@ -10,15 +10,18 @@ var _route: Array[Vector3] = []
 var _route_index: int = 1
 var _move_speed: float = 1.25
 var _visual: Node3D
+var _game_clock: Node
 
 
 func setup(
 	data: Variant,
 	waypoints: Array[Vector3],
+	game_clock: Node,
 	move_speed: float = 1.25
 ) -> void:
 	character_data = data
 	_route = waypoints.duplicate()
+	_game_clock = game_clock
 	_move_speed = maxf(move_speed, 0.1)
 
 	if not _route.is_empty():
@@ -33,8 +36,18 @@ func setup(
 
 
 func _process(delta: float) -> void:
+	if not is_instance_valid(_game_clock):
+		return
+
+	var simulation_delta: float = float(
+		_game_clock.call("get_simulation_delta", delta)
+	)
+	if is_zero_approx(simulation_delta):
+		return
+
 	if _route.size() < 2:
 		_set_walking(false)
+		_advance_visual(simulation_delta)
 		return
 
 	var target: Vector3 = _route[_route_index]
@@ -44,12 +57,19 @@ func _process(delta: float) -> void:
 	if direction.length_squared() <= 0.09:
 		_route_index = (_route_index + 1) % _route.size()
 		_set_walking(false)
+		_advance_visual(simulation_delta)
 		return
 
 	direction = direction.normalized()
-	position += direction * _move_speed * delta
+	position += direction * _move_speed * simulation_delta
 	look_at(position + direction, Vector3.UP)
 	_set_walking(true)
+	_advance_visual(simulation_delta)
+
+
+func _advance_visual(simulation_delta: float) -> void:
+	if is_instance_valid(_visual):
+		_visual.call("advance_simulation", simulation_delta)
 
 
 func _set_walking(value: bool) -> void:
