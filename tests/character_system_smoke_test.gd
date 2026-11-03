@@ -22,7 +22,7 @@ func _initialize() -> void:
 	assert(first.appearance.has("skin_tone"), "Character must have appearance data.")
 
 	var serialized: Dictionary = first.call("to_dict")
-	var restored: Variant = CHARACTER_DATA_SCRIPT.call("from_dict", serialized)
+	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(serialized)
 
 	assert(restored.id == first.id, "Serialization must preserve the character ID.")
 	assert(
