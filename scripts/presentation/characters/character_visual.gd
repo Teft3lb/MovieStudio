@@ -53,8 +53,8 @@ func set_walking(value: bool) -> void:
 	_walking = value
 
 
-func _process(delta: float) -> void:
-	_animation_phase += delta * (7.2 if _walking else 1.8)
+func advance_simulation(simulation_delta: float) -> void:
+	_animation_phase += simulation_delta * (7.2 if _walking else 1.8)
 
 	var swing_strength: float = 0.55 if _walking else 0.012
 	var swing: float = sin(_animation_phase) * swing_strength
