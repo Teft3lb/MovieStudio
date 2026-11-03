@@ -105,13 +105,13 @@ The test covers:
 2. balanced market representation of all six departments;
 3. compatibility with the legacy technician role and older CharacterData skill payloads;
 4. permanent contracts for the starting roster;
-2. contract serialization round-trip;
-3. candidate hiring and removal from the market;
-4. selected contract type and salary calculation;
-5. duplicate-hire rejection;
-6. dismissal, contract termination and former-employee archive;
-7. seven-day market refresh;
-8. fixed-term contract expiry after the final active day.
+5. contract serialization round-trip;
+6. candidate hiring and removal from the market;
+7. selected contract type and salary calculation;
+8. duplicate-hire rejection;
+9. dismissal, contract termination and former-employee archive;
+10. seven-day market refresh;
+11. fixed-term contract expiry after the final active day.
 
 A separate clock test is available:
 
