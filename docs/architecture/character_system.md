@@ -58,6 +58,8 @@ CharacterActor owns one character's 3D presentation and a temporary waypoint rou
 
 For v1, movement is a deterministic loop between hand-authored waypoints. A simple procedural swing animates arms and legs. This deliberately avoids NavMesh and pathfinding until the building, walkable-area and obstacle systems are designed.
 
+Character movement and its procedural walk animation consume the same scaled delta from GameClock via get_simulation_delta(real_delta). At 0×, both freeze; at 3× or 6×, both advance at the matching simulation rate. This is intentionally simulation-local: camera controls and the rest of the presentation layer are not slowed by changing Engine.time_scale.
+
 Future navigation must account for:
 - building entrances and exits;
 - doors and access restrictions;
