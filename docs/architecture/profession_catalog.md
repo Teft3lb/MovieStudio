@@ -18,7 +18,7 @@ Each profession defines:
 - career goal;
 - biography pool.
 
-The catalogue also owns localized department titles, skill titles and default work schedules by department.
+The catalogue also owns localized department titles, skill titles and default work schedules by department. The six Character System v2 professions retain their original 08:00–17:00 shift and 12:00–13:00 break, along with the existing camera-operator title and task label.
 
 ## Departments and professions
 
