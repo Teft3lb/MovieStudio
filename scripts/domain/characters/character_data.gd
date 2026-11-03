@@ -126,8 +126,11 @@ func to_dict() -> Dictionary:
 	}
 
 
-static func from_dict(payload: Dictionary) -> CharacterData:
-	var result := CharacterData.new()
+static func from_dict(payload: Dictionary) -> RefCounted:
+	# Load this script resource directly instead of resolving its class_name.
+	# This keeps the factory usable in headless --script runs before the
+	# editor's global script-class cache has been generated.
+	var result: Variant = load("res://scripts/domain/characters/character_data.gd").new()
 
 	result.id = str(payload.get("id", ""))
 	result.first_name = str(payload.get("first_name", ""))
