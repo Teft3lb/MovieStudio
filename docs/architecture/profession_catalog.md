@@ -1,7 +1,7 @@
 # Profession Catalogue
 
 **Engine:** Godot 4.7.2  
-**Module:** \`scripts/domain/staff/profession_catalog.gd\`  
+**Module:** `scripts/domain/staff/profession_catalog.gd`  
 **Status:** first data-driven catalogue integrated with Employee Management v1.
 
 ## Design
@@ -24,14 +24,14 @@ The catalogue also owns localized department titles, skill titles and default wo
 
 | Department | Profession IDs |
 |---|---|
-| Creative | \`actor\`, \`extra\`, \`director\`, \`screenwriter\`, \`producer\`, \`casting_director\` |
-| Production | \`camera_operator\`, \`assistant_camera_operator\`, \`gaffer\`, \`lighting_technician\`, \`sound_engineer\`, \`boom_operator\`, \`film_editor\`, \`production_designer\`, \`set_builder\`, \`costume_designer\`, \`makeup_artist\`, \`props_master\`, \`technician\` |
-| Facility | \`cleaner\`, \`maintenance_worker\`, \`electrician\`, \`security_guard\` |
-| Catering | \`chef\`, \`sous_chef\`, \`bartender\`, \`waiter\`, \`cafeteria_worker\` |
-| Administration | \`secretary\`, \`personal_assistant\`, \`receptionist\`, \`hr_manager\`, \`accountant\`, \`office_manager\` |
-| Marketing | \`marketing_manager\`, \`advertising_manager\`, \`pr_specialist\`, \`social_media_manager\`, \`graphic_designer\`, \`press_officer\` |
+| Creative | `actor`, `extra`, `director`, `screenwriter`, `producer`, `casting_director` |
+| Production | `camera_operator`, `assistant_camera_operator`, `gaffer`, `lighting_technician`, `sound_engineer`, `boom_operator`, `film_editor`, `production_designer`, `set_builder`, `costume_designer`, `makeup_artist`, `props_master`, `technician` |
+| Facility | `cleaner`, `maintenance_worker`, `electrician`, `security_guard` |
+| Catering | `chef`, `sous_chef`, `bartender`, `waiter`, `cafeteria_worker` |
+| Administration | `secretary`, `personal_assistant`, `receptionist`, `hr_manager`, `accountant`, `office_manager` |
+| Marketing | `marketing_manager`, `advertising_manager`, `pr_specialist`, `social_media_manager`, `graphic_designer`, `press_officer` |
 
-The \`technician\` ID is retained for compatibility with Character System v2 data.
+The `technician` ID is retained for compatibility with Character System v2 data.
 
 ## Integration
 
