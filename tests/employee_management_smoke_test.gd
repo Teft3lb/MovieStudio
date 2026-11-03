@@ -111,6 +111,35 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			"The initial market must represent every employee department."
 		)
 
+	for legacy_profession_id in [
+		"actor",
+		"director",
+		"screenwriter",
+		"camera_operator",
+		"producer",
+		"technician",
+	]:
+		var legacy_schedule: Dictionary = PROFESSION_CATALOG_SCRIPT.get_schedule(
+			legacy_profession_id
+		)
+		assert(
+			int(legacy_schedule.get("shift_start_hour", -1)) == 8
+			and int(legacy_schedule.get("shift_end_hour", -1)) == 17
+			and int(legacy_schedule.get("break_start_hour", -1)) == 12
+			and int(legacy_schedule.get("break_end_hour", -1)) == 13,
+			"Existing Character System v2 professions must keep their verified schedule."
+		)
+
+	assert(
+		PROFESSION_CATALOG_SCRIPT.get_profession_title("camera_operator") == "Оператор",
+		"Existing Character System v2 profession titles must remain unchanged."
+	)
+	assert(
+		PROFESSION_CATALOG_SCRIPT.get_default_task("camera_operator")
+			== "Готовит операторское оборудование",
+		"Existing Character System v2 work-task labels must remain unchanged."
+	)
+
 	var legacy_technician: Variant = generator.call(
 		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
 	)
