@@ -83,6 +83,15 @@ const PROFESSIONS: Dictionary = {
 			"Постоянно переписывает черновики в поисках точной истории.",
 		],
 	},
+	"technician": {
+		"title": "Техник", "department": "production", "primary_skill": "technical",
+		"base_salary": 70, "task": "Обслуживает оборудование",
+		"goal": "Возглавить технический отдел",
+		"biographies": [
+			"Любит разбираться в механизмах и не терпит неисправное оборудование.",
+			"Считает, что хорошая съёмка начинается с надёжной техники.",
+		],
+	},
 	"producer": {
 		"title": "Продюсер", "department": "creative", "primary_skill": "management",
 		"base_salary": 135, "task": "Координирует производство",
