@@ -75,9 +75,6 @@ func _add_fast_forward_button(
 
 func _on_fast_forward_button_pressed(minutes: int) -> void:
 	game_clock.advance_minutes(minutes)
-	if is_instance_valid(_fast_forward_status_label):
-		_fast_forward_status_label.text = "Перемотано на %d игровых минут." % minutes
-	_refresh_hud()
 
 
 func _on_manual_advance_finished(minutes_advanced: int) -> void:
