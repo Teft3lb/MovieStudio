@@ -1,8 +1,8 @@
 # Employee Management v1
 
 **Status:** first functional employee-market and contract prototype.  
-**Branch:** \`feature/employee-management-v1\`.  
-**Base:** \`feature/character-system-v2\`.
+**Branch:** `feature/employee-management-v1`.  
+**Base:** `feature/character-system-v2`.
 
 ## Scope
 
