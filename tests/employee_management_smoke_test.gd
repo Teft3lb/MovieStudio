@@ -12,6 +12,9 @@ const EMPLOYEE_CONTRACT_SCRIPT = preload(
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
+const CHARACTER_DATA_SCRIPT = preload(
+	"res://scripts/domain/characters/character_data.gd"
+)
 
 
 func _initialize() -> void:
@@ -57,7 +60,7 @@ func _initialize() -> void:
 func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) -> void:
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
 	assert(
-		profession_ids.size() >= 35,
+		profession_ids.size() >= 40,
 		"The profession catalog must include creative, production and service roles."
 	)
 
@@ -87,8 +90,8 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		)
 
 	var market_departments: Dictionary = {}
-	for candidate in PROFESSION_CATALOG_SCRIPT.get_department_ids():
-		market_departments[str(candidate)] = false
+	for department_id in PROFESSION_CATALOG_SCRIPT.get_department_ids():
+		market_departments[str(department_id)] = false
 
 	var market_system: Variant = load(
 		"res://scripts/domain/staff/employee_market_system.gd"
@@ -107,6 +110,27 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			bool(market_departments[department_id]),
 			"The initial market must represent every employee department."
 		)
+
+	var legacy_technician: Variant = generator.call(
+		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
+	)
+	assert(
+		legacy_technician.get_profession_title() == "Техник",
+		"Legacy Character System v2 technician profiles must remain supported."
+	)
+
+	var legacy_payload: Dictionary = {
+		"id": "EMP-LEGACY-SAVE",
+		"profession_id": "actor",
+		"skills": {"acting": 64.0},
+	}
+	var restored_character: Variant = CHARACTER_DATA_SCRIPT.from_dict(legacy_payload)
+	assert(
+		restored_character.skills.has("lighting")
+		and restored_character.skills.has("culinary")
+		and restored_character.skills.has("marketing"),
+		"Older character data must receive defaults for newly introduced skills."
+	)
 
 
 func _test_contract_serialization(management: Variant) -> void:
