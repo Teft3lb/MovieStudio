@@ -119,7 +119,7 @@ A separate clock test is available:
 godot --headless --path . --script res://tests/game_clock_fast_forward_test.gd
 ~~~
 
-It verifies seven-day advancement while paused, day-boundary signals, preservation of time-of-day and speed mode.
+It runs a full 30-day fast-forward while paused, verifies every minute and day-boundary signal, checks that a 30-day contract expires on day 31, confirms the candidate market refreshes during the skip, and verifies preservation of time-of-day and speed mode.
 
 ## Deliberate limitations
 
