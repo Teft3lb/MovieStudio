@@ -24,7 +24,7 @@ func _initialize() -> void:
 		generator.call("generate", rng, "EMP-TEST-0002", "director")
 	)
 
-	var management: RefCounted = EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT.new()
+	var management: Variant = EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT.new()
 	management.call("initialize", initial_employees, 1, 246810, 4)
 
 	assert(
