@@ -13,9 +13,6 @@ const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_management_system.gd"
 )
-const EMPLOYEE_CONTRACT_SCRIPT = preload(
-	"res://scripts/domain/staff/employee_contract.gd"
-)
 
 const INITIAL_PROFESSIONS: Array[String] = [
 	"actor",
@@ -41,7 +38,7 @@ var employees: Array = []
 var market_candidates: Array = []
 var _generator: RefCounted
 var _needs_system: RefCounted
-var _employment_system: RefCounted
+var _employment_system: Variant
 var _game_clock: Node
 
 var _employee_actors: Dictionary = {}
@@ -449,6 +446,7 @@ func _build_detail_panel() -> void:
 	_contract_type_option.set_item_metadata(1, "fixed_30_days")
 	_contract_type_option.add_item("Срочный · 90 дней")
 	_contract_type_option.set_item_metadata(2, "fixed_90_days")
+	_contract_type_option.select(0)
 	_contract_type_option.item_selected.connect(_on_contract_type_selected)
 	_contract_type_option.visible = false
 	layout.add_child(_contract_type_option)
