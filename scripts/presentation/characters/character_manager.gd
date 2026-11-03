@@ -913,5 +913,5 @@ func _show_employee_message(message: String) -> void:
 	dialog.dialog_text = message
 	add_child(dialog)
 	dialog.confirmed.connect(dialog.queue_free)
-	dialog.canceled.connect(dialog.queue_free)
+	dialog.close_requested.connect(dialog.queue_free)
 	dialog.popup_centered()
