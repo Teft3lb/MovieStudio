@@ -8,6 +8,22 @@
 
 Employee Management v1 introduces a complete basic staffing lifecycle while preserving the Character System v2 employee profile and needs simulation.
 
+## Profession catalogue
+
+The data-driven `ProfessionCatalog` is the single source of truth for department membership, localized job titles, primary skills, base salary expectations, career goals, biography pools, default work-task descriptions and department-level schedules.
+
+The current catalogue contains 40 professions across six departments:
+- Creative: actor, extra, director, screenwriter, producer, casting director.
+- Production: camera operator, assistant camera operator, gaffer, lighting technician, sound engineer, boom operator, film editor, production designer, set builder, costume designer, makeup artist, props master and legacy general technician.
+- Facility: cleaner, maintenance worker, electrician, security guard.
+- Catering: chef, sous-chef, bartender, waiter, cafeteria worker.
+- Administration: secretary, personal assistant, receptionist, HR manager, accountant, office manager.
+- Marketing: marketing manager, advertising manager, PR specialist, social media manager, advertising graphic designer, press officer.
+
+The eight-candidate market is seeded and initially distributes candidates across all six departments. New skill keys are merged with defaults when loading older CharacterData payloads, and the legacy `technician` profession remains supported.
+
+The catalogue currently provides profession-specific profile data, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
+
 ## Domain modules
 
 ### EmployeeContract
@@ -53,7 +69,7 @@ The existing CharacterManager remains the scene coordinator and keeps responsibi
 
 The UI adds:
 - a кадровый рынок panel next to the staff roster;
-- candidate rows showing profession, primary skill and salary expectation;
+- candidate rows showing profession, department, primary skill and salary expectation;
 - a candidate detail view using the existing employee profile;
 - contract type selection and daily salary preview;
 - a hire action;
@@ -67,6 +83,8 @@ Newly hired employees receive a CharacterActor and enter the existing roster. Di
 Market refresh and fixed-term expiry are driven by GameClock.day_advanced. They are independent of render FPS and stop while the game clock is paused.
 
 Employee needs continue to use the existing GameClock.minute_advanced path.
+
+The development HUD includes manual fast-forward controls for one hour, one day, seven days and thirty days. They invoke the same minute/day signal path as ordinary simulation, work while paused, preserve the selected speed mode and batch roster/detail UI refresh until the operation completes. Manual advancement is capped at 365 days per call.
 
 ## Economy boundary
 
@@ -83,7 +101,10 @@ godot --headless --path . --script res://tests/employee_management_smoke_test.gd
 ~~~
 
 The test covers:
-1. permanent contracts for the starting roster;
+1. generation and metadata for all 40 professions;
+2. balanced market representation of all six departments;
+3. compatibility with the legacy technician role and older CharacterData skill payloads;
+4. permanent contracts for the starting roster;
 2. contract serialization round-trip;
 3. candidate hiring and removal from the market;
 4. selected contract type and salary calculation;
@@ -91,6 +112,14 @@ The test covers:
 6. dismissal, contract termination and former-employee archive;
 7. seven-day market refresh;
 8. fixed-term contract expiry after the final active day.
+
+A separate clock test is available:
+
+~~~bash
+godot --headless --path . --script res://tests/game_clock_fast_forward_test.gd
+~~~
+
+It verifies seven-day advancement while paused, day-boundary signals, preservation of time-of-day and speed mode.
 
 ## Deliberate limitations
 
