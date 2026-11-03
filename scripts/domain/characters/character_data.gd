@@ -1,36 +1,10 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 2
-
-const PROFESSION_TITLES: Dictionary = {
-	"actor": "Актёр",
-	"director": "Режиссёр",
-	"screenwriter": "Сценарист",
-	"camera_operator": "Оператор",
-	"producer": "Продюсер",
-	"technician": "Техник",
-}
-
-const PRIMARY_SKILLS: Dictionary = {
-	"actor": "acting",
-	"director": "directing",
-	"screenwriter": "writing",
-	"camera_operator": "camera_work",
-	"producer": "management",
-	"technician": "technical",
-}
-
-const SKILL_TITLES: Dictionary = {
-	"acting": "Актёрское мастерство",
-	"directing": "Режиссура",
-	"writing": "Сценарное мастерство",
-	"camera_work": "Работа с камерой",
-	"management": "Управление",
-	"technical": "Технические навыки",
-	"creativity": "Креативность",
-	"reliability": "Надёжность",
-}
+const SCHEMA_VERSION: int = 3
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 var id: String = ""
 var first_name: String = ""
@@ -60,6 +34,19 @@ var skills: Dictionary = {
 	"technical": 0.0,
 	"creativity": 0.0,
 	"reliability": 0.0,
+	"lighting": 0.0,
+	"sound": 0.0,
+	"editing": 0.0,
+	"set_design": 0.0,
+	"costume_design": 0.0,
+	"makeup": 0.0,
+	"maintenance": 0.0,
+	"culinary": 0.0,
+	"hospitality": 0.0,
+	"administration": 0.0,
+	"communication": 0.0,
+	"marketing": 0.0,
+	"security": 0.0,
 }
 
 var personality: Dictionary = {
@@ -90,15 +77,19 @@ func get_full_name() -> String:
 
 
 func get_profession_title() -> String:
-	return str(PROFESSION_TITLES.get(profession_id, "Сотрудник"))
+	return PROFESSION_CATALOG_SCRIPT.get_profession_title(profession_id)
+
+
+func get_department_title() -> String:
+	return PROFESSION_CATALOG_SCRIPT.get_department_title_for_profession(profession_id)
 
 
 func get_primary_skill_id() -> String:
-	return str(PRIMARY_SKILLS.get(profession_id, "reliability"))
+	return PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(profession_id)
 
 
 func get_primary_skill_title() -> String:
-	return str(SKILL_TITLES.get(get_primary_skill_id(), "Основной навык"))
+	return PROFESSION_CATALOG_SCRIPT.get_primary_skill_title(profession_id)
 
 
 func get_primary_skill_value() -> float:
@@ -188,7 +179,9 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 
 	var raw_skills: Variant = payload.get("skills", {})
 	if raw_skills is Dictionary:
-		result.skills = raw_skills.duplicate(true)
+		var merged_skills: Dictionary = result.skills.duplicate(true)
+		merged_skills.merge(raw_skills, true)
+		result.skills = merged_skills
 
 	var raw_personality: Variant = payload.get("personality", {})
 	if raw_personality is Dictionary:
