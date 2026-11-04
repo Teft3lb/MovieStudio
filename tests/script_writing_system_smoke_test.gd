@@ -3,9 +3,6 @@ extends SceneTree
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
-const CHARACTER_DATA_SCRIPT = preload(
-	"res://scripts/domain/characters/character_data.gd"
-)
 const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/script_department/script_writing_system.gd"
 )
