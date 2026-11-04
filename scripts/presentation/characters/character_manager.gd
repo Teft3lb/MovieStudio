@@ -131,6 +131,18 @@ func initialize_workplaces(building_manager: Node) -> void:
 	_refresh_workplace_assignments()
 
 
+func get_employees_assigned_to_building(building_id: String) -> Array:
+	var result: Array = []
+	for employee in employees:
+		var assignment: Dictionary = _workplace_assignments.get(
+			str(employee.id),
+			{}
+		)
+		if str(assignment.get("building_id", "")) == building_id:
+			result.append(employee)
+	return result
+
+
 func is_employee_at_workplace(
 	employee_id: String,
 	building_type_id: String = ""
