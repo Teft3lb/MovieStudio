@@ -10,6 +10,7 @@ const WALL_THICKNESS: float = 0.28
 
 var building_data: Variant
 var _selection_marker: Node3D
+var _is_selected: bool = false
 var _roof_assembly: Node3D
 var _wall_groups: Dictionary = {}
 var _interior_root: Node3D
@@ -41,8 +42,10 @@ func get_building_id() -> String:
 
 
 func set_selected(value: bool) -> void:
+	_is_selected = value
 	if is_instance_valid(_selection_marker):
 		_selection_marker.visible = value
+	_update_cutaway()
 
 
 func get_workplace_path(slot_index: int) -> Array[Vector3]:
@@ -756,7 +759,7 @@ func _update_cutaway() -> void:
 	if camera == null:
 		return
 
-	var is_close: bool = (
+	var is_close: bool = _is_selected or (
 		camera.global_position.distance_to(global_position)
 		<= CUTAWAY_DISTANCE
 	)
