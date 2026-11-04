@@ -365,7 +365,7 @@ func _add_roster_button(employee: Variant) -> void:
 
 	var button := Button.new()
 	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(305.0, 56.0)
+	button.custom_minimum_size = Vector2(305.0, 72.0)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.toggle_mode = true
 	button.add_theme_font_size_override("font_size", 12)
@@ -806,12 +806,13 @@ func _refresh_roster() -> void:
 			continue
 
 		var needs: Dictionary = employee.needs
-		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%" % [
+		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%\n%s" % [
 			employee.get_full_name(),
 			employee.get_profession_title(),
 			employee.get_work_state_title(),
 			roundi(float(needs.get("energy", 1.0)) * 100.0),
 			roundi(float(needs.get("morale", 0.75)) * 100.0),
+			employee.current_task,
 		]
 		button.button_pressed = employee_id == _selected_employee_id
 
