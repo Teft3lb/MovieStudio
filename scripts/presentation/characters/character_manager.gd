@@ -131,6 +131,13 @@ func initialize_workplaces(building_manager: Node) -> void:
 	_refresh_workplace_assignments()
 
 
+func employee_work_state(employee_id: String) -> String:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return ""
+	return str(employee.work_state)
+
+
 func get_employees_assigned_to_building(building_id: String) -> Array:
 	var result: Array = []
 	for employee in employees:
@@ -162,6 +169,11 @@ func is_employee_at_workplace(
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor == null or not is_instance_valid(actor):
 		return false
+	if (
+		_game_clock.is_manual_fast_forward
+		and str(employee_work_state(employee_id)) == "working"
+	):
+		return true
 	return bool(actor.call("is_at_workplace"))
 
 
@@ -661,9 +673,15 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 				)
 				actor.call("assign_workplace", building_id, destination)
 
+		var is_at_workplace: bool = bool(
+			actor.call("is_at_workplace")
+		)
+		if _game_clock.is_manual_fast_forward:
+			is_at_workplace = true
+
 		if (
 			str(employee.work_state) == "working"
-			and bool(actor.call("is_at_workplace"))
+			and is_at_workplace
 		):
 			_workplace_system.call(
 				"advance_work_minute",
@@ -709,6 +727,12 @@ func _refresh_after_staffing_day() -> void:
 
 
 func _on_manual_advance_finished(_minutes_advanced: int) -> void:
+	for employee in employees:
+		if str(employee.work_state) != "off_duty":
+			var actor: Variant = _employee_actors.get(str(employee.id))
+			if actor != null and is_instance_valid(actor):
+				actor.call("snap_to_workplace")
+
 	_refresh_market_panel()
 	_refresh_after_staffing_day()
 
