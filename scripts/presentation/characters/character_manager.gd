@@ -139,9 +139,25 @@ func is_employee_assigned_to_building(
 
 func set_employee_task(employee_id: String, task_title: String) -> void:
 	var employee: Variant = _find_employee(employee_id)
-	if employee == null or str(employee.current_task) == task_title:
+	if employee == null:
+		return
+	_employee_task_overrides[employee_id] = task_title
+	if str(employee.current_task) == task_title:
 		return
 	employee.current_task = task_title
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_roster()
+		_refresh_detail_panel()
+
+
+func clear_employee_task(employee_id: String) -> void:
+	_employee_task_overrides.erase(employee_id)
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	employee.current_task = PROFESSION_CATALOG_SCRIPT.get_default_task(
+		str(employee.profession_id)
+	)
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
@@ -316,6 +332,7 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 
 
 func _remove_employee_actor(employee_id: String) -> void:
+	_employee_task_overrides.erase(employee_id)
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor != null and is_instance_valid(actor):
 		actor.queue_free()
@@ -749,6 +766,13 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 				employee,
 				assignment
 			)
+			if (
+				str(employee.work_state) == "working"
+				and _employee_task_overrides.has(employee_id)
+			):
+				employee.current_task = str(
+					_employee_task_overrides[employee_id]
+				)
 
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
