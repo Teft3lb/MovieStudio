@@ -43,7 +43,7 @@ Movement uses deterministic waypoints rather than NavMesh pathfinding. It clamps
 
 Both starter buildings now contain procedural 3D interiors. The Script Department has three desks, monitors, keyboards, chairs, a bookshelf and a research board. The Sound Stage has a set backdrop, platform, floor marks, two camera rigs, lighting stands, a director monitor and a technical equipment rack. Workplace points are placed beside the matching props.
 
-The roof assembly is hidden and the camera-facing wall is cut away when the camera is within 36 world units of a building. At a wider view, the full exterior roof and walls return. The interior remains part of the same 3D scene; employees are not hidden or replaced by UI representations.
+The roof assembly is hidden and the camera-facing wall is cut away when the camera is within 36 world units of a building or the building is selected. At a wider view, the full exterior roof and walls return. The interior remains part of the same 3D scene; employees are not hidden or replaced by UI representations.
 
 \`CharacterVisual\` adds procedural profession-specific work poses using the existing arm and leg pivots. Writers, producers and casting staff type or work at desks; directors gesture; camera operators hold a camera stance; technicians perform equipment work; actors and extras rehearse. The existing walk animation remains the movement state and is restored when an employee leaves the workstation.
 
