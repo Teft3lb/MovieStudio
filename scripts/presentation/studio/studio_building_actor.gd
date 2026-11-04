@@ -57,7 +57,7 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	var outside: Vector3 = _entrance_outside + Vector3(slot_offset, 0.0, 0.0)
 	var inside: Vector3 = _entrance_inside + Vector3(slot_offset, 0.0, 0.0)
 	var corridor: Vector3 = Vector3(
-		_workplace_points[normalized_slot].x * 0.35,
+		_workplace_points[normalized_slot].x,
 		0.0,
 		_entrance_inside.z - 1.0
 	)
@@ -254,14 +254,14 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 	)
 
 	_workplace_points = [
-		Vector3(-4.4, 0.0, -0.2),
-		Vector3(-1.5, 0.0, -0.2),
-		Vector3(1.5, 0.0, -0.2),
-		Vector3(4.4, 0.0, -0.2),
-		Vector3(-4.4, 0.0, 2.4),
-		Vector3(-1.5, 0.0, 2.4),
-		Vector3(1.5, 0.0, 2.4),
-		Vector3(4.4, 0.0, 2.4),
+		Vector3(-1.8, 0.0, -1.6),
+		Vector3(1.8, 0.0, -1.6),
+		Vector3(0.0, 0.0, 1.4),
+		Vector3(-4.2, 0.0, 0.0),
+		Vector3(-4.8, 0.0, 3.4),
+		Vector3(4.8, 0.0, 3.4),
+		Vector3(-4.2, 0.0, 1.8),
+		Vector3(4.2, 0.0, 1.8),
 	]
 
 
@@ -389,20 +389,20 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 			0.32,
 			0.12,
 			metal_color,
-			Vector3(desk_x, 0.48, 0.18)
+			Vector3(desk_x + 0.82, 0.48, 0.72)
 		)
 		_create_box(
 			_interior_root,
 			"OfficeChairBack",
 			Vector3(0.58, 0.65, 0.12),
 			Color(0.15, 0.18, 0.21),
-			Vector3(desk_x, 0.85, 0.43)
+			Vector3(desk_x + 0.82, 0.85, 0.97)
 		)
 
 	_workplace_points = [
-		Vector3(-2.35, 0.0, 0.25),
-		Vector3(0.0, 0.0, 0.25),
-		Vector3(2.35, 0.0, 0.25),
+		Vector3(-2.35, 0.0, 0.0),
+		Vector3(0.0, 0.0, 0.0),
+		Vector3(2.35, 0.0, 0.0),
 	]
 	_create_box(
 		_interior_root,
@@ -520,7 +520,7 @@ func _create_floor(
 	var instance := MeshInstance3D.new()
 	instance.name = node_name
 	instance.mesh = mesh
-	instance.position.y = 0.045
+	instance.position.y = 0.02
 	instance.material_override = _make_material(color)
 	_interior_root.add_child(instance)
 
