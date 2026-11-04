@@ -1830,6 +1830,7 @@ func _update_film_production_ui() -> void:
 				int(project.total_scene_count),
 			],
 			"Сценарный потенциал: %d / 100" % int(project.script_potential_score),
+			"Следующий этап: монтаж фильма.",
 			"Результаты сцен:",
 		]
 		for scene_result in project.scene_results:
