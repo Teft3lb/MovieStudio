@@ -12,6 +12,10 @@ var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
 var _selection_ring: MeshInstance3D
+var _workplace_building_id: String = ""
+var _workplace_destination: Vector3 = Vector3.ZERO
+var _has_workplace_destination: bool = false
+var _is_at_workplace: bool = false
 
 
 func setup(
@@ -49,6 +53,25 @@ func _process(delta: float) -> void:
 	if is_zero_approx(simulation_delta):
 		return
 
+	if _has_workplace_destination:
+		var workplace_direction: Vector3 = (
+			_workplace_destination - global_position
+		)
+		workplace_direction.y = 0.0
+		if workplace_direction.length_squared() <= 0.25:
+			_is_at_workplace = true
+			_set_walking(false)
+			_advance_visual(simulation_delta)
+			return
+
+		_is_at_workplace = false
+		workplace_direction = workplace_direction.normalized()
+		global_position += workplace_direction * _move_speed * simulation_delta
+		look_at(global_position + workplace_direction, Vector3.UP)
+		_set_walking(true)
+		_advance_visual(simulation_delta)
+		return
+
 	if _route.size() < 2:
 		_set_walking(false)
 		_advance_visual(simulation_delta)
@@ -75,6 +98,34 @@ func get_character_id() -> String:
 	if character_data == null:
 		return ""
 	return str(character_data.id)
+
+
+func assign_workplace(building_id: String, destination: Vector3) -> void:
+	if (
+		_workplace_building_id == building_id
+		and _has_workplace_destination
+		and _workplace_destination.is_equal_approx(destination)
+	):
+		return
+
+	_workplace_building_id = building_id
+	_workplace_destination = destination
+	_has_workplace_destination = true
+	_is_at_workplace = false
+
+
+func clear_workplace() -> void:
+	_workplace_building_id = ""
+	_has_workplace_destination = false
+	_is_at_workplace = false
+
+
+func get_workplace_building_id() -> String:
+	return _workplace_building_id
+
+
+func is_at_workplace() -> bool:
+	return _is_at_workplace
 
 
 func set_selected(value: bool) -> void:
