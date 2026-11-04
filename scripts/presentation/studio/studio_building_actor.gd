@@ -79,7 +79,11 @@ func get_workplace_position(slot_index: int) -> Vector3:
 	return path[path.size() - 1]
 
 
-func get_scene_mark(slot_index: int) -> Vector3:
+func get_scene_mark(
+	slot_index: int,
+	phase_id: String = "preparation",
+	scene_index: int = 0
+) -> Vector3:
 	var scene_marks: Array[Vector3] = [
 		Vector3(-3.0, 0.0, -3.35),
 		Vector3(-1.0, 0.0, -3.35),
@@ -95,7 +99,19 @@ func get_scene_mark(slot_index: int) -> Vector3:
 		0,
 		scene_marks.size() - 1
 	)
-	return to_global(scene_marks[normalized_index])
+	var mark: Vector3 = scene_marks[normalized_index]
+	if posmod(scene_index, 2) == 1:
+		mark.x = -mark.x
+	match phase_id:
+		"rehearsal":
+			mark.x += 0.22 if mark.x < 0.0 else -0.22
+			mark.z += 0.28
+		"shooting":
+			mark.x += 0.38 if mark.x < 0.0 else -0.38
+			mark.z += 0.52 if normalized_index % 2 == 0 else -0.18
+		"review":
+			mark.z += 0.12
+	return to_global(mark)
 
 
 func get_scene_focus_point() -> Vector3:
