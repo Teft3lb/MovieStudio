@@ -19,7 +19,7 @@ const DEPARTMENT_ORDER: Array[String] = [
 	"marketing",
 ]
 
-const LEGACY_PROFESSION_IDS: Array[String] = [
+const CHARACTER_SYSTEM_V2_CORE_PROFESSION_IDS: Array[String] = [
 	"actor",
 	"director",
 	"screenwriter",
@@ -27,30 +27,6 @@ const LEGACY_PROFESSION_IDS: Array[String] = [
 	"producer",
 	"technician",
 ]
-
-const LEGACY_PROFESSION_ALIASES: Dictionary = {
-	"assistant_camera_operator": {"profession_id": "camera_operator", "specialization_id": ""},
-	"gaffer": {"profession_id": "technician", "specialization_id": "lighting"},
-	"lighting_technician": {"profession_id": "technician", "specialization_id": "lighting"},
-	"sound_engineer": {"profession_id": "technician", "specialization_id": "sound"},
-	"boom_operator": {"profession_id": "technician", "specialization_id": "sound"},
-	"film_editor": {"profession_id": "technician", "specialization_id": "editing"},
-	"set_builder": {"profession_id": "production_designer", "specialization_id": "sets"},
-	"costume_designer": {"profession_id": "production_designer", "specialization_id": "costumes"},
-	"makeup_artist": {"profession_id": "production_designer", "specialization_id": "makeup"},
-	"props_master": {"profession_id": "production_designer", "specialization_id": "props"},
-	"electrician": {"profession_id": "maintenance_worker", "specialization_id": ""},
-	"sous_chef": {"profession_id": "chef", "specialization_id": ""},
-	"cafeteria_worker": {"profession_id": "waiter", "specialization_id": ""},
-	"receptionist": {"profession_id": "secretary", "specialization_id": ""},
-	"hr_manager": {"profession_id": "secretary", "specialization_id": ""},
-	"accountant": {"profession_id": "secretary", "specialization_id": ""},
-	"office_manager": {"profession_id": "secretary", "specialization_id": ""},
-	"advertising_manager": {"profession_id": "marketing_manager", "specialization_id": "advertising"},
-	"social_media_manager": {"profession_id": "marketing_manager", "specialization_id": "social_media"},
-	"graphic_designer": {"profession_id": "marketing_manager", "specialization_id": "design"},
-	"press_officer": {"profession_id": "pr_specialist", "specialization_id": ""},
-}
 
 const SKILL_TITLES: Dictionary = {
 	"acting": "Актёрское мастерство",
@@ -74,6 +50,110 @@ const SKILL_TITLES: Dictionary = {
 	"communication": "Коммуникация",
 	"marketing": "Маркетинг",
 	"security": "Безопасность",
+	"improvisation": "Импровизация",
+	"diction": "Дикция",
+	"movement": "Пластика",
+	"screen_presence": "Экранная харизма",
+	"visual_storytelling": "Визуальное повествование",
+	"actor_direction": "Работа с актёрами",
+	"story_structure": "Структура истории",
+	"dialogue": "Диалоги",
+	"character_development": "Разработка персонажей",
+	"research": "Исследование материала",
+	"budgeting": "Бюджетирование",
+	"negotiation": "Переговоры",
+	"planning": "Планирование",
+	"casting": "Кастинг",
+	"observation": "Наблюдательность",
+	"composition": "Композиция кадра",
+	"equipment": "Оборудование",
+	"prop_design": "Реквизит",
+	"organization": "Организация",
+	"hygiene": "Санитарные нормы",
+	"safety_compliance": "Техника безопасности",
+	"menu_planning": "Планирование меню",
+	"beverage_service": "Приготовление напитков",
+	"service_speed": "Скорость обслуживания",
+	"discretion": "Конфиденциальность",
+	"market_research": "Анализ аудитории",
+	"advertising": "Рекламные кампании",
+	"social_media": "Социальные сети",
+	"advertising_design": "Рекламный дизайн",
+	"press_relations": "Работа с прессой",
+	"crisis_management": "Антикризисные коммуникации",
+}
+
+const PROFESSION_SKILL_PROFILES: Dictionary = {
+	"actor": [
+		"acting", "improvisation", "diction", "movement",
+		"screen_presence", "communication", "creativity", "reliability",
+	],
+	"extra": [
+		"acting", "movement", "camera_work", "communication", "reliability",
+	],
+	"director": [
+		"directing", "visual_storytelling", "actor_direction", "camera_work",
+		"creativity", "management", "communication", "reliability",
+	],
+	"screenwriter": [
+		"writing", "story_structure", "dialogue", "character_development",
+		"research", "creativity", "reliability",
+	],
+	"producer": [
+		"management", "budgeting", "negotiation", "planning",
+		"communication", "reliability",
+	],
+	"casting_director": [
+		"casting", "observation", "acting", "communication",
+		"negotiation", "management", "reliability",
+	],
+	"camera_operator": [
+		"camera_work", "composition", "lighting", "technical",
+		"visual_storytelling", "reliability",
+	],
+	"technician": [
+		"technical", "maintenance", "reliability", "communication",
+	],
+	"production_designer": [
+		"set_design", "creativity", "technical", "communication", "reliability",
+	],
+	"cleaner": [
+		"maintenance", "organization", "hygiene", "reliability",
+	],
+	"maintenance_worker": [
+		"maintenance", "technical", "safety_compliance", "reliability",
+	],
+	"security_guard": [
+		"security", "observation", "communication", "safety_compliance", "reliability",
+	],
+	"chef": [
+		"culinary", "menu_planning", "hygiene", "organization",
+		"creativity", "reliability",
+	],
+	"bartender": [
+		"hospitality", "beverage_service", "communication",
+		"organization", "reliability",
+	],
+	"waiter": [
+		"hospitality", "service_speed", "communication",
+		"organization", "reliability",
+	],
+	"secretary": [
+		"administration", "communication", "organization",
+		"planning", "reliability",
+	],
+	"personal_assistant": [
+		"communication", "administration", "organization",
+		"planning", "discretion", "reliability",
+	],
+	"marketing_manager": [
+		"marketing", "market_research", "creativity", "communication",
+		"management", "planning", "reliability",
+	],
+	"pr_specialist": [
+		"communication", "marketing", "writing", "press_relations",
+		"negotiation", "crisis_management", "reliability",
+	],
 }
 
 const PROFESSIONS: Dictionary = {
@@ -257,19 +337,19 @@ const SPECIALIZATIONS: Dictionary = {
 	"technician": [
 		{"id": "lighting", "title": "Свет", "skill_id": "lighting"},
 		{"id": "sound", "title": "Звук", "skill_id": "sound"},
-		{"id": "equipment", "title": "Оборудование", "skill_id": "technical"},
+		{"id": "equipment", "title": "Оборудование", "skill_id": "equipment"},
 		{"id": "editing", "title": "Монтаж", "skill_id": "editing"},
 	],
 	"production_designer": [
 		{"id": "sets", "title": "Декорации", "skill_id": "set_design"},
 		{"id": "costumes", "title": "Костюмы", "skill_id": "costume_design"},
 		{"id": "makeup", "title": "Грим", "skill_id": "makeup"},
-		{"id": "props", "title": "Реквизит", "skill_id": "technical"},
+		{"id": "props", "title": "Реквизит", "skill_id": "prop_design"},
 	],
 	"marketing_manager": [
-		{"id": "advertising", "title": "Реклама", "skill_id": "marketing"},
-		{"id": "social_media", "title": "Социальные сети", "skill_id": "communication"},
-		{"id": "design", "title": "Рекламный дизайн", "skill_id": "creativity"},
+		{"id": "advertising", "title": "Реклама", "skill_id": "advertising"},
+		{"id": "social_media", "title": "Социальные сети", "skill_id": "social_media"},
+		{"id": "design", "title": "Рекламный дизайн", "skill_id": "advertising_design"},
 	],
 }
 
@@ -305,19 +385,11 @@ static func get_profession_ids_for_department(department_id: String) -> Array[St
 
 
 static func has_profession(profession_id: String) -> bool:
-	return PROFESSIONS.has(profession_id) or LEGACY_PROFESSION_ALIASES.has(profession_id)
+	return PROFESSIONS.has(profession_id)
 
 
 static func normalize_profession_id(profession_id: String) -> String:
-	if PROFESSIONS.has(profession_id):
-		return profession_id
-	var legacy_alias: Dictionary = LEGACY_PROFESSION_ALIASES.get(profession_id, {})
-	return str(legacy_alias.get("profession_id", "technician"))
-
-
-static func get_legacy_specialization_id(profession_id: String) -> String:
-	var legacy_alias: Dictionary = LEGACY_PROFESSION_ALIASES.get(profession_id, {})
-	return str(legacy_alias.get("specialization_id", ""))
+	return profession_id if PROFESSIONS.has(profession_id) else "technician"
 
 
 static func get_profession(profession_id: String) -> Dictionary:
@@ -373,6 +445,38 @@ static func get_skill_titles() -> Dictionary:
 	return SKILL_TITLES.duplicate(true)
 
 
+static func get_skill_title(skill_id: String) -> String:
+	return str(SKILL_TITLES.get(skill_id, "Неизвестный навык"))
+
+
+static func get_profession_skill_ids(
+	profession_id: String,
+	specialization_id: String = ""
+) -> Array[String]:
+	var result: Array[String] = []
+	var profile: Array = PROFESSION_SKILL_PROFILES.get(
+		normalize_profession_id(profession_id),
+		[]
+	)
+	for skill_id in profile:
+		var normalized_skill_id: String = str(skill_id)
+		if SKILL_TITLES.has(normalized_skill_id) and not result.has(normalized_skill_id):
+			result.append(normalized_skill_id)
+
+	var specialization_skill_id: String = get_specialization_skill_id(
+		profession_id,
+		specialization_id
+	)
+	if (
+		not specialization_skill_id.is_empty()
+		and SKILL_TITLES.has(specialization_skill_id)
+		and not result.has(specialization_skill_id)
+	):
+		result.append(specialization_skill_id)
+
+	return result
+
+
 static func get_specialization_ids(profession_id: String) -> Array[String]:
 	var result: Array[String] = []
 	var options: Array = SPECIALIZATIONS.get(normalize_profession_id(profession_id), [])
@@ -399,7 +503,7 @@ static func get_specialization_skill_id(profession_id: String, specialization_id
 
 static func get_schedule(profession_id: String) -> Dictionary:
 	var normalized_profession_id: String = normalize_profession_id(profession_id)
-	if LEGACY_PROFESSION_IDS.has(normalized_profession_id):
+	if CHARACTER_SYSTEM_V2_CORE_PROFESSION_IDS.has(normalized_profession_id):
 		return {
 			"shift_start_hour": 8,
 			"shift_end_hour": 17,
