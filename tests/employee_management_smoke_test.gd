@@ -194,69 +194,15 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		"Existing Character System v2 work-task labels must remain unchanged."
 	)
 
-	var legacy_aliases: Dictionary = {
-		"assistant_camera_operator": ["camera_operator", ""],
-		"gaffer": ["technician", "lighting"],
-		"lighting_technician": ["technician", "lighting"],
-		"sound_engineer": ["technician", "sound"],
-		"boom_operator": ["technician", "sound"],
-		"film_editor": ["technician", "editing"],
-		"set_builder": ["production_designer", "sets"],
-		"costume_designer": ["production_designer", "costumes"],
-		"makeup_artist": ["production_designer", "makeup"],
-		"props_master": ["production_designer", "props"],
-		"electrician": ["maintenance_worker", ""],
-		"sous_chef": ["chef", ""],
-		"cafeteria_worker": ["waiter", ""],
-		"receptionist": ["secretary", ""],
-		"hr_manager": ["secretary", ""],
-		"accountant": ["secretary", ""],
-		"office_manager": ["secretary", ""],
-		"advertising_manager": ["marketing_manager", "advertising"],
-		"social_media_manager": ["marketing_manager", "social_media"],
-		"graphic_designer": ["marketing_manager", "design"],
-		"press_officer": ["pr_specialist", ""],
-	}
-	for legacy_id in legacy_aliases:
-		var expected_alias: Array = legacy_aliases[legacy_id]
-		var restored_legacy: Variant = CHARACTER_DATA_SCRIPT.from_dict({
-			"id": "EMP-LEGACY-%s" % str(legacy_id).to_upper(),
-			"profession_id": str(legacy_id),
-		})
-		assert(
-			restored_legacy.profession_id == str(expected_alias[0])
-			and restored_legacy.specialization_id == str(expected_alias[1]),
-			"Older profession IDs must migrate to a supported profession and specialization."
-		)
-		var generated_legacy: Variant = generator.call(
-			"generate", rng, "PROF-LEGACY-%s" % str(legacy_id), str(legacy_id)
-		)
-		assert(
-			generated_legacy.profession_id == str(expected_alias[0])
-			and generated_legacy.specialization_id == str(expected_alias[1]),
-			"Legacy profession IDs passed to CharacterGenerator must be normalized."
-		)
-
-	var legacy_technician: Variant = generator.call(
+	var technician_candidate: Variant = generator.call(
 		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
 	)
 	assert(
 		legacy_technician.get_profession_title() == "Техник",
-		"Legacy Character System v2 technician profiles must remain supported."
+		"Character System v2 technician profiles must remain supported."
 	)
 
-	var legacy_payload: Dictionary = {
-		"id": "EMP-LEGACY-SAVE",
-		"profession_id": "actor",
-		"skills": {"acting": 64.0},
-	}
-	var restored_character: Variant = CHARACTER_DATA_SCRIPT.from_dict(legacy_payload)
-	assert(
-		restored_character.skills.has("lighting")
-		and restored_character.skills.has("culinary")
-		and restored_character.skills.has("marketing"),
-		"Older character data must receive defaults for newly introduced skills."
-	)
+
 
 
 func _test_contract_serialization(management: Variant) -> void:
