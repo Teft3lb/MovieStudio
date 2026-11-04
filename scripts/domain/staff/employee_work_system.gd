@@ -19,7 +19,7 @@ func build_assignments(employees: Array, buildings: Array) -> Dictionary:
 	for employee in employees:
 		var employee_id: String = str(employee.id)
 		var profession_id: String = str(employee.profession_id)
-		var preferred_types: Array[String] = _get_preferred_building_types(
+		var preferred_types: Array[String] = get_preferred_building_types(
 			profession_id
 		)
 		if preferred_types.is_empty():
