@@ -846,6 +846,14 @@ func _update_script_writing_ui() -> void:
 		_script_result_label.text = "Проект сценария остановлен."
 		if is_instance_valid(_script_generate_button):
 			_script_generate_button.disabled = false
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = false
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = false
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = true
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = true
 
 
 func _show_script_generation_error(message: String) -> void:
