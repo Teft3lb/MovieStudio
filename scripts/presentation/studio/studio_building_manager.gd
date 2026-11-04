@@ -1852,16 +1852,14 @@ func _update_film_production_ui() -> void:
 
 
 func _can_start_film_production() -> bool:
-	if _latest_script == null or _active_film_project != null:
-		if (
-			_active_film_project != null
-			and str(_active_film_project.status) == "completed"
-		):
-			pass
-		else:
-			return false
 	if _latest_script == null:
 		return false
+	if (
+		_active_film_project != null
+		and str(_active_film_project.status) != "completed"
+	):
+		return false
+
 	var stage_id: String = _get_sound_stage_building_id()
 	if stage_id.is_empty():
 		return false
@@ -1873,7 +1871,6 @@ func _can_start_film_production() -> bool:
 		crew_assignments,
 		_film_cast_assignments
 	)
-
 
 func get_active_film_project() -> Variant:
 	return _active_film_project
