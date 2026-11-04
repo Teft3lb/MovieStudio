@@ -208,6 +208,10 @@ func _refresh_workplace_assignments() -> void:
 		)
 		actor.call("assign_workplace", building_id, destination)
 
+	if is_instance_valid(_roster_header):
+		_refresh_roster()
+		_refresh_detail_panel()
+
 
 func _spawn_initial_roster() -> void:
 	var rng := RandomNumberGenerator.new()
