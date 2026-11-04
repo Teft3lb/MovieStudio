@@ -4,10 +4,12 @@ extends Node3D
 
 var _time_label: Label
 var _speed_label: Label
+var _fast_forward_status_label: Label
 
 
 func _ready() -> void:
 	game_clock.minute_advanced.connect(_on_minute_advanced)
+	game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
 	_build_debug_hud()
 	_refresh_hud()
 
@@ -26,7 +28,7 @@ func _build_debug_hud() -> void:
 	panel.add_child(layout)
 
 	var title := Label.new()
-	title.text = "MOVIESTUDIO  |  FOUNDATION"
+	title.text = "MOVIESTUDIO  |  DEBUG TOOLS"
 	layout.add_child(title)
 
 	_time_label = Label.new()
@@ -43,6 +45,44 @@ func _build_debug_hud() -> void:
 	_add_speed_button(buttons, "3×", GameClock.SpeedMode.FAST)
 	_add_speed_button(buttons, "6×", GameClock.SpeedMode.VERY_FAST)
 
+	var fast_forward_heading := Label.new()
+	fast_forward_heading.text = "ТЕСТОВАЯ ПЕРЕМОТКА (даже на паузе)"
+	layout.add_child(fast_forward_heading)
+
+	var fast_forward_buttons := HBoxContainer.new()
+	layout.add_child(fast_forward_buttons)
+
+	_add_fast_forward_button(fast_forward_buttons, "+1ч", 60)
+	_add_fast_forward_button(fast_forward_buttons, "+1д", 24 * 60)
+	_add_fast_forward_button(fast_forward_buttons, "+7д", 7 * 24 * 60)
+	_add_fast_forward_button(fast_forward_buttons, "+30д", 30 * 24 * 60)
+
+	_fast_forward_status_label = Label.new()
+	_fast_forward_status_label.add_theme_font_size_override("font_size", 11)
+	layout.add_child(_fast_forward_status_label)
+
+
+func _add_fast_forward_button(
+	parent: HBoxContainer,
+	button_text: String,
+	minutes: int
+) -> void:
+	var button := Button.new()
+	button.text = button_text
+	button.tooltip_text = "Перемотать игровое время на %d минут" % minutes
+	button.pressed.connect(_on_fast_forward_button_pressed.bind(minutes))
+	parent.add_child(button)
+
+
+func _on_fast_forward_button_pressed(minutes: int) -> void:
+	game_clock.advance_minutes(minutes)
+
+
+func _on_manual_advance_finished(minutes_advanced: int) -> void:
+	if is_instance_valid(_fast_forward_status_label):
+		_fast_forward_status_label.text = "Перемотано на %d игровых минут." % minutes_advanced
+	_refresh_hud()
+
 
 func _add_speed_button(parent: HBoxContainer, button_text: String, mode: int) -> void:
 	var button := Button.new()
@@ -57,7 +97,8 @@ func _on_speed_button_pressed(mode: int) -> void:
 
 
 func _on_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
-	_refresh_hud()
+	if not game_clock.is_manual_fast_forward:
+		_refresh_hud()
 
 
 func _refresh_hud() -> void:

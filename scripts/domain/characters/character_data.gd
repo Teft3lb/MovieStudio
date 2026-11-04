@@ -1,41 +1,16 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 2
-
-const PROFESSION_TITLES: Dictionary = {
-	"actor": "Актёр",
-	"director": "Режиссёр",
-	"screenwriter": "Сценарист",
-	"camera_operator": "Оператор",
-	"producer": "Продюсер",
-	"technician": "Техник",
-}
-
-const PRIMARY_SKILLS: Dictionary = {
-	"actor": "acting",
-	"director": "directing",
-	"screenwriter": "writing",
-	"camera_operator": "camera_work",
-	"producer": "management",
-	"technician": "technical",
-}
-
-const SKILL_TITLES: Dictionary = {
-	"acting": "Актёрское мастерство",
-	"directing": "Режиссура",
-	"writing": "Сценарное мастерство",
-	"camera_work": "Работа с камерой",
-	"management": "Управление",
-	"technical": "Технические навыки",
-	"creativity": "Креативность",
-	"reliability": "Надёжность",
-}
+const SCHEMA_VERSION: int = 5
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 var id: String = ""
 var first_name: String = ""
 var last_name: String = ""
 var profession_id: String = "actor"
+var specialization_id: String = ""
 var age: int = 30
 
 var experience: float = 0.0
@@ -51,16 +26,7 @@ var break_end_hour: int = 13
 var work_state: String = "working"
 var current_task: String = ""
 
-var skills: Dictionary = {
-	"acting": 0.0,
-	"directing": 0.0,
-	"writing": 0.0,
-	"camera_work": 0.0,
-	"management": 0.0,
-	"technical": 0.0,
-	"creativity": 0.0,
-	"reliability": 0.0,
-}
+var skills: Dictionary = {}
 
 var personality: Dictionary = {
 	"ambition": 0.5,
@@ -90,15 +56,26 @@ func get_full_name() -> String:
 
 
 func get_profession_title() -> String:
-	return str(PROFESSION_TITLES.get(profession_id, "Сотрудник"))
+	return PROFESSION_CATALOG_SCRIPT.get_profession_title(profession_id)
+
+
+func get_specialization_title() -> String:
+	return PROFESSION_CATALOG_SCRIPT.get_specialization_title(
+		profession_id,
+		specialization_id
+	)
+
+
+func get_department_title() -> String:
+	return PROFESSION_CATALOG_SCRIPT.get_department_title_for_profession(profession_id)
 
 
 func get_primary_skill_id() -> String:
-	return str(PRIMARY_SKILLS.get(profession_id, "reliability"))
+	return PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(profession_id)
 
 
 func get_primary_skill_title() -> String:
-	return str(SKILL_TITLES.get(get_primary_skill_id(), "Основной навык"))
+	return PROFESSION_CATALOG_SCRIPT.get_primary_skill_title(profession_id)
 
 
 func get_primary_skill_value() -> float:
@@ -144,6 +121,7 @@ func to_dict() -> Dictionary:
 		"first_name": first_name,
 		"last_name": last_name,
 		"profession_id": profession_id,
+		"specialization_id": specialization_id,
 		"age": age,
 		"experience": experience,
 		"popularity": popularity,
@@ -172,7 +150,16 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.id = str(payload.get("id", ""))
 	result.first_name = str(payload.get("first_name", ""))
 	result.last_name = str(payload.get("last_name", ""))
-	result.profession_id = str(payload.get("profession_id", "actor"))
+	var raw_profession_id: String = str(payload.get("profession_id", "actor"))
+	result.profession_id = PROFESSION_CATALOG_SCRIPT.normalize_profession_id(
+		raw_profession_id
+	)
+	result.specialization_id = str(payload.get("specialization_id", ""))
+	var available_specializations: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_specialization_ids(result.profession_id)
+	)
+	if not available_specializations.has(result.specialization_id):
+		result.specialization_id = ""
 	result.age = maxi(int(payload.get("age", 30)), 18)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
@@ -187,8 +174,20 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.current_task = str(payload.get("current_task", ""))
 
 	var raw_skills: Variant = payload.get("skills", {})
-	if raw_skills is Dictionary:
-		result.skills = raw_skills.duplicate(true)
+	var restored_skills: Dictionary = {}
+	var profession_skill_ids: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+			result.profession_id,
+			result.specialization_id
+		)
+	)
+	for skill_id in profession_skill_ids:
+		var skill_value: float = 0.0
+		if raw_skills is Dictionary:
+			if raw_skills.has(skill_id):
+				skill_value = clampf(float(raw_skills[skill_id]), 0.0, 100.0)
+		restored_skills[skill_id] = skill_value
+	result.skills = restored_skills
 
 	var raw_personality: Variant = payload.get("personality", {})
 	if raw_personality is Dictionary:

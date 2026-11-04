@@ -3,6 +3,7 @@ class_name GameClock
 
 signal minute_advanced(day: int, hour: int, minute: int)
 signal day_advanced(day: int)
+signal manual_advance_finished(minutes_advanced: int)
 
 enum SpeedMode {
 	PAUSED,
@@ -19,6 +20,7 @@ const SPEED_MULTIPLIERS: Dictionary = {
 }
 
 const MAX_CATCH_UP_MINUTES_PER_FRAME: int = 120
+const MAX_MANUAL_ADVANCE_MINUTES: int = 525600
 
 @export_range(0.05, 10.0, 0.05) var real_seconds_per_game_minute: float = 1.0
 @export_range(1, 9999, 1) var starting_day: int = 1
@@ -28,6 +30,7 @@ var current_day: int = 1
 var current_hour: int = 8
 var current_minute: int = 0
 var speed_mode: int = SpeedMode.NORMAL
+var is_manual_fast_forward: bool = false
 
 var _accumulator: float = 0.0
 
@@ -52,6 +55,26 @@ func _process(delta: float) -> void:
 		_accumulator -= seconds_per_minute
 		_advance_one_minute()
 		advanced_minutes += 1
+
+
+func advance_minutes(minutes: int) -> void:
+	var minutes_to_advance: int = mini(
+		maxi(minutes, 0),
+		MAX_MANUAL_ADVANCE_MINUTES
+	)
+	if minutes_to_advance <= 0:
+		return
+
+	var was_fast_forwarding: bool = is_manual_fast_forward
+	is_manual_fast_forward = true
+	for _minute_index in range(minutes_to_advance):
+		_advance_one_minute()
+	is_manual_fast_forward = was_fast_forwarding
+	manual_advance_finished.emit(minutes_to_advance)
+
+
+func advance_days(days: int) -> void:
+	advance_minutes(maxi(days, 0) * 24 * 60)
 
 
 func get_speed_multiplier() -> float:
