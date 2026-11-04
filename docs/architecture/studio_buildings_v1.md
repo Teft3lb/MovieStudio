@@ -83,6 +83,8 @@ The current implementation does **not** yet:
 - provide full skeletal work animations or interactive interior equipment;
 - assign dedicated buildings to facility, catering, administration and marketing staff;
 - produce scenes or films;
+- persist building state in a campaign save.
+
 Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 will add casting, scene scheduling and shooting.
 
 ## Smoke tests
