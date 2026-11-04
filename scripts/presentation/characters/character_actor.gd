@@ -110,7 +110,10 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 	_is_at_workplace = false
 	_set_working(false)
 	direction = direction.normalized()
-	global_position += direction * _move_speed * simulation_delta
+	global_position = global_position.move_toward(
+		target,
+		_move_speed * simulation_delta
+	)
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
