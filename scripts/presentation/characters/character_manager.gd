@@ -123,6 +123,20 @@ func is_employee_at_scene_mark(employee_id: String) -> bool:
 	return bool(actor.call("is_at_scene_mark"))
 
 
+func is_employee_assigned_to_building(
+	employee_id: String,
+	building_type_id: String
+) -> bool:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	return (
+		not assignment.is_empty()
+		and str(assignment.get("building_type_id", "")) == building_type_id
+	)
+
+
 func set_employee_task(employee_id: String, task_title: String) -> void:
 	var employee: Variant = _find_employee(employee_id)
 	if employee == null:
