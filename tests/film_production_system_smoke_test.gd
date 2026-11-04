@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_test_production_pause(system, script, project)
 	_test_project_serialization(project)
 	_test_full_film_completion(system, script, project)
+	_test_retake_limit()
 
 	var incomplete_cast: Dictionary = {"ROLE-01": "EMP-ACTOR-01"}
 	var rejected_project: Variant = system.call(
@@ -173,6 +174,66 @@ func _test_project_serialization(project: Variant) -> void:
 	assert(
 		restored.to_dict() == payload,
 		"Production phase, assignments and timing must survive serialization."
+	)
+
+
+func _test_retake_limit() -> void:
+	var script: Variant = _create_script()
+	script.scenes = [script.scenes[0]]
+	script.scene_count = 1
+	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	var crew_assignments: Dictionary = {
+		"director": "EMP-DIRECTOR",
+		"camera_operator": "EMP-CAMERA",
+		"technician": "EMP-TECHNICIAN",
+	}
+	var cast_assignments: Dictionary = {
+		"ROLE-01": "EMP-ACTOR-01",
+		"ROLE-02": "EMP-ACTOR-02",
+	}
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-RETAKE-01",
+		112233,
+		1,
+		8,
+		0
+	)
+	var poor_snapshot: Dictionary = {
+		"acting_average": 0.0,
+		"directing": 0.0,
+		"camera_work": 0.0,
+		"technical": 0.0,
+		"energy": 0.0,
+		"morale": 0.0,
+		"stress": 1.0,
+	}
+	for _minute_index in range(1000):
+		if str(project.status) == "completed":
+			break
+		system.call(
+			"advance_minute",
+			project,
+			script,
+			true,
+			true,
+			poor_snapshot
+		)
+
+	assert(
+		str(project.status) == "completed",
+		"A scene with repeated low-quality takes must still reach a final result."
+	)
+	assert(
+		int(project.scene_results[0].get("retakes", 0)) == 2,
+		"Low-quality scenes must request no more than two retakes."
+	)
+	assert(
+		int(project.total_elapsed_minutes) == int(project.estimated_total_minutes),
+		"Retake and review time must be included in the final schedule estimate."
 	)
 
 
