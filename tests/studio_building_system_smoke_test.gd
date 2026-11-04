@@ -125,6 +125,17 @@ func _test_placement_validation() -> void:
 		"Buildings must stay inside the studio plot."
 	)
 
+	var road_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"script_department",
+		Vector3(10.0, 0.0, 0.0),
+		0.0,
+		[]
+	)
+	assert(
+		not bool(road_result.get("valid", true)),
+		"Buildings must not obstruct the existing access road."
+	)
+
 	var rotated_footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
 		"script_department",
 		90.0
