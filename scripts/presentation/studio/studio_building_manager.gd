@@ -75,6 +75,10 @@ func _process(_delta: float) -> void:
 		_update_placement_preview(get_viewport().get_mouse_position())
 
 
+func is_placing_building() -> bool:
+	return not _placing_building_type_id.is_empty()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
 		_handle_placement_input(event)
