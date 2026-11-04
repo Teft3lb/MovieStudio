@@ -103,6 +103,7 @@ func advance_minute(
 	project.pause_reason = ""
 	project.phase_minutes_elapsed += 1
 	project.total_elapsed_minutes += 1
+	project.current_scene_elapsed_minutes += 1
 	if project.phase_minutes_elapsed < project.phase_duration_minutes:
 		return {
 			"advanced": true,
@@ -185,6 +186,7 @@ func advance_minute(
 			project.current_scene_index += 1
 			project.current_scene_retakes = 0
 			project.current_scene_quality = 0.0
+			project.current_scene_elapsed_minutes = 0
 			_set_phase(project, "preparation", PREPARATION_MINUTES)
 			project.last_activity_message = (
 				"Сцена %d завершена. Подготовка следующей сцены."
@@ -424,10 +426,7 @@ func _calculate_scene_quality(
 
 func _complete_current_scene(project: Variant, script: Variant) -> void:
 	var scene: Dictionary = get_current_scene(script, project)
-	var scene_duration: int = (
-		project.phase_minutes_elapsed
-		+ project.current_scene_retakes * _get_phase_duration("retake", 1)
-	)
+	var scene_duration: int = int(project.current_scene_elapsed_minutes)
 	project.scene_results.append({
 		"scene_id": str(scene.get("scene_id", "")),
 		"scene_number": int(scene.get("scene_number", project.current_scene_index + 1)),
