@@ -1,6 +1,8 @@
 extends Node3D
 class_name StudioBuildingManager
 
+signal buildings_changed
+
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
 )
@@ -15,6 +17,9 @@ const BUILDING_ACTOR_SCRIPT = preload(
 )
 const SCRIPT_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/script_department/script_generator.gd"
+)
+const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/script_department/script_writing_system.gd"
 )
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
@@ -32,7 +37,8 @@ const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 
 var _game_clock: Node
 var _character_manager: Node
-var _script_generator: RefCounted
+var _script_writing_system: RefCounted
+var _active_writing_project: Variant
 
 var _buildings: Array = []
 var _building_actors: Dictionary = {}
@@ -54,6 +60,8 @@ var _script_genre_option: OptionButton
 var _script_scene_count: SpinBox
 var _script_role_count: SpinBox
 var _script_generate_button: Button
+var _script_progress_bar: ProgressBar
+var _script_progress_label: Label
 var _script_result_label: Label
 
 var _preview_mesh: MeshInstance3D
@@ -63,7 +71,8 @@ var _preview_material: StandardMaterial3D
 func setup(game_clock: Node, character_manager: Node) -> void:
 	_game_clock = game_clock
 	_character_manager = character_manager
-	_script_generator = SCRIPT_GENERATOR_SCRIPT.new()
+	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
+	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	_spawn_initial_buildings()
 	_build_ui()
@@ -77,6 +86,39 @@ func _process(_delta: float) -> void:
 
 func is_placing_building() -> bool:
 	return not _placing_building_type_id.is_empty()
+
+
+func get_buildings() -> Array:
+	return _buildings.duplicate()
+
+
+func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
+	var building: Variant = _find_building(building_id)
+	if building == null:
+		return Vector3.ZERO
+
+	var building_type_id: String = str(building.building_type_id)
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+		building_type_id,
+		float(building.rotation_degrees)
+	)
+	var capacity: int = maxi(
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity(building_type_id),
+		1
+	)
+	var normalized_slot: int = clampi(slot_index, 0, capacity - 1)
+	var lateral_offset: float = (
+		float(normalized_slot) - float(capacity - 1) * 0.5
+	) * 1.25
+	var local_position: Vector3 = Vector3(
+		lateral_offset,
+		0.0,
+		footprint.y * 0.5 + 1.8
+	)
+	return building.position + local_position.rotated(
+		Vector3.UP,
+		deg_to_rad(float(building.rotation_degrees))
+	)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -148,6 +190,7 @@ func _create_building(
 
 	if is_player_placed:
 		_refresh_build_status()
+		buildings_changed.emit()
 	return building_data
 
 
@@ -209,12 +252,12 @@ func _build_building_detail_panel() -> void:
 	_building_detail_panel = PanelContainer.new()
 	_building_detail_panel.name = "BuildingDetailPanel"
 	_building_detail_panel.position = Vector2(360.0, 210.0)
-	_building_detail_panel.custom_minimum_size = Vector2(410.0, 0.0)
+	_building_detail_panel.custom_minimum_size = Vector2(430.0, 0.0)
 	_building_detail_panel.visible = false
 	_build_canvas.add_child(_building_detail_panel)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(390.0, 420.0)
+	scroll.custom_minimum_size = Vector2(410.0, 560.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_building_detail_panel.add_child(scroll)
 
