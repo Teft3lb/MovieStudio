@@ -626,15 +626,28 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	roles_column.add_child(_script_role_count)
 
 	_script_generate_button = Button.new()
-	_script_generate_button.text = "СОЗДАТЬ СЦЕНАРИЙ"
+	_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
 	_script_generate_button.disabled = writer_count == 0
 	_script_generate_button.pressed.connect(_on_generate_script_pressed)
 	_building_detail_layout.add_child(_script_generate_button)
 
+	_script_progress_bar = ProgressBar.new()
+	_script_progress_bar.min_value = 0.0
+	_script_progress_bar.max_value = 100.0
+	_script_progress_bar.show_percentage = true
+	_script_progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_building_detail_layout.add_child(_script_progress_bar)
+
+	_script_progress_label = Label.new()
+	_script_progress_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_script_progress_label.add_theme_font_size_override("font_size", 11)
+	_building_detail_layout.add_child(_script_progress_label)
+
 	var generation_note := Label.new()
 	generation_note.text = (
-		"Рейтинг зависит от навыков сценариста, жанра и параметров заказа. "
-		+ "Звёзды показывают потенциал, а не гарантируют кассовый успех."
+		"Написание занимает игровое время. Количество сцен, ролей, навыки "
+		+ "и надёжность сценариста влияют на срок. Возможны звонки и творческие паузы. "
+		+ "Итоговый рейтинг зависит от навыков и жанра, но не гарантирует кассовый успех."
 	)
 	generation_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	generation_note.add_theme_font_size_override("font_size", 10)
@@ -644,17 +657,18 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_script_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_script_result_label.custom_minimum_size = Vector2(0.0, 120.0)
 	_building_detail_layout.add_child(_script_result_label)
-	_script_result_label.text = (
-		_format_script_summary(_latest_script)
-		if _latest_script != null
-		else "Сценарии ещё не создавались."
-	)
+	_update_script_writing_ui()
 
 
 func _on_generate_script_pressed() -> void:
 	if not is_instance_valid(_script_writer_option):
 		return
 	if _script_writer_option.disabled or _script_writer_option.selected < 0:
+		return
+	if (
+		_active_writing_project != null
+		and str(_active_writing_project.status) == "in_progress"
+	):
 		return
 
 	var writer_id: String = str(
@@ -664,6 +678,9 @@ func _on_generate_script_pressed() -> void:
 	)
 	var writer: Variant = _find_employee(writer_id)
 	if writer == null:
+		_show_script_generation_error(
+			"Выбранный сценарист больше не работает в студии."
+		)
 		return
 
 	var genre_id: String = str(
@@ -672,6 +689,7 @@ func _on_generate_script_pressed() -> void:
 		)
 	)
 	var script_id: String = "SCR-%04d" % _next_script_sequence
+	var project_id: String = "WRK-%04d" % _next_script_sequence
 	var seed: int = (
 		int(_game_clock.current_day) * 100000
 		+ int(_game_clock.current_hour) * 1000
@@ -680,22 +698,151 @@ func _on_generate_script_pressed() -> void:
 	)
 	_next_script_sequence += 1
 
-	_latest_script = _script_generator.call(
-		"generate",
+	_active_writing_project = _script_writing_system.call(
+		"start_project",
 		writer,
 		genre_id,
 		roundi(_script_scene_count.value),
 		roundi(_script_role_count.value),
 		seed,
-		script_id
+		project_id,
+		script_id,
+		int(_game_clock.current_day),
+		int(_game_clock.current_hour),
+		int(_game_clock.current_minute)
 	)
-	if _latest_script == null:
+	if _active_writing_project == null:
 		_show_script_generation_error(
-			"Не удалось создать сценарий. Проверьте, что выбран сотрудник с профессией «Сценарист»."
+			"Не удалось начать работу. Проверьте профессию выбранного сотрудника."
 		)
 		return
 
-	_refresh_building_detail()
+	_update_script_writing_ui()
+
+
+func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
+	if (
+		_active_writing_project == null
+		or str(_active_writing_project.status) != "in_progress"
+	):
+		return
+
+	var writer_id: String = str(_active_writing_project.writer_id)
+	var writer: Variant = _find_employee(writer_id)
+	var at_workplace: bool = false
+	if writer != null and is_instance_valid(_character_manager):
+		at_workplace = bool(
+			_character_manager.call(
+				"is_employee_at_workplace",
+				writer_id,
+				"script_department"
+			)
+		)
+
+	var result: Dictionary = _script_writing_system.call(
+		"advance_minute",
+		_active_writing_project,
+		writer,
+		at_workplace
+	)
+	if bool(result.get("completed", false)):
+		_latest_script = result.get("script")
+	elif bool(result.get("failed", false)):
+		_show_script_generation_error(
+			str(_active_writing_project.last_activity_message)
+		)
+
+	_update_script_writing_ui()
+
+
+func _update_script_writing_ui() -> void:
+	if not is_instance_valid(_script_progress_bar):
+		return
+	if not is_instance_valid(_script_progress_label):
+		return
+	if not is_instance_valid(_script_result_label):
+		return
+
+	if _active_writing_project == null:
+		_script_progress_bar.value = 0.0
+		_script_progress_label.text = "Сценарий ещё не заказан."
+		_script_result_label.text = _format_script_summary(_latest_script)
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.disabled
+			)
+		return
+
+	var project: Variant = _active_writing_project
+	_script_progress_bar.value = float(project.get_progress_percent())
+	var progress_text: String = (
+		"Рабочее время: %d / %d минут · осталось: %d минут"
+		% [
+			int(project.completed_work_minutes),
+			int(project.required_work_minutes),
+			int(project.get_remaining_work_minutes()),
+		]
+	)
+	var interruption_text: String = (
+		"Прерываний за проект: %d" % int(project.interruption_count)
+	)
+
+	if str(project.status) == "in_progress":
+		_script_progress_label.text = (
+			"%s\n%s\n%s"
+			% [
+				str(project.last_activity_message),
+				progress_text,
+				interruption_text,
+			]
+		)
+		_script_result_label.text = (
+			"Сценарист: %s\nЖанр: %s · %d сцен · %d ролей\n"
+			+ "Сценарий пока находится в разработке."
+		) % [
+			str(project.writer_name),
+			SCRIPT_GENERATOR_SCRIPT.get_genre_title(str(project.genre_id)),
+			int(project.scene_count),
+			int(project.role_count),
+		]
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "СЦЕНАРИЙ В РАБОТЕ"
+			_script_generate_button.disabled = true
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = true
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = true
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = false
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = false
+	elif str(project.status) == "completed":
+		_script_progress_label.text = (
+			"Сценарий завершён.\n%s\n%s"
+			% [progress_text, interruption_text]
+		)
+		_script_result_label.text = _format_script_summary(_latest_script)
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "НАЧАТЬ НОВЫЙ СЦЕНАРИЙ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.get_item_count() == 0
+			)
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = false
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = false
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = true
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = true
+	else:
+		_script_progress_label.text = str(project.last_activity_message)
+		_script_result_label.text = "Проект сценария остановлен."
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.disabled = false
 
 
 func _show_script_generation_error(message: String) -> void:
