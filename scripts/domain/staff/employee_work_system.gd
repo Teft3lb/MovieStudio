@@ -88,6 +88,10 @@ func advance_work_minute(employee: Variant, assignment: Dictionary) -> bool:
 	if primary_skill_id.is_empty():
 		return false
 
+	employee.current_task = str(
+		assignment.get("task_title", employee.current_task)
+	)
+
 	var skills: Dictionary = employee.skills
 	var primary_value: float = float(skills.get(primary_skill_id, 0.0))
 	var next_primary_value: float = minf(
