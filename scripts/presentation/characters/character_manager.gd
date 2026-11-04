@@ -581,6 +581,13 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	var building_manager: Node = get_node_or_null("../StudioBuildingManager")
+	if (
+		is_instance_valid(building_manager)
+		and bool(building_manager.call("is_placing_building"))
+	):
+		return
+
 	if not event is InputEventMouseButton:
 		return
 
