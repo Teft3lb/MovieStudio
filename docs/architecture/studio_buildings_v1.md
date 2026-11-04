@@ -1,8 +1,8 @@
 # Studio Buildings v1
 
 **Engine:** Godot 4.7.2  
-**Branch:** \`feature/studio-buildings-v1\`  
-**Status:** first interactive building and placement slice.
+**Branch:** \`main\`
+**Status:** interactive placement, workplace assignment and cutaway interiors for three production facilities.
 
 ## Scope
 
@@ -14,6 +14,7 @@ Implemented building types:
 |---|---|---:|---:|---|
 | \`script_department\` | Сценарный отдел | 8 × 6 m | 3 | Screenwriter, producer, casting director |
 | \`sound_stage\` | Съёмочный павильон | 14 × 12 m | 8 | Actor, extra, director, camera operator, technician, production designer, producer |
+| \`editing_suite\` | Монтажный отдел | 10 × 8 m | 3 | Film editor |
 
 Two starter buildings are spawned when the main scene initializes:
 - Script Department at \`(-16, 0, -16)\`.
@@ -38,7 +39,7 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 
 ### Placement controls
 
-1. Click **Построить сценарный отдел** or **Построить съёмочный павильон**.
+1. Click **Построить сценарный отдел**, **Построить съёмочный павильон** or **Построить монтажный отдел**.
 2. Move the mouse over the plot to position the preview.
 3. Placement snaps to a 2 m grid.
 4. Green preview means valid placement; red means invalid.
@@ -71,7 +72,19 @@ The building panel:
 
 The starting roster covers three of the four required positions. The standard recruitment market now guarantees at least one technician candidate in every eight-person market cycle.
 
-The stage is a production-readiness interface only. It does not yet shoot scenes.
+The Sound Stage is the player-facing production workspace for Film Production v1. It hosts casting and crew assignments, scene blocking, rehearsal, takes, retakes and recorded scene results.
+
+### Editing Suite
+
+The building panel:
+- lists assigned film editors;
+- receives completed footage from the active Film Production project;
+- lets the player prepare an editing project and reorder scenes before work begins;
+- advances editing only while the selected editor is on shift and physically at the Editing Suite;
+- displays assembly, fine-cut, sound-mix, color-grading and export progress.
+
+The standard eight-person recruitment market guarantees one film editor. The Editing Suite has three cutaway editing consoles, monitors, a reference screen and an audio rack.
+
 
 ## Simulation boundaries
 
@@ -82,10 +95,9 @@ The current implementation does **not** yet:
 - use NavMesh pathfinding or dynamic obstacle avoidance;
 - provide full skeletal work animations or interactive interior equipment;
 - assign dedicated buildings to facility, catering, administration and marketing staff;
-- produce scenes or films;
 - persist building state in a campaign save.
 
-Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 will add casting, scene scheduling and shooting.
+Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 adds casting and shooting; Film Editing v1 adds the post-production workflow in the Editing Suite.
 
 ## Smoke tests
 
@@ -96,4 +108,4 @@ Run from the project root using Godot 4.7.2:
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 ~~~
 
-The building system test covers the catalogue, accepted professions, serialization, plot bounds, overlap rejection and 90-degree footprint rotation. The interior test covers room props, rotated workplace routes, doorway traversal, work animation activation and exiting the building.
+The interior test covers room props in all three building types

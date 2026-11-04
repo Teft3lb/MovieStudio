@@ -24,6 +24,9 @@ const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
 const FILM_PRODUCTION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/film_production/film_production_system.gd"
 )
+const FILM_EDITING_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/film_editing/film_editing_system.gd"
+)
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -42,9 +45,14 @@ var _game_clock: Node
 var _character_manager: Node
 var _script_writing_system: RefCounted
 var _film_production_system: RefCounted
+var _film_editing_system: RefCounted
 var _active_writing_project: Variant
 var _active_film_project: Variant
 var _active_film_script: Variant
+var _active_editing_project: Variant
+var _completed_film_archive: Array = []
+var _next_film_editing_sequence: int = 1
+var _film_editing_editor_id: String = ""
 var _film_cast_assignments: Dictionary = {}
 var _cast_assignment_script_id: String = ""
 var _active_scene_performer_ids: Array[String] = []
@@ -79,6 +87,19 @@ var _film_production_progress_bar: ProgressBar
 var _film_production_detail_label: Label
 var _film_production_start_button: Button
 
+var _film_editing_editor_option: OptionButton
+var _film_editing_timeline_option: OptionButton
+var _film_editing_status_label: Label
+var _film_editing_progress_bar: ProgressBar
+var _film_editing_detail_label: Label
+var _film_editing_create_button: Button
+var _film_editing_start_button: Button
+var _film_editing_cancel_button: Button
+var _film_editing_replacement_option: OptionButton
+var _film_editing_replace_button: Button
+var _film_editing_move_up_button: Button
+var _film_editing_move_down_button: Button
+
 var _preview_mesh: MeshInstance3D
 var _preview_material: StandardMaterial3D
 
@@ -88,6 +109,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_character_manager = character_manager
 	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
 	_film_production_system = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	_film_editing_system = FILM_EDITING_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	_spawn_initial_buildings()
@@ -292,6 +314,13 @@ func _build_ui() -> void:
 		_begin_placement.bind("sound_stage")
 	)
 	build_layout.add_child(stage_button)
+
+	var editing_button := Button.new()
+	editing_button.text = "Построить монтажный отдел"
+	editing_button.pressed.connect(
+		_begin_placement.bind("editing_suite")
+	)
+	build_layout.add_child(editing_button)
 
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -624,6 +653,8 @@ func _refresh_building_detail() -> void:
 		_build_script_department_detail(assigned_staff)
 	elif str(building.building_type_id) == "sound_stage":
 		_build_sound_stage_detail(assigned_staff)
+	elif str(building.building_type_id) == "editing_suite":
+		_build_film_editing_detail(assigned_staff)
 
 
 func _build_script_department_detail(eligible_staff: Array) -> void:
@@ -833,6 +864,7 @@ func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
 		_update_script_writing_ui()
 
 	_advance_film_production()
+	_advance_film_editing()
 
 
 func _update_script_writing_ui() -> void:
@@ -1306,6 +1338,18 @@ func _on_start_film_production_pressed() -> void:
 		)
 		return
 
+	if (
+		_active_film_project != null
+		and _active_editing_project != null
+		and str(_active_editing_project.status) == "completed"
+	):
+		_completed_film_archive.append({
+			"production": _active_film_project.to_dict(),
+			"editing": _active_editing_project.to_dict(),
+		})
+	_active_editing_project = null
+	_film_editing_editor_id = ""
+
 	_next_script_sequence += 1
 	_active_film_project = project
 	_active_film_script = _latest_script
@@ -1759,6 +1803,460 @@ func _reset_film_crew_actions() -> void:
 		)
 
 
+func _advance_film_editing() -> void:
+	if _active_editing_project == null:
+		return
+	if str(_active_editing_project.status) != "in_editing":
+		if (
+			str(_active_editing_project.status) == "draft"
+			and is_instance_valid(_film_editing_start_button)
+		):
+			_film_editing_start_button.disabled = not _is_film_editor_ready(
+				str(_active_editing_project.editor_id)
+			)
+		return
+	var editor_ready: bool = _is_film_editor_ready(
+		str(_active_editing_project.editor_id)
+	)
+	var result: Dictionary = _film_editing_system.call(
+		"advance_minute",
+		_active_editing_project,
+		editor_ready
+	)
+	_update_film_editing_ui()
+	if bool(result.get("completed", false)):
+		_update_film_production_ui()
+		var selected_building: Variant = _find_building(_selected_building_id)
+		if (
+			selected_building != null
+			and str(selected_building.building_type_id) == "editing_suite"
+		):
+			_refresh_building_detail()
+
+
+func _is_film_editor_ready(editor_id: String) -> bool:
+	var editor: Variant = _find_employee(editor_id)
+	if editor == null or str(editor.work_state) != "working":
+		return false
+	return bool(
+		_character_manager.call(
+			"is_employee_at_workplace",
+			editor_id,
+			"editing_suite"
+		)
+	)
+
+
+func _build_film_editing_detail(assigned_staff: Array) -> void:
+	var heading := Label.new()
+	heading.text = "ПОСТПРОДАКШН · МОНТАЖ ФИЛЬМА"
+	heading.add_theme_font_size_override("font_size", 14)
+	_building_detail_layout.add_child(heading)
+
+	if _active_film_project == null:
+		var empty_label := Label.new()
+		empty_label.text = "Готовых съёмок пока нет. Сначала заверши производство фильма в съёмочном павильоне."
+		empty_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_building_detail_layout.add_child(empty_label)
+		return
+	if str(_active_film_project.status) != "completed":
+		var waiting_label := Label.new()
+		waiting_label.text = "Монтаж станет доступен после завершения съёмок всех сцен."
+		waiting_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_building_detail_layout.add_child(waiting_label)
+		return
+
+	var editor_candidates: Array = []
+	for employee in assigned_staff:
+		if str(employee.profession_id) == "film_editor":
+			editor_candidates.append(employee)
+
+	if _active_editing_project == null:
+		var editor_heading := Label.new()
+		editor_heading.text = "ОТВЕТСТВЕННЫЙ МОНТАЖЁР"
+		_building_detail_layout.add_child(editor_heading)
+
+		_film_editing_editor_option = OptionButton.new()
+		_film_editing_editor_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var selected_index: int = -1
+		for index in range(editor_candidates.size()):
+			var editor: Variant = editor_candidates[index]
+			_film_editing_editor_option.add_item(
+				"%s · монтаж %d" % [
+					editor.get_full_name(),
+					roundi(float(editor.skills.get("editing", 0.0))),
+				]
+			)
+			_film_editing_editor_option.set_item_metadata(
+				index,
+				str(editor.id)
+			)
+			if str(editor.id) == _film_editing_editor_id:
+				selected_index = index
+		if selected_index < 0 and not editor_candidates.is_empty():
+			selected_index = 0
+		if selected_index >= 0:
+			_film_editing_editor_option.select(selected_index)
+			_film_editing_editor_id = str(
+				_film_editing_editor_option.get_item_metadata(selected_index)
+			)
+		else:
+			_film_editing_editor_option.add_item(
+				"Нет монтажёра в штате монтажного отдела"
+			)
+			_film_editing_editor_option.disabled = true
+			_film_editing_editor_id = ""
+		_film_editing_editor_option.item_selected.connect(
+			_on_film_editing_editor_selected.bind(
+				_film_editing_editor_option
+			)
+		)
+		_building_detail_layout.add_child(_film_editing_editor_option)
+
+		var create_note := Label.new()
+		create_note.text = "Сначала подготовь проект и проверь порядок сцен. После начала монтажа таймлайн будет заблокирован."
+		create_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_building_detail_layout.add_child(create_note)
+
+		_film_editing_create_button = Button.new()
+		_film_editing_create_button.text = "ПОДГОТОВИТЬ МОНТАЖНЫЙ ПРОЕКТ"
+		_film_editing_create_button.disabled = _film_editing_editor_id.is_empty()
+		_film_editing_create_button.pressed.connect(
+			_on_create_film_editing_project_pressed
+		)
+		_building_detail_layout.add_child(_film_editing_create_button)
+		return
+
+	var project: Variant = _active_editing_project
+	_film_editing_status_label = Label.new()
+	_film_editing_status_label.add_theme_font_size_override("font_size", 14)
+	_film_editing_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_building_detail_layout.add_child(_film_editing_status_label)
+
+	_film_editing_progress_bar = ProgressBar.new()
+	_film_editing_progress_bar.min_value = 0.0
+	_film_editing_progress_bar.max_value = 100.0
+	_film_editing_progress_bar.show_percentage = true
+	_film_editing_progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_building_detail_layout.add_child(_film_editing_progress_bar)
+
+	_film_editing_detail_label = Label.new()
+	_film_editing_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_building_detail_layout.add_child(_film_editing_detail_label)
+
+	if str(project.status) == "draft":
+		_build_film_editing_timeline_controls(project)
+		_film_editing_start_button = Button.new()
+		_film_editing_start_button.text = "НАЧАТЬ МОНТАЖ"
+		_film_editing_start_button.disabled = not _is_film_editor_ready(
+			str(project.editor_id)
+		)
+		_film_editing_start_button.pressed.connect(
+			_on_start_film_editing_pressed
+		)
+		_building_detail_layout.add_child(_film_editing_start_button)
+
+		_film_editing_cancel_button = Button.new()
+		_film_editing_cancel_button.text = "ОТМЕНИТЬ ПОДГОТОВКУ"
+		_film_editing_cancel_button.pressed.connect(
+			_on_cancel_film_editing_draft_pressed
+		)
+		_building_detail_layout.add_child(_film_editing_cancel_button)
+	elif str(project.status) == "in_editing":
+		var editor_is_assigned: bool = false
+		for employee in assigned_staff:
+			if str(employee.id) == str(project.editor_id):
+				editor_is_assigned = true
+				break
+		if not editor_is_assigned:
+			_build_film_editing_replacement_controls(assigned_staff)
+
+	_update_film_editing_ui()
+
+
+func _build_film_editing_timeline_controls(project: Variant) -> void:
+	var heading := Label.new()
+	heading.text = "ТАЙМЛАЙН · ПОРЯДОК СЦЕН"
+	heading.add_theme_font_size_override("font_size", 13)
+	_building_detail_layout.add_child(heading)
+
+	_film_editing_timeline_option = OptionButton.new()
+	_film_editing_timeline_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var ordered_scenes: Array = _film_editing_system.call(
+		"get_ordered_scene_results",
+		project
+	)
+	for timeline_position in range(ordered_scenes.size()):
+		var scene_result: Dictionary = ordered_scenes[timeline_position]
+		_film_editing_timeline_option.add_item(
+			"%02d · Сцена %02d · %s · качество %d/100" % [
+				timeline_position + 1,
+				int(scene_result.get("scene_number", 0)),
+				str(scene_result.get("beat", "Сцена")),
+				int(scene_result.get("quality", 0)),
+			]
+		)
+	_film_editing_timeline_option.select(0)
+	_film_editing_timeline_option.item_selected.connect(
+		_on_film_editing_timeline_selected
+	)
+	_building_detail_layout.add_child(_film_editing_timeline_option)
+
+	var movement_row := HBoxContainer.new()
+	_film_editing_move_up_button = Button.new()
+	_film_editing_move_up_button.text = "ВЫШЕ"
+	_film_editing_move_up_button.disabled = true
+	_film_editing_move_up_button.pressed.connect(
+		_on_film_editing_move_scene_pressed.bind(-1)
+	)
+	movement_row.add_child(_film_editing_move_up_button)
+
+	_film_editing_move_down_button = Button.new()
+	_film_editing_move_down_button.text = "НИЖЕ"
+	_film_editing_move_down_button.disabled = ordered_scenes.size() < 2
+	_film_editing_move_down_button.pressed.connect(
+		_on_film_editing_move_scene_pressed.bind(1)
+	)
+	movement_row.add_child(_film_editing_move_down_button)
+	_building_detail_layout.add_child(movement_row)
+
+
+func _build_film_editing_replacement_controls(
+	assigned_staff: Array
+) -> void:
+	var note := Label.new()
+	note.text = (
+		"Назначенный монтажёр больше не работает в этом отделе. "
+		+ "Выбери сотрудника для продолжения проекта."
+	)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_building_detail_layout.add_child(note)
+
+	_film_editing_replacement_option = OptionButton.new()
+	_film_editing_replacement_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for employee in assigned_staff:
+		if str(employee.profession_id) != "film_editor":
+			continue
+		_film_editing_replacement_option.add_item(
+			"%s · монтаж %d" % [
+				employee.get_full_name(),
+				roundi(float(employee.skills.get("editing", 0.0))),
+			]
+		)
+		_film_editing_replacement_option.set_item_metadata(
+			_film_editing_replacement_option.get_item_count() - 1,
+			str(employee.id)
+		)
+	if _film_editing_replacement_option.get_item_count() > 0:
+		_film_editing_replacement_option.select(0)
+	else:
+		_film_editing_replacement_option.add_item(
+			"Нет монтажёров в штате монтажного отдела"
+		)
+		_film_editing_replacement_option.disabled = true
+	_building_detail_layout.add_child(_film_editing_replacement_option)
+
+	_film_editing_replace_button = Button.new()
+	_film_editing_replace_button.text = "ПЕРЕНАЗНАЧИТЬ МОНТАЖЁРА"
+	_film_editing_replace_button.disabled = (
+		_film_editing_replacement_option.disabled
+	)
+	_film_editing_replace_button.pressed.connect(
+		_on_replace_film_editor_pressed
+	)
+	_building_detail_layout.add_child(_film_editing_replace_button)
+
+
+func _on_replace_film_editor_pressed() -> void:
+	if (
+		_active_editing_project == null
+		or not is_instance_valid(_film_editing_replacement_option)
+		or _film_editing_replacement_option.selected < 0
+	):
+		return
+	var editor_id: String = str(
+		_film_editing_replacement_option.get_item_metadata(
+			_film_editing_replacement_option.selected
+		)
+	)
+	var editor: Variant = _find_employee(editor_id)
+	if editor == null:
+		return
+	if _film_editing_system.call(
+		"reassign_editor",
+		_active_editing_project,
+		editor_id,
+		float(editor.skills.get("editing", 0.0))
+	):
+		_refresh_building_detail()
+
+
+func _on_cancel_film_editing_draft_pressed() -> void:
+	if (
+		_active_editing_project == null
+		or str(_active_editing_project.status) != "draft"
+	):
+		return
+	_active_editing_project = null
+	_film_editing_editor_id = ""
+	_refresh_building_detail()
+
+
+func _on_film_editing_editor_selected(
+	selected_index: int,
+	editor_option: OptionButton
+) -> void:
+	if (
+		selected_index < 0
+		or selected_index >= editor_option.get_item_count()
+	):
+		return
+	_film_editing_editor_id = str(
+		editor_option.get_item_metadata(selected_index)
+	)
+	if is_instance_valid(_film_editing_create_button):
+		_film_editing_create_button.disabled = _film_editing_editor_id.is_empty()
+
+
+func _on_create_film_editing_project_pressed() -> void:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "completed"
+		or _film_editing_editor_id.is_empty()
+	):
+		return
+	var editor: Variant = _find_employee(_film_editing_editor_id)
+	if editor == null:
+		return
+	var project_id: String = "EDIT-%04d" % _next_film_editing_sequence
+	var project: Variant = _film_editing_system.call(
+		"create_project",
+		_active_film_project,
+		_film_editing_editor_id,
+		float(editor.skills.get("editing", 0.0)),
+		project_id,
+		int(_game_clock.current_day),
+		int(_game_clock.current_hour),
+		int(_game_clock.current_minute)
+	)
+	if project == null:
+		return
+	_next_film_editing_sequence += 1
+	_active_editing_project = project
+	_refresh_building_detail()
+
+
+func _on_film_editing_timeline_selected(selected_index: int) -> void:
+	if is_instance_valid(_film_editing_move_up_button):
+		_film_editing_move_up_button.disabled = selected_index <= 0
+	if is_instance_valid(_film_editing_move_down_button):
+		var timeline_size: int = (
+			_active_editing_project.timeline_order.size()
+			if _active_editing_project != null
+			else 0
+		)
+		_film_editing_move_down_button.disabled = (
+			selected_index < 0 or selected_index >= timeline_size - 1
+		)
+
+
+func _on_film_editing_move_scene_pressed(direction: int) -> void:
+	if (
+		_active_editing_project == null
+		or str(_active_editing_project.status) != "draft"
+		or not is_instance_valid(_film_editing_timeline_option)
+	):
+		return
+	var from_position: int = _film_editing_timeline_option.selected
+	var to_position: int = from_position + direction
+	if _film_editing_system.call(
+		"move_scene",
+		_active_editing_project,
+		from_position,
+		to_position
+	):
+		_refresh_building_detail()
+
+
+func _on_start_film_editing_pressed() -> void:
+	if _active_editing_project == null:
+		return
+	if not _is_film_editor_ready(str(_active_editing_project.editor_id)):
+		if is_instance_valid(_film_editing_status_label):
+			_film_editing_status_label.text = (
+				"ОЖИДАНИЕ: монтажёр должен быть на смене и находиться в монтажном отделе."
+			)
+		return
+	if _film_editing_system.call("start_editing", _active_editing_project):
+		_refresh_building_detail()
+
+
+func _update_film_editing_ui() -> void:
+	if (
+		_active_editing_project == null
+		or not is_instance_valid(_film_editing_status_label)
+		or not is_instance_valid(_film_editing_progress_bar)
+		or not is_instance_valid(_film_editing_detail_label)
+	):
+		return
+	var project: Variant = _active_editing_project
+	_film_editing_progress_bar.value = float(project.get_progress_percent())
+	var editor_name: String = str(project.editor_id)
+	var editor: Variant = _find_employee(str(project.editor_id))
+	if editor != null:
+		editor_name = str(editor.get_full_name())
+	if str(project.status) == "draft":
+		_film_editing_status_label.text = (
+			"ТАЙМЛАЙН ПОДГОТОВЛЕН · %d СЦЕН" % project.scene_results.size()
+		)
+		_film_editing_detail_label.text = (
+			"Фильм: %s\nИсходное качество материала: %d/100\n"
+			+ "Монтажёр: %s\nОриентировочное время: %d игровых минут"
+		) % [
+			str(project.film_title),
+			int(project.source_quality),
+			editor_name,
+			int(project.estimated_total_minutes),
+		]
+	elif str(project.status) == "in_editing":
+		var pause_text: String = str(project.pause_reason)
+		_film_editing_status_label.text = (
+			"ПАУЗА: %s" % pause_text
+			if not pause_text.is_empty()
+			else "%s · %s" % [
+				project.get_status_title(),
+				project.get_phase_title(),
+			]
+		)
+		_film_editing_detail_label.text = (
+			"Фильм: %s\nЭтап: %s\nПрогресс этапа: %d / %d мин\n"
+			+ "Прошло: %d мин · Осталось примерно: %d мин\n%s"
+		) % [
+			str(project.film_title),
+			project.get_phase_title(),
+			int(project.phase_minutes_elapsed),
+			int(project.phase_duration_minutes),
+			int(project.total_elapsed_minutes),
+			int(project.get_remaining_work_minutes()),
+			str(project.last_activity_message),
+		]
+	else:
+		_film_editing_status_label.text = "СТАТУС: ФИЛЬМ СМОНТИРОВАН"
+		_film_editing_detail_label.text = (
+			"Фильм: %s\nИтоговое качество: %d/100\n"
+			+ "Качество исходного материала: %d/100\n"
+			+ "Навык монтажёра: %d/100\nСвязность таймлайна: %d/100\n"
+			+ "Затрачено: %d игровых минут\nФильм готов к выпуску."
+		) % [
+			str(project.film_title),
+			int(project.final_quality),
+			int(project.source_quality),
+			roundi(float(project.editor_skill)),
+			int(project.continuity_score),
+			int(project.total_elapsed_minutes),
+		]
+
+
 func _update_film_production_ui() -> void:
 	if not is_instance_valid(_film_production_status_label):
 		return
@@ -1834,7 +2332,7 @@ func _update_film_production_ui() -> void:
 				int(project.total_scene_count),
 			],
 			"Сценарный потенциал: %d / 100" % int(project.script_potential_score),
-			"Следующий этап: монтаж фильма.",
+			"Следующий этап: монтаж в монтажном отделе.",
 			"Результаты сцен:",
 		]
 		for scene_result in project.scene_results:
@@ -1849,18 +2347,29 @@ func _update_film_production_ui() -> void:
 		_film_production_status_label.text = "СТАТУС: СЪЁМКИ ЗАВЕРШЕНЫ"
 		_film_production_detail_label.text = "\n".join(result_lines)
 		if is_instance_valid(_film_production_start_button):
-			_film_production_start_button.text = "СНЯТЬ ФИЛЬМ ПО НОВОМУ СЦЕНАРИЮ"
+			var editing_completed: bool = (
+				_active_editing_project != null
+				and str(_active_editing_project.status) == "completed"
+			)
+			_film_production_start_button.text = (
+				"СНЯТЬ ФИЛЬМ ПО НОВОМУ СЦЕНАРИЮ"
+				if editing_completed
+				else "ОЖИДАЕТСЯ МОНТАЖ"
+			)
 			_film_production_start_button.disabled = not _can_start_film_production()
 
 
 func _can_start_film_production() -> bool:
 	if _latest_script == null:
 		return false
-	if (
-		_active_film_project != null
-		and str(_active_film_project.status) != "completed"
-	):
-		return false
+	if _active_film_project != null:
+		if str(_active_film_project.status) != "completed":
+			return false
+		if (
+			_active_editing_project == null
+			or str(_active_editing_project.status) != "completed"
+		):
+			return false
 
 	var stage_id: String = _get_sound_stage_building_id()
 	if stage_id.is_empty():
@@ -1876,6 +2385,14 @@ func _can_start_film_production() -> bool:
 
 func get_active_film_project() -> Variant:
 	return _active_film_project
+
+
+func get_active_film_editing_project() -> Variant:
+	return _active_editing_project
+
+
+func get_completed_film_archive() -> Array:
+	return _completed_film_archive.duplicate(true)
 
 
 

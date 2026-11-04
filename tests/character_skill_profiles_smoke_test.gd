@@ -22,8 +22,8 @@ func _run_tests() -> void:
 
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
 	_expect(
-		profession_ids.size() == 19,
-		"Skill profiles must exist for all 19 active professions."
+		profession_ids.size() == 20,
+		"Skill profiles must exist for all 20 active professions."
 	)
 
 	for profession_id in profession_ids:

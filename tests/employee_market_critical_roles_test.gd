@@ -26,6 +26,10 @@ func _test_initial_market(market: RefCounted) -> void:
 		technician_count >= 1,
 		"The standard recruitment market must always contain a technician."
 	)
+	_expect(
+		_count_profession(candidates, "film_editor") >= 1,
+		"The standard recruitment market must always contain a film editor."
+	)
 
 	var departments: Dictionary = {}
 	for candidate in candidates:
@@ -41,6 +45,10 @@ func _test_refreshed_market(market: RefCounted) -> void:
 	_expect(
 		_count_profession(candidates, "technician") >= 1,
 		"A refreshed market must also contain a technician."
+	)
+	_expect(
+		_count_profession(candidates, "film_editor") >= 1,
+		"A refreshed market must also contain a film editor."
 	)
 
 

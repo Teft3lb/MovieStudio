@@ -2,13 +2,13 @@
 
 **Engine:** Godot 4.7.2  
 **Module:** `scripts/domain/staff/profession_catalog.gd`  
-**Status:** 19 active professions with profession-specific skill profiles.
+**Status:** 20 active professions with profession-specific skill profiles.
 
 ## Design
 
 The catalogue is the single source of truth for department membership, localized profession titles, salary expectations, biographies, career goals, default work tasks, schedules, specializations and skill profiles.
 
-The studio has **19 professions across six departments**. The creative department has deeper role differentiation; operational departments use broad professions to avoid RTS-style micromanagement.
+The studio has **20 professions across six departments**
 
 Every profession receives **4–8 relevant skills**, not the entire studio-wide skill catalogue. Reliability is broadly useful across the workforce; communication appears only where the role actually requires it. A profession's primary skill is always included. A supported specialization adds its own skill where it is distinct from the base profile.
 
@@ -17,12 +17,12 @@ Every profession receives **4–8 relevant skills**, not the entire studio-wide 
 | Department | Count | Profession IDs |
 |---|---:|---|
 | Creative | 6 | `actor`, `extra`, `director`, `screenwriter`, `producer`, `casting_director` |
-| Production | 3 | `camera_operator`, `technician`, `production_designer` |
+| Production | 4 | `camera_operator`, `technician`, `production_designer`, `film_editor` |
 | Facility | 3 | `cleaner`, `maintenance_worker`, `security_guard` |
 | Catering | 3 | `chef`, `bartender`, `waiter` |
 | Administration | 2 | `secretary`, `personal_assistant` |
 | Marketing | 2 | `marketing_manager`, `pr_specialist` |
-| **Total** | **19** | |
+| **Total** | **20** | |
 
 ## Profession skill profiles
 
@@ -36,6 +36,7 @@ Every profession receives **4–8 relevant skills**, not the entire studio-wide 
 | Casting director | Casting, observation, acting, communication, negotiation, management, reliability |
 | Camera operator | Camera work, composition, lighting, technical, visual storytelling, reliability |
 | Technician | Technical, maintenance, reliability, communication, plus one specialization skill |
+| Film editor | Editing, visual storytelling, sound, creativity, reliability |
 | Production designer | Set design, creativity, technical, communication, reliability, plus one specialization skill |
 | Cleaner | Maintenance, organization, hygiene, reliability |
 | Maintenance worker | Maintenance, technical, safety compliance, reliability |
@@ -65,6 +66,7 @@ The specialization skill is included in the employee's skill dictionary and rece
 - `CharacterManager` renders only the selected employee's skill profile.
 - The primary profession skill is generated at a higher range than secondary skills.
 - The existing six Character System v2 profession IDs keep their verified work schedules and task labels.
+- Film editors use the production department schedule and are assigned to the Editing Suite; the standard eight-person market cycle guarantees one editor alongside the guaranteed technician.
 
 ## Save data
 
