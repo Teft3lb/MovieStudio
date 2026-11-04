@@ -152,6 +152,23 @@ func get_scene_focus_point(building_id: String) -> Vector3:
 	return actor.call("get_scene_focus_point")
 
 
+func set_production_scene(
+	building_id: String,
+	scene_number: int,
+	scene_title: String,
+	phase_title: String
+) -> void:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return
+	actor.call(
+		"set_production_scene",
+		scene_number,
+		scene_title,
+		phase_title
+	)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
 		_handle_placement_input(event)
@@ -1268,6 +1285,7 @@ func _on_start_film_production_pressed() -> void:
 	_active_scene_performer_ids.clear()
 	_sync_film_scene_performance()
 	_apply_film_crew_actions()
+	_update_film_stage_slate()
 	_update_film_production_ui()
 
 
@@ -1303,7 +1321,46 @@ func _advance_film_production() -> void:
 	if bool(result.get("completed", false)):
 		_sync_film_scene_performance()
 		_reset_film_crew_actions()
+	_update_film_stage_slate()
 	_update_film_production_ui()
+
+
+func _update_film_stage_slate() -> void:
+	var stage_id: String = _get_sound_stage_building_id()
+	if stage_id.is_empty():
+		return
+	if _active_film_project == null:
+		set_production_scene(
+			stage_id,
+			0,
+			"СЪЁМКИ НЕ ИДУТ",
+			"ПАВИЛЬОН ГОТОВ"
+		)
+		return
+	if str(_active_film_project.status) == "completed":
+		set_production_scene(
+			stage_id,
+			0,
+			"ФИЛЬМ ГОТОВ",
+			"МАТЕРИАЛ ПЕРЕДАН НА МОНТАЖ"
+		)
+		return
+	var scene: Dictionary = _film_production_system.call(
+		"get_current_scene",
+		_active_film_script,
+		_active_film_project
+	)
+	var phase_title: String = str(
+		_active_film_project.get_phase_title()
+	)
+	if not str(_active_film_project.pause_reason).is_empty():
+		phase_title = "ПАУЗА: %s" % str(_active_film_project.pause_reason)
+	set_production_scene(
+		stage_id,
+		int(scene.get("scene_number", _active_film_project.current_scene_index + 1)),
+		str(scene.get("beat", "Съёмочная сцена")),
+		phase_title
+	)
 
 
 func _are_film_crew_ready() -> bool:
