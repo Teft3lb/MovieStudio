@@ -128,11 +128,21 @@ func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
 		return Vector3.ZERO
 	return path[path.size() - 1]
 
-func get_scene_mark(building_id: String, slot_index: int) -> Vector3:
+func get_scene_mark(
+	building_id: String,
+	slot_index: int,
+	phase_id: String = "preparation",
+	scene_index: int = 0
+) -> Vector3:
 	var actor: Variant = _building_actors.get(building_id)
 	if actor == null or not is_instance_valid(actor):
 		return Vector3.ZERO
-	return actor.call("get_scene_mark", slot_index)
+	return actor.call(
+		"get_scene_mark",
+		slot_index,
+		phase_id,
+		scene_index
+	)
 
 
 func get_scene_focus_point(building_id: String) -> Vector3:
@@ -1340,7 +1350,14 @@ func _sync_film_scene_performance() -> bool:
 	)
 	var marks: Array[Vector3] = []
 	for mark_index in range(performer_ids.size()):
-		marks.append(get_scene_mark(stage_id, mark_index))
+		marks.append(
+			get_scene_mark(
+				stage_id,
+				mark_index,
+				str(_active_film_project.current_phase),
+				int(_active_film_project.current_scene_index)
+			)
+		)
 
 	var focus_point: Vector3 = get_scene_focus_point(stage_id)
 	var new_active_ids: Array[String] = []
