@@ -19,6 +19,7 @@ var current_phase: String = "preparation"
 var phase_minutes_elapsed: int = 0
 var phase_duration_minutes: int = 0
 var total_elapsed_minutes: int = 0
+var current_scene_elapsed_minutes: int = 0
 var estimated_total_minutes: int = 0
 var current_scene_retakes: int = 0
 var current_scene_quality: float = 0.0
@@ -109,6 +110,7 @@ func to_dict() -> Dictionary:
 		"phase_minutes_elapsed": phase_minutes_elapsed,
 		"phase_duration_minutes": phase_duration_minutes,
 		"total_elapsed_minutes": total_elapsed_minutes,
+		"current_scene_elapsed_minutes": current_scene_elapsed_minutes,
 		"estimated_total_minutes": estimated_total_minutes,
 		"current_scene_retakes": current_scene_retakes,
 		"current_scene_quality": current_scene_quality,
