@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 4
+const SCHEMA_VERSION: int = 5
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -26,29 +26,7 @@ var break_end_hour: int = 13
 var work_state: String = "working"
 var current_task: String = ""
 
-var skills: Dictionary = {
-	"acting": 0.0,
-	"directing": 0.0,
-	"writing": 0.0,
-	"camera_work": 0.0,
-	"management": 0.0,
-	"technical": 0.0,
-	"creativity": 0.0,
-	"reliability": 0.0,
-	"lighting": 0.0,
-	"sound": 0.0,
-	"editing": 0.0,
-	"set_design": 0.0,
-	"costume_design": 0.0,
-	"makeup": 0.0,
-	"maintenance": 0.0,
-	"culinary": 0.0,
-	"hospitality": 0.0,
-	"administration": 0.0,
-	"communication": 0.0,
-	"marketing": 0.0,
-	"security": 0.0,
-}
+var skills: Dictionary = {}
 
 var personality: Dictionary = {
 	"ambition": 0.5,
@@ -176,12 +154,11 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.profession_id = PROFESSION_CATALOG_SCRIPT.normalize_profession_id(
 		raw_profession_id
 	)
-	result.specialization_id = str(
-		payload.get(
-			"specialization_id",
-			PROFESSION_CATALOG_SCRIPT.get_legacy_specialization_id(raw_profession_id)
-		)
-	)
+	result.specialization_id = str(payload.get("specialization_id", ""))
+	if not PROFESSION_CATALOG_SCRIPT.get_specialization_ids(
+		result.profession_id
+	).has(result.specialization_id):
+		result.specialization_id = ""
 	result.age = maxi(int(payload.get("age", 30)), 18)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
@@ -196,10 +173,19 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.current_task = str(payload.get("current_task", ""))
 
 	var raw_skills: Variant = payload.get("skills", {})
-	if raw_skills is Dictionary:
-		var merged_skills: Dictionary = result.skills.duplicate(true)
-		merged_skills.merge(raw_skills, true)
-		result.skills = merged_skills
+	var restored_skills: Dictionary = {}
+	var profession_skill_ids: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+			result.profession_id,
+			result.specialization_id
+		)
+	)
+	for skill_id in profession_skill_ids:
+		var skill_value: float = 0.0
+		if raw_skills is Dictionary and raw_skills.has(skill_id):
+			skill_value = clampf(float(raw_skills[skill_id]), 0.0, 100.0)
+		restored_skills[skill_id] = skill_value
+	result.skills = restored_skills
 
 	var raw_personality: Variant = payload.get("personality", {})
 	if raw_personality is Dictionary:
