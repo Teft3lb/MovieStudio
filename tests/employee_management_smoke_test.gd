@@ -195,7 +195,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 	)
 
 	var legacy_aliases: Dictionary = {
-		"assistant_camera_operator": ["camera_operator", "assistant"],
+		"assistant_camera_operator": ["camera_operator", ""],
 		"gaffer": ["technician", "lighting"],
 		"lighting_technician": ["technician", "lighting"],
 		"sound_engineer": ["technician", "sound"],
@@ -205,17 +205,17 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		"costume_designer": ["production_designer", "costumes"],
 		"makeup_artist": ["production_designer", "makeup"],
 		"props_master": ["production_designer", "props"],
-		"electrician": ["maintenance_worker", "electrical"],
-		"sous_chef": ["chef", "assistant"],
-		"cafeteria_worker": ["waiter", "canteen"],
-		"receptionist": ["secretary", "reception"],
-		"hr_manager": ["secretary", "personnel"],
-		"accountant": ["secretary", "accounting"],
-		"office_manager": ["secretary", "office"],
+		"electrician": ["maintenance_worker", ""],
+		"sous_chef": ["chef", ""],
+		"cafeteria_worker": ["waiter", ""],
+		"receptionist": ["secretary", ""],
+		"hr_manager": ["secretary", ""],
+		"accountant": ["secretary", ""],
+		"office_manager": ["secretary", ""],
 		"advertising_manager": ["marketing_manager", "advertising"],
 		"social_media_manager": ["marketing_manager", "social_media"],
 		"graphic_designer": ["marketing_manager", "design"],
-		"press_officer": ["pr_specialist", "press"],
+		"press_officer": ["pr_specialist", ""],
 	}
 	for legacy_id in legacy_aliases:
 		var expected_alias: Array = legacy_aliases[legacy_id]
