@@ -7,6 +7,9 @@ const BUILDING_CATALOG_SCRIPT = preload(
 
 const MIN_BUILDING_GAP: float = 1.5
 const DEFAULT_PLOT_HALF_SIZE: float = 48.0
+const ROAD_CENTER_X: float = 10.0
+const ROAD_HALF_WIDTH: float = 2.0
+const ROAD_CLEARANCE: float = 1.0
 
 
 static func get_footprint(building_type_id: String, rotation_degrees: float = 0.0) -> Vector2:
@@ -39,6 +42,14 @@ static func can_place(
 		or world_position.z + half_depth > plot_half_size
 	):
 		return {"valid": false, "reason": "Здание выходит за границы территории."}
+
+	var road_clearance_x: float = half_width + ROAD_HALF_WIDTH + ROAD_CLEARANCE
+	var road_clearance_z: float = half_depth + plot_half_size * 0.84
+	if (
+		absf(world_position.x - ROAD_CENTER_X) < road_clearance_x
+		and absf(world_position.z) < road_clearance_z
+	):
+		return {"valid": false, "reason": "Нельзя размещать здание на проезжей части или вплотную к ней."}
 
 	for existing_building in existing_buildings:
 		if existing_building == null:
