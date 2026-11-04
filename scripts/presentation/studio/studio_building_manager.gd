@@ -1566,13 +1566,34 @@ func _get_scene_actor_action(
 			if is_speaker:
 				return "speaking"
 			var beat: String = str(scene.get("beat", ""))
-			var action_text: String = str(scene.get("action", ""))
+			var action_text: String = str(scene.get("action", "")).to_lower()
 			if (
 				beat.contains("Кульминация")
 				or beat.contains("Поворот")
-				or action_text.to_lower().contains("противостояние")
+				or action_text.contains("противостоя")
+				or action_text.contains("спор")
+				or action_text.contains("обвин")
 			):
 				return "dramatic"
+			if (
+				action_text.contains("обнаруж")
+				or action_text.contains("наход")
+				or action_text.contains("улику")
+				or action_text.contains("карту")
+			):
+				return "pointing"
+			if (
+				action_text.contains("встреч")
+				or action_text.contains("возвращ")
+				or action_text.contains("привет")
+			):
+				return "greeting"
+			if (
+				action_text.contains("ищ")
+				or action_text.contains("след")
+				or action_text.contains("исслед")
+			):
+				return "searching"
 			return "reacting"
 		_:
 			return "rehearsing"
