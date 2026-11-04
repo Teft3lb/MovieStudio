@@ -97,9 +97,8 @@ godot --headless --path . --script res://tests/employee_management_smoke_test.gd
 godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
 ~~~
 
-The test covers:
+The Employee Management test covers:
 1. exact 19-profession catalogue and agreed per-department counts;
-2. profession-specific skill profiles, skill serialization and rejection of unrelated skills;
 2. valid specialization generation, skill mapping and serialization;
 3. balanced market representation of all six departments;
 4. compatibility with the six Character System v2 profession IDs and verified schedules;
@@ -111,6 +110,14 @@ The test covers:
 10. dismissal, contract termination and former-employee archive;
 11. seven-day market refresh;
 12. fixed-term contract expiry after the final active day.
+
+The dedicated profession skill profile test is:
+
+~~~bash
+godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
+~~~
+
+It validates the 4–8 skill limit, exact profession-to-skill mappings, primary and specialization skills, serialization, and rejection of unrelated skills.
 
 A separate clock test is available:
 
