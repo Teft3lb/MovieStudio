@@ -17,6 +17,7 @@ func _initialize() -> void:
 
 	_test_duration_scales_with_order(system, writer)
 	_test_workplace_and_shift_gates(system, writer)
+	_test_interruption_pauses_progress(system, writer)
 	_test_project_progress_and_completion(system, writer)
 	_test_project_serialization(system, writer)
 
@@ -92,6 +93,55 @@ func _test_workplace_and_shift_gates(
 	)
 
 
+func _test_interruption_pauses_progress(
+	system: RefCounted,
+	writer: Variant
+) -> void:
+	writer.work_state = "working"
+	var project: Variant = system.call(
+		"start_project",
+		writer,
+		"drama",
+		8,
+		3,
+		554433,
+		"WRK-INTERRUPT-01",
+		"SCR-INTERRUPT-01",
+		1,
+		8,
+		0
+	)
+	var initial_progress: int = int(project.completed_work_minutes)
+	var applied: bool = system.call(
+		"apply_interruption",
+		project,
+		5,
+		"Тестовая творческая пауза"
+	)
+	assert(applied, "A valid writing project must accept an interruption event.")
+
+	for _minute_index in range(5):
+		var result: Dictionary = system.call(
+			"advance_minute",
+			project,
+			writer,
+			true
+		)
+		assert(
+			bool(result.get("interrupted", false)),
+			"An active interruption must block screenplay progress."
+		)
+
+	assert(
+		int(project.completed_work_minutes) == initial_progress,
+		"Interrupted work minutes must not count as writing progress."
+	)
+	assert(
+		int(project.interruption_count) == 1,
+		"Interruption events must be recorded once per event."
+	)
+
+
 func _test_project_progress_and_completion(
 	system: RefCounted,
 	writer: Variant
@@ -115,7 +165,6 @@ func _test_project_progress_and_completion(
 		8,
 		0
 	)
-	var interruption_seen: bool = false
 	var completion_result: Dictionary = {}
 	for _minute_index in range(5000):
 		if str(project.status) != "in_progress":
@@ -126,15 +175,9 @@ func _test_project_progress_and_completion(
 			writer,
 			true
 		)
-		if bool(result.get("interrupted", false)):
-			interruption_seen = true
 		if bool(result.get("completed", false)):
 			completion_result = result
 
-	assert(
-		interruption_seen,
-		"Long writing projects must be capable of receiving creative interruptions."
-	)
 	assert(
 		str(project.status) == "completed",
 		"The writing project must eventually complete during sufficient working time."
