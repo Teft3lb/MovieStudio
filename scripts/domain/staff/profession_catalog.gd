@@ -162,7 +162,7 @@ const PROFESSION_SKILL_PROFILES: Dictionary = {
 const PROFESSIONS: Dictionary = {
 	"actor": {
 		"title": "Актёр", "department": "creative", "primary_skill": "acting",
-		"base_salary": 85, "task": "Репетирует сцены",
+		"base_salary": 85, "task": "Тренирует актёрское мастерство",
 		"goal": "Получить главную роль в успешном фильме",
 		"biographies": [
 			"Начинал с небольших ролей и мечтает о большом прорыве на экране.",

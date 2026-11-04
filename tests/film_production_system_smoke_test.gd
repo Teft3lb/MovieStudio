@@ -40,6 +40,11 @@ func _run_tests() -> void:
 	)
 
 	_expect(project != null, "A valid script and crew must start production.")
+	_expect(
+		bool(system.call("can_start_project", script, crew_assignments, cast_assignments)),
+		"A complete script, cast and crew must be startable without waiting for a shift change."
+	)
+	_test_quick_production_pacing(script, crew_assignments, cast_assignments)
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
 	_test_mid_phase_progress(system, script, project)
@@ -62,6 +67,10 @@ func _run_tests() -> void:
 	_expect(
 		rejected_project == null,
 		"Production must reject scripts with unassigned roles."
+	)
+	_expect(
+		not bool(system.call("can_start_project", script, crew_assignments, incomplete_cast)),
+		"Production start validation must reject incomplete casting."
 	)
 
 	_finish_test("FilmProductionSystemSmokeTest")
@@ -209,12 +218,81 @@ func _test_mid_phase_progress(
 			snapshot
 		)
 	_expect(
-		int(project.phase_minutes_elapsed) == 4,
-		"Active production minutes must advance the current phase."
+		str(project.current_phase) == "rehearsal"
+		and int(project.phase_minutes_elapsed) == 2,
+		"Two preparation minutes must advance directly into a short rehearsal."
+	)
+	_expect(
+		int(project.current_scene_elapsed_minutes) == 4,
+		"Active production minutes must accumulate across phase transitions."
 	)
 	_expect(
 		float(project.get_progress_percent()) > 0.0,
 		"Film progress must advance independently from screenplay writing."
+	)
+
+
+func _test_quick_production_pacing(
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-QUICK-PACING",
+		445566,
+		1,
+		8,
+		0
+	)
+	var snapshot: Dictionary = {
+		"acting_average": 90.0,
+		"directing": 90.0,
+		"camera_work": 90.0,
+		"technical": 90.0,
+		"energy": 0.95,
+		"morale": 0.95,
+		"stress": 0.05,
+	}
+	_expect(
+		int(project.phase_duration_minutes) == 2,
+		"Scene preparation must be a short two-minute gameplay phase."
+	)
+	for _minute in range(2):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "rehearsal"
+		and int(project.phase_duration_minutes) == 4,
+		"Rehearsal must finish quickly and lead into shooting."
+	)
+	for _minute in range(4):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "shooting"
+		and int(project.phase_duration_minutes) == 10,
+		"An actor pair must receive a compact ten-minute shooting block."
+	)
+	for _minute in range(10):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "review"
+		and int(project.phase_duration_minutes) == 1,
+		"Review must be a quick one-minute transition."
+	)
+	system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		int(project.completed_scene_count) == 1
+		and int(project.current_scene_index) == 1
+		and str(project.current_phase) == "preparation",
+		"The next scene must begin automatically after the first scene's review."
+	)
+	_expect(
+		int(project.total_elapsed_minutes) == 17,
+		"A two-performer scene must complete in seventeen active game minutes."
 	)
 
 
@@ -317,7 +395,7 @@ func _test_full_film_completion(
 		"morale": 0.92,
 		"stress": 0.05,
 	}
-	var phases_seen: Dictionary = {}
+	var phases_seen: Dictionary = {"preparation": true}
 	for _minute_index in range(5000):
 		if str(project.status) == "completed":
 			break
@@ -352,6 +430,10 @@ func _test_full_film_completion(
 	_expect(
 		int(project.get_remaining_work_minutes()) == 0,
 		"A completed film must have no remaining production time."
+	)
+	_expect(
+		int(project.total_elapsed_minutes) == 34,
+		"A two-scene film must complete in about half an in-game hour without retakes."
 	)
 	for phase in ["preparation", "rehearsal", "shooting", "review"]:
 		_expect(

@@ -1,6 +1,8 @@
 extends Node3D
 class_name CharacterManager
 
+signal employees_changed
+
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
@@ -124,6 +126,29 @@ func is_employee_at_scene_mark(employee_id: String) -> bool:
 	return bool(actor.call("is_at_scene_mark"))
 
 
+func _is_active_production_participant(employee_id: String) -> bool:
+	if not is_instance_valid(_studio_building_manager):
+		return false
+	return bool(
+		_studio_building_manager.call(
+			"is_employee_in_active_production",
+			employee_id
+		)
+	)
+
+
+func _should_leave_workplace(
+	employee_id: String,
+	work_state: String,
+	assignment_is_empty: bool
+) -> bool:
+	if assignment_is_empty:
+		return true
+	if work_state == "working":
+		return false
+	return not _is_active_production_participant(employee_id)
+
+
 func is_employee_assigned_to_building(
 	employee_id: String,
 	building_type_id: String
@@ -231,7 +256,10 @@ func is_employee_at_workplace(
 	if (
 		_game_clock.is_manual_fast_forward
 		and employee != null
-		and str(employee.work_state) == "working"
+		and (
+			str(employee.work_state) == "working"
+			or _is_active_production_participant(employee_id)
+		)
 	):
 		return true
 	return bool(actor.call("is_at_workplace"))
@@ -261,7 +289,11 @@ func _refresh_workplace_assignments() -> void:
 			employee_id,
 			{}
 		)
-		if assignment.is_empty() or str(employee.work_state) != "working":
+		if _should_leave_workplace(
+			employee_id,
+			str(employee.work_state),
+			assignment.is_empty()
+		):
 			actor.call("leave_workplace")
 			continue
 
@@ -733,7 +765,11 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if actor == null or not is_instance_valid(actor):
 			continue
 
-		if assignment.is_empty() or str(employee.work_state) != "working":
+		if _should_leave_workplace(
+			employee_id,
+			str(employee.work_state),
+			assignment.is_empty()
+		):
 			actor.call("leave_workplace")
 			continue
 
@@ -761,19 +797,22 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if _game_clock.is_manual_fast_forward:
 			is_at_workplace = true
 
-		if is_at_workplace:
+		if is_at_workplace and str(employee.work_state) == "working":
 			_workplace_system.call(
 				"advance_work_minute",
 				employee,
 				assignment
 			)
-			if (
+		if (
+			_employee_task_overrides.has(employee_id)
+			and (
 				str(employee.work_state) == "working"
-				and _employee_task_overrides.has(employee_id)
-			):
-				employee.current_task = str(
-					_employee_task_overrides[employee_id]
-				)
+				or _is_active_production_participant(employee_id)
+			)
+		):
+			employee.current_task = str(
+				_employee_task_overrides[employee_id]
+			)
 
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
@@ -782,10 +821,12 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 
 func _on_game_day_advanced(day: int) -> void:
 	var result: Dictionary = _employment_system.call("advance_day", day)
+	var employees_expired: bool = false
 
 	for expired_employee in result.get("expired_employees", []):
 		var expired_id: String = str(expired_employee.id)
 		_remove_employee_actor(expired_id)
+		employees_expired = true
 		if _selected_employee_id == expired_id:
 			_selected_employee_id = ""
 
@@ -796,6 +837,8 @@ func _on_game_day_advanced(day: int) -> void:
 		_refresh_market_panel()
 
 	_refresh_workplace_assignments()
+	if employees_expired:
+		employees_changed.emit()
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_after_staffing_day()
 
@@ -819,7 +862,10 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 			continue
 		if bool(actor.call("is_in_scene_performance")):
 			actor.call("snap_to_scene_mark")
-		elif str(employee.work_state) == "working":
+		elif (
+			str(employee.work_state) == "working"
+			or _is_active_production_participant(str(employee.id))
+		):
 			actor.call("snap_to_workplace")
 		else:
 			actor.call("snap_outside_workplace")
@@ -949,10 +995,15 @@ func _refresh_roster() -> void:
 			continue
 
 		var needs: Dictionary = employee.needs
+		var work_state_title: String = (
+			"На съёмках"
+			if _is_active_production_participant(employee_id)
+			else employee.get_work_state_title()
+		)
 		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%\n%s" % [
 			employee.get_full_name(),
 			employee.get_profession_title(),
-			employee.get_work_state_title(),
+			work_state_title,
 			roundi(float(needs.get("energy", 1.0)) * 100.0),
 			roundi(float(needs.get("morale", 0.75)) * 100.0),
 			employee.current_task,
@@ -1055,11 +1106,16 @@ func _refresh_detail_panel() -> void:
 		var workplace_title: String = _get_workplace_title(
 			str(employee.id)
 		)
+		var employee_work_state_title: String = (
+			"На съёмках"
+			if _is_active_production_participant(str(employee.id))
+			else employee.get_work_state_title()
+		)
 		_detail_task_label.text = (
 			"СЕЙЧАС: %s\nСтатус: %s\nРабочее место: %s"
 			% [
 				employee.current_task,
-				employee.get_work_state_title(),
+				employee_work_state_title,
 				workplace_title,
 			]
 		)
@@ -1181,6 +1237,7 @@ func _on_hire_button_pressed() -> void:
 	_refresh_market_panel()
 	_select_employee(str(employee.id))
 	_show_employee_message(str(result.get("message", "Сотрудник принят в штат.")))
+	employees_changed.emit()
 
 
 func _on_dismiss_button_pressed() -> void:
@@ -1218,6 +1275,7 @@ func _confirm_dismiss_employee() -> void:
 		_refresh_roster()
 		_refresh_detail_panel()
 	_show_employee_message(str(result.get("message", "Сотрудник уволен.")))
+	employees_changed.emit()
 
 
 func _show_employee_message(message: String) -> void:

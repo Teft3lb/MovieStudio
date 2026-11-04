@@ -47,6 +47,7 @@ func setup(
 		position = _route[0]
 
 	_visual = CHARACTER_VISUAL_SCRIPT.new()
+	_visual.name = "CharacterVisual"
 	var character_payload: Dictionary = data.call("to_dict")
 	_visual.call("setup", character_payload)
 	add_child(_visual)

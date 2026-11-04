@@ -111,10 +111,28 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_film_production_system = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
 	_film_editing_system = FILM_EDITING_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
+	if _character_manager.has_signal("employees_changed"):
+		var roster_callback: Callable = Callable(
+			self,
+			"_on_employee_roster_changed"
+		)
+		if not _character_manager.is_connected(
+			"employees_changed",
+			roster_callback
+		):
+			_character_manager.connect(
+				"employees_changed",
+				roster_callback
+			)
 
 	_spawn_initial_buildings()
 	_build_ui()
 	_refresh_build_status()
+
+
+func _on_employee_roster_changed() -> void:
+	if not _selected_building_id.is_empty():
+		_refresh_building_detail()
 
 
 func _process(_delta: float) -> void:
@@ -1231,6 +1249,7 @@ func _on_film_cast_role_selected(
 	_film_cast_assignments[role_id] = str(
 		role_option.get_item_metadata(selected_index)
 	)
+	_update_film_production_ui()
 
 
 func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
@@ -1255,40 +1274,32 @@ func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
 	return result
 
 
-func _are_production_assignments_ready(
+func _has_complete_production_assignments(
 	crew_assignments: Dictionary,
-	cast_assignments: Dictionary
+	cast_assignments: Dictionary,
+	assigned_staff: Array
 ) -> bool:
-	var employee_ids: Array[String] = []
-	for profession_id in ["director", "camera_operator", "technician"]:
-		var employee_id: String = str(
-			crew_assignments.get(profession_id, "")
+	if _latest_script == null:
+		return false
+	if not bool(
+		_film_production_system.call(
+			"can_start_project",
+			_latest_script,
+			crew_assignments,
+			cast_assignments
 		)
-		if employee_id.is_empty():
+	):
+		return false
+	var assigned_employee_ids: Dictionary = {}
+	for employee in assigned_staff:
+		assigned_employee_ids[str(employee.id)] = true
+	for employee_id_value in crew_assignments.values():
+		if not assigned_employee_ids.has(str(employee_id_value)):
 			return false
-		if not employee_ids.has(employee_id):
-			employee_ids.append(employee_id)
-
 	for employee_id_value in cast_assignments.values():
-		var employee_id: String = str(employee_id_value)
-		if employee_id.is_empty():
+		if not assigned_employee_ids.has(str(employee_id_value)):
 			return false
-		if not employee_ids.has(employee_id):
-			employee_ids.append(employee_id)
-
-	for employee_id in employee_ids:
-		var employee: Variant = _find_employee(employee_id)
-		if employee == null or str(employee.work_state) != "working":
-			return false
-		if not bool(
-			_character_manager.call(
-				"is_employee_at_workplace",
-				employee_id,
-				"sound_stage"
-			)
-		):
-			return false
-	return not employee_ids.is_empty()
+	return true
 
 
 func _on_start_film_production_pressed() -> void:
@@ -1304,13 +1315,14 @@ func _on_start_film_production_pressed() -> void:
 		assigned_staff
 	)
 	var cast_assignments: Dictionary = _film_cast_assignments.duplicate(true)
-	if not _are_production_assignments_ready(
+	if not _has_complete_production_assignments(
 		crew_assignments,
-		cast_assignments
+		cast_assignments,
+		assigned_staff
 	):
 		_film_production_status_label.text = (
-			"Команда должна быть на смене и находиться внутри павильона. "
-			+ "Проверь назначение всех ролей."
+			"Не хватает назначенных сотрудников. Проверь режиссёра, "
+			+ "оператора, техника и актёров на все роли."
 		)
 		return
 
@@ -1354,8 +1366,8 @@ func _on_start_film_production_pressed() -> void:
 	_active_film_project = project
 	_active_film_script = _latest_script
 	_active_scene_performer_ids.clear()
-	_sync_film_scene_performance()
 	_apply_film_crew_actions()
+	_sync_film_scene_performance()
 	_update_film_stage_slate()
 	_update_film_production_ui()
 
@@ -1387,8 +1399,8 @@ func _advance_film_production() -> void:
 	)
 
 	if bool(result.get("phase_changed", false)):
-		_sync_film_scene_performance()
 		_apply_film_crew_actions()
+		_sync_film_scene_performance()
 	if bool(result.get("completed", false)):
 		_sync_film_scene_performance()
 		_reset_film_crew_actions()
@@ -1445,7 +1457,7 @@ func _are_film_crew_ready() -> bool:
 			crew_assignments.get(profession_id, "")
 		)
 		var employee: Variant = _find_employee(employee_id)
-		if employee == null or str(employee.work_state) != "working":
+		if employee == null:
 			return false
 		if not bool(
 			_character_manager.call(
@@ -1528,7 +1540,6 @@ func _sync_film_scene_performance() -> bool:
 		if (
 			employee == null
 			or actor == null
-			or str(employee.work_state) != "working"
 			or not bool(
 				_character_manager.call(
 					"is_employee_assigned_to_building",
@@ -1588,6 +1599,14 @@ func _sync_film_scene_performance() -> bool:
 			action_id,
 			dialogue_text
 		)
+		_character_manager.call(
+			"set_employee_task",
+			employee_id,
+			_get_cast_production_task(
+				str(_active_film_project.current_phase),
+				int(_active_film_project.current_scene_index) + 1
+			)
+		)
 		if _game_clock.is_manual_fast_forward:
 			actor.call("snap_to_scene_mark")
 		if not bool(actor.call("is_at_scene_mark")):
@@ -1604,14 +1623,32 @@ func _sync_film_scene_performance() -> bool:
 		)
 		if (
 			previous_employee != null
-			and str(previous_employee.work_state) == "working"
 			and previous_actor != null
 			and is_instance_valid(previous_actor)
 		):
+			_character_manager.call(
+				"set_employee_task",
+				previous_id,
+				"Участвует в съёмках фильма"
+			)
 			previous_actor.call("return_to_workplace")
 
 	_active_scene_performer_ids = new_active_ids
 	return all_at_marks
+
+
+func _get_cast_production_task(phase: String, scene_number: int) -> String:
+	match phase:
+		"preparation":
+			return "Готовится к сцене %d" % scene_number
+		"rehearsal":
+			return "Репетирует сцену %d" % scene_number
+		"shooting":
+			return "Снимается в сцене %d" % scene_number
+		"review":
+			return "Ожидает просмотра сцены %d" % scene_number
+		_:
+			return "Участвует в съёмках фильма"
 
 
 func _get_scene_actor_action(
@@ -1780,25 +1817,41 @@ func _apply_film_crew_actions() -> void:
 			str(action_by_profession.get(profession_id, ""))
 		)
 
+	for cast_employee_id_value in _active_film_project.cast_assignments.values():
+		var cast_employee_id: String = str(cast_employee_id_value)
+		if not cast_employee_id.is_empty():
+			_character_manager.call(
+				"set_employee_task",
+				cast_employee_id,
+				"Участвует в съёмках фильма"
+			)
+
 
 func _reset_film_crew_actions() -> void:
 	if _active_film_project == null:
 		return
-	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in ["director", "camera_operator", "technician", "producer"]:
-		var employee_id: String = str(
-			crew_assignments.get(profession_id, "")
-		)
-		var employee: Variant = _find_employee(employee_id)
-		if employee == null:
+	var participant_ids: Array[String] = []
+	for crew_employee_id_value in _active_film_project.crew_assignments.values():
+		var crew_employee_id: String = str(crew_employee_id_value)
+		if (
+			not crew_employee_id.is_empty()
+			and not participant_ids.has(crew_employee_id)
+		):
+			participant_ids.append(crew_employee_id)
+	for cast_employee_id_value in _active_film_project.cast_assignments.values():
+		var cast_employee_id: String = str(cast_employee_id_value)
+		if (
+			not cast_employee_id.is_empty()
+			and not participant_ids.has(cast_employee_id)
+		):
+			participant_ids.append(cast_employee_id)
+	for participant_id in participant_ids:
+		if _find_employee(participant_id) == null:
 			continue
-		_character_manager.call(
-			"clear_employee_task",
-			employee_id
-		)
+		_character_manager.call("clear_employee_task", participant_id)
 		_character_manager.call(
 			"set_employee_production_action",
-			employee_id,
+			participant_id,
 			""
 		)
 
@@ -2267,18 +2320,29 @@ func _update_film_production_ui() -> void:
 
 	if _active_film_project == null:
 		_film_production_progress_bar.value = 0.0
-		_film_production_status_label.text = (
-			"Статус: готов к съёмкам."
-			if _latest_script != null
-			else "Статус: ожидает готовый сценарий."
-		)
-		_film_production_detail_label.text = (
-			"Назначь актёров на роли и проверь, что режиссёр, оператор и техник "
-			+ "находятся на смене в павильоне."
-		)
+		var can_start: bool = _can_start_film_production()
+		if _latest_script == null:
+			_film_production_status_label.text = "ОЖИДАЕТ ГОТОВЫЙ СЦЕНАРИЙ"
+			_film_production_detail_label.text = (
+				"Заверши сценарий в сценарном отделе, затем назначь актёров "
+				+ "на роли и съёмочную группу."
+			)
+		elif can_start:
+			_film_production_status_label.text = "ГОТОВО К СЪЁМКАМ"
+			_film_production_detail_label.text = (
+				"Сценарий и команда назначены. Нажми «НАЧАТЬ СЪЁМКИ»: "
+				+ "группа сама соберётся на площадке, а фильм пройдёт сцены "
+				+ "без остановок на обед и конец смены."
+			)
+		else:
+			_film_production_status_label.text = "НЕ ХВАТАЕТ КОМАНДЫ"
+			_film_production_detail_label.text = (
+				"Назначь режиссёра, оператора и техника, затем распредели "
+				+ "актёров по всем ролям сценария."
+			)
 		if is_instance_valid(_film_production_start_button):
 			_film_production_start_button.text = "НАЧАТЬ СЪЁМКИ"
-			_film_production_start_button.disabled = not _can_start_film_production()
+			_film_production_start_button.disabled = not can_start
 		return
 
 	var project: Variant = _active_film_project
@@ -2378,10 +2442,27 @@ func _can_start_film_production() -> bool:
 	var crew_assignments: Dictionary = _get_film_crew_assignments(
 		assigned_staff
 	)
-	return _are_production_assignments_ready(
+	return _has_complete_production_assignments(
 		crew_assignments,
-		_film_cast_assignments
+		_film_cast_assignments,
+		assigned_staff
 	)
+
+func is_employee_in_active_production(employee_id: String) -> bool:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or employee_id.is_empty()
+	):
+		return false
+	for assigned_id in _active_film_project.crew_assignments.values():
+		if str(assigned_id) == employee_id:
+			return true
+	for assigned_id in _active_film_project.cast_assignments.values():
+		if str(assigned_id) == employee_id:
+			return true
+	return false
+
 
 func get_active_film_project() -> Variant:
 	return _active_film_project

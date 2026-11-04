@@ -91,6 +91,19 @@ func _test_character_moves_and_performs_scene() -> void:
 		bool(actor.call("is_scene_animation_active")),
 		"The actor must play a distinct performance animation."
 	)
+	var left_arm: Node3D = actor.get_node(
+		"CharacterVisual/BodyRoot/LeftArmPivot"
+	) as Node3D
+	var minimum_gesture: float = left_arm.rotation.x
+	var maximum_gesture: float = left_arm.rotation.x
+	for _step in range(20):
+		actor.call("_process", 0.05)
+		minimum_gesture = minf(minimum_gesture, left_arm.rotation.x)
+		maximum_gesture = maxf(maximum_gesture, left_arm.rotation.x)
+	_expect(
+		maximum_gesture - minimum_gesture > 0.08,
+		"Actor gestures must visibly change over time during a scene performance."
+	)
 	var dialogue_label: Label3D = actor.get_node("SceneDialogue") as Label3D
 	_expect(
 		dialogue_label.visible

@@ -44,14 +44,14 @@ Each scripted scene passes through these states:
 
 | Phase | Base duration | Visible activity |
 |---|---:|---|
-| Preparation | 12 min | Cast moves to blocking marks; director stages the scene; technician checks equipment |
-| Rehearsal | 10 + 3 min per performer | Actors rehearse and move to rehearsal blocking |
-| Shooting | 24 + 8 min per performer | Actors perform dialogue/actions; camera rigs track the cast |
-| Review | 6 min | Director reviews the take; crew changes to review poses |
+| Preparation | 2 min | Cast gathers on the set; director stages the scene; technician checks equipment |
+| Rehearsal | 2 + 1 min per performer | Actors rehearse with visible gestures and partner reactions |
+| Shooting | 8 + 1 min per performer | Actors perform dialogue/actions; camera rigs track the cast |
+| Review | 1 min | Director reviews the take; crew changes to review poses |
 
 If a take scores below 58/100, the director requests a retake. A scene can have at most two retakes. A retake uses 16 + 5 minutes per performer, followed by another review.
 
-The simulation advances in GameClock minutes. Production pauses during off-shift time, scheduled breaks, actor travel and unavailable required crew. Manual debug fast-forward processes production minutes deterministically and snaps active performers to their current blocking marks at the end of the skip.
+The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the cast and crew gather at the Sound Stage automatically. Once production starts, assigned participants remain on the shoot through lunch and normal shift boundaries; the film is a compact gameplay event rather than a second employee-scheduling puzzle. Production pauses only while a required participant is travelling to the stage or has lost their stage assignment. Manual debug fast-forward processes production minutes deterministically and snaps active performers to their current blocking marks at the end of the skip.
 
 ## In-world performance
 
@@ -71,7 +71,7 @@ During production:
 
 When the film is completed, actors return to their assigned workstations, crew poses reset and the slate reports that the film is ready for editing.
 
-The current character animation is procedural and uses existing arm, leg, torso and head pivots. It is not a full skeletal animation system. Scene dialogue is represented visually; there is no voice acting or audio playback in this slice.
+The current character animation is procedural and uses existing arm, leg, torso and head pivots. Acting gestures, body movement and head motion are deliberately exaggerated enough to read clearly at normal camera distance. It is not a full skeletal animation system. Scene dialogue is represented visually; there is no voice acting or audio playback in this slice.
 
 ## Quality and results
 
@@ -99,6 +99,7 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/film_editing_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
+& $godot --headless --path . --script res://tests/film_production_session_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/script_generator_smoke_test.gd
@@ -120,13 +121,13 @@ The production domain test covers role resolution, unavailable-crew pauses, proj
 
 1. Complete a script and select the Sound Stage.
 2. Assign each scripted role to an actor/extra. Confirm the producer is optional.
-3. Start filming while the director, camera operator, technician and cast are on shift inside the stage.
+3. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The production can begin regardless of the current shift clock.
 4. Observe actors move from workstations to the set marks.
 5. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
 6. Confirm the dialogue bubble appears only for the speaking character.
 7. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
 8. Confirm the director, camera operator, technician and producer display their production poses/tasks.
-9. Confirm production pauses when a required employee takes a break or leaves the shift, then resumes after the team returns.
+9. Confirm the cast and crew remain on the set through lunch and normal shift boundaries until the film is complete.
 10. Confirm low-quality takes request no more than two retakes.
 11. Confirm each completed scene advances to the next scene and updates the scene counter.
 12. Confirm final completion shows the film quality and all scene results, returns actors to workstations and changes the slate to \`ФИЛЬМ ГОТОВ\`.

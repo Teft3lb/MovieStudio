@@ -98,7 +98,7 @@ func is_working() -> bool:
 
 func advance_simulation(simulation_delta: float) -> void:
 	_animation_phase += simulation_delta * (
-		7.2 if _walking else 3.0 if _working else 1.8
+		7.2 if _walking else 4.8 if _performing else 3.0 if _working else 1.8
 	)
 
 	if _walking:
@@ -119,13 +119,13 @@ func advance_simulation(simulation_delta: float) -> void:
 
 	if is_instance_valid(_body_root):
 		var bob_amount: float = (
-			0.022 if _walking else 0.008 if _working else 0.006
+			0.022 if _walking else 0.018 if _performing else 0.008 if _working else 0.006
 		)
 		_body_root.position.y = sin(_animation_phase * 2.0) * bob_amount
 
 
 func _advance_performance_animation() -> void:
-	var motion: float = sin(_animation_phase * 4.0) * 0.16
+	var motion: float = sin(_animation_phase * 4.0) * 0.25
 	var left_arm: float = -0.18
 	var right_arm: float = -0.18
 	var body_lean: float = 0.0
@@ -133,31 +133,34 @@ func _advance_performance_animation() -> void:
 
 	match _performance_action:
 		"speaking":
-			left_arm = -0.38 + motion
-			right_arm = -0.78 + sin(_animation_phase * 2.0) * 0.22
-			head_motion *= 1.6
+			left_arm = -0.28 + motion * 0.9
+			right_arm = -0.72 + sin(_animation_phase * 2.0) * 0.32
+			body_lean = sin(_animation_phase * 1.4) * 0.045
+			head_motion *= 1.8
 		"reacting":
-			left_arm = -0.88 + motion * 0.35
-			right_arm = -0.88 - motion * 0.35
-			body_lean = -0.035
+			left_arm = -0.96 + motion * 0.45
+			right_arm = -0.96 - motion * 0.45
+			body_lean = sin(_animation_phase * 1.5) * 0.045
 		"dramatic":
-			left_arm = -1.02 + sin(_animation_phase * 1.7) * 0.18
-			right_arm = -1.02 - sin(_animation_phase * 1.7) * 0.18
-			body_lean = sin(_animation_phase * 1.3) * 0.055
+			left_arm = -1.12 + sin(_animation_phase * 1.7) * 0.28
+			right_arm = -1.12 - sin(_animation_phase * 1.7) * 0.28
+			body_lean = sin(_animation_phase * 1.3) * 0.09
 		"pointing":
-			left_arm = -0.22 + motion * 0.2
-			right_arm = -1.18 + sin(_animation_phase * 1.4) * 0.12
-			body_lean = -0.025
+			left_arm = -0.28 + motion * 0.25
+			right_arm = -1.35 + sin(_animation_phase * 1.4) * 0.18
+			body_lean = -0.045
 		"greeting":
 			left_arm = -0.18
-			right_arm = -1.28 + sin(_animation_phase * 2.4) * 0.24
+			right_arm = -1.35 + sin(_animation_phase * 2.4) * 0.34
+			body_lean = sin(_animation_phase * 1.2) * 0.025
 		"searching":
-			left_arm = -0.64 + motion * 0.2
-			right_arm = -0.52 - motion * 0.2
-			body_lean = 0.025
+			left_arm = -0.72 + motion * 0.35
+			right_arm = -0.55 - motion * 0.3
+			body_lean = sin(_animation_phase * 1.1) * 0.045
 		"rehearsing":
-			left_arm = -0.34 + motion * 0.45
-			right_arm = -0.42 - motion * 0.45
+			left_arm = -0.28 + motion * 0.75
+			right_arm = -0.48 - motion * 0.75
+			body_lean = sin(_animation_phase * 1.5) * 0.04
 		"directing":
 			left_arm = -0.24 + motion * 0.3
 			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
@@ -178,10 +181,8 @@ func _advance_performance_animation() -> void:
 			right_arm = -0.22 - motion * 0.3
 
 	_set_arm_pose(left_arm, right_arm)
-	_set_leg_pose(
-		sin(_animation_phase * 1.5) * 0.035,
-		-sin(_animation_phase * 1.5) * 0.035
-	)
+	var leg_motion: float = sin(_animation_phase * 2.0) * 0.075
+	_set_leg_pose(leg_motion, -leg_motion)
 	if is_instance_valid(_body_root):
 		_body_root.rotation = Vector3(0.0, 0.0, body_lean)
 	if is_instance_valid(_head_root):

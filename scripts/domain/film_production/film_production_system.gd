@@ -5,14 +5,14 @@ const PROJECT_DATA_SCRIPT = preload(
 	"res://scripts/domain/film_production/film_production_project.gd"
 )
 
-const PREPARATION_MINUTES: int = 12
-const REHEARSAL_BASE_MINUTES: int = 10
-const REHEARSAL_MINUTES_PER_ACTOR: int = 3
-const SHOOTING_BASE_MINUTES: int = 24
-const SHOOTING_MINUTES_PER_ACTOR: int = 8
-const REVIEW_MINUTES: int = 6
-const RETAKE_BASE_MINUTES: int = 16
-const RETAKE_MINUTES_PER_ACTOR: int = 5
+const PREPARATION_MINUTES: int = 2
+const REHEARSAL_BASE_MINUTES: int = 2
+const REHEARSAL_MINUTES_PER_ACTOR: int = 1
+const SHOOTING_BASE_MINUTES: int = 8
+const SHOOTING_MINUTES_PER_ACTOR: int = 1
+const REVIEW_MINUTES: int = 1
+const RETAKE_BASE_MINUTES: int = 4
+const RETAKE_MINUTES_PER_ACTOR: int = 1
 const RETAKE_QUALITY_THRESHOLD: float = 58.0
 const MAX_RETAKES_PER_SCENE: int = 2
 
@@ -21,6 +21,19 @@ var _rng: RandomNumberGenerator
 
 func _init() -> void:
 	_rng = RandomNumberGenerator.new()
+
+
+func can_start_project(
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> bool:
+	if script == null or script.scenes.is_empty() or script.cast.is_empty():
+		return false
+	return (
+		_has_required_crew(crew_assignments)
+		and _has_complete_cast(script, cast_assignments)
+	)
 
 
 func start_project(
@@ -33,11 +46,7 @@ func start_project(
 	current_hour: int,
 	current_minute: int
 ) -> Variant:
-	if script == null or script.scenes.is_empty() or script.cast.is_empty():
-		return null
-	if not _has_required_crew(crew_assignments):
-		return null
-	if not _has_complete_cast(script, cast_assignments):
+	if not can_start_project(script, crew_assignments, cast_assignments):
 		return null
 
 	var project: Variant = PROJECT_DATA_SCRIPT.new()
@@ -68,7 +77,7 @@ func start_project(
 		script,
 		cast_assignments
 	)
-	project.last_activity_message = "Подготовка съёмочной площадки."
+	project.last_activity_message = "Съёмочная группа собирается на площадке."
 	_rng.seed = seed
 	project.rng_state = _rng.state
 	return project
