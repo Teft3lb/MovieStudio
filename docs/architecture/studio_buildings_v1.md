@@ -16,7 +16,7 @@ Implemented building types:
 | \`sound_stage\` | Съёмочный павильон | 14 × 12 m | 8 | Actor, extra, director, camera operator, technician, production designer, producer |
 
 Two starter buildings are spawned when the main scene initializes:
-- Script Department at \`(-14, 0, -8)\`.
+- Script Department at \`(-16, 0, -16)\`.
 - Sound Stage №1 at \`(0, 0, 0)\`.
 
 The building models are assembled from reusable Godot primitive meshes. No external art assets are required for this prototype.
