@@ -1767,6 +1767,7 @@ func _update_film_production_ui() -> void:
 		var dialogue: String = str(scene.get("dialogue", ""))
 		_film_production_detail_label.text = (
 			"Фильм: %s\nСцена %d: %s · %s\n%s\n%s\n"
+			+ "Событие: %s\n"
 			+ "Этап: %d / %d мин · Всего прошло: %d мин · Осталось примерно: %d мин\n"
 			+ "Пересъёмок текущей сцены: %d"
 		) % [
@@ -1776,6 +1777,7 @@ func _update_film_production_ui() -> void:
 			str(scene.get("location", "")),
 			str(scene.get("action", "")),
 			dialogue,
+			str(project.last_activity_message),
 			int(project.phase_minutes_elapsed),
 			int(project.phase_duration_minutes),
 			int(project.total_elapsed_minutes),
