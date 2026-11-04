@@ -787,12 +787,16 @@ func _update_script_writing_ui() -> void:
 
 	var project: Variant = _active_writing_project
 	_script_progress_bar.value = float(project.get_progress_percent())
+	var remaining_minutes: int = int(project.get_remaining_work_minutes())
+	var remaining_hours: float = float(remaining_minutes) / 60.0
+	var remaining_shifts: int = ceili(float(remaining_minutes) / 480.0)
 	var progress_text: String = (
-		"Рабочее время: %d / %d минут · осталось: %d минут"
+		"Рабочее время: %d / %d минут · осталось около %.1f ч (%d смен)"
 		% [
 			int(project.completed_work_minutes),
 			int(project.required_work_minutes),
-			int(project.get_remaining_work_minutes()),
+			remaining_hours,
+			remaining_shifts,
 		]
 	)
 	var interruption_text: String = (
