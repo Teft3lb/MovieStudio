@@ -94,7 +94,6 @@ Run from the project root:
 
 ~~~bash
 godot --headless --path . --script res://tests/employee_management_smoke_test.gd
-godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
 ~~~
 
 The Employee Management test covers:
