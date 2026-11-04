@@ -69,7 +69,7 @@ The building panel:
 - checks the four initial crew positions: director, actor, camera operator and technician;
 - reports how many required positions are currently covered.
 
-The starting roster normally covers three of the four required positions; a technician can be hired through the existing employee market.
+The starting roster covers three of the four required positions. The standard recruitment market now guarantees at least one technician candidate in every eight-person market cycle.
 
 The stage is a production-readiness interface only. It does not yet shoot scenes.
 
@@ -85,7 +85,7 @@ The current implementation does **not** yet:
 - produce scenes or films;
 - persist building state in a campaign save.
 
-The catalogue's accepted-profession lists and workplace capacities are the first integration contract for the next Studio Workplace AI / Film Production stages.
+Studio Operations v1 consumes the catalogue's accepted-profession lists and workplace capacities to assign staff and route them to exterior work points. Film Production v1 will add casting, scene scheduling and shooting.
 
 ## Smoke tests
 
