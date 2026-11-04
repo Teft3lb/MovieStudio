@@ -31,45 +31,43 @@ func generate(
 	data.id = character_id
 	data.first_name = FIRST_NAMES[rng.randi_range(0, FIRST_NAMES.size() - 1)]
 	data.last_name = LAST_NAMES[rng.randi_range(0, LAST_NAMES.size() - 1)]
-	var legacy_specialization_id: String = (
-		PROFESSION_CATALOG_SCRIPT.get_legacy_specialization_id(profession_id)
-	)
 	data.profession_id = PROFESSION_CATALOG_SCRIPT.normalize_profession_id(
 		profession_id
 	)
 	var specialization_ids: Array[String] = (
 		PROFESSION_CATALOG_SCRIPT.get_specialization_ids(data.profession_id)
 	)
-	if not legacy_specialization_id.is_empty():
-		data.specialization_id = legacy_specialization_id
-	elif not specialization_ids.is_empty():
+	if not specialization_ids.is_empty():
 		data.specialization_id = specialization_ids[
 			rng.randi_range(0, specialization_ids.size() - 1)
 		]
 	data.age = rng.randi_range(20, 64)
 
-	var skills: Dictionary = {}
-	for skill_id in PROFESSION_CATALOG_SCRIPT.get_skill_ids():
-		if skill_id == "creativity":
-			skills[skill_id] = rng.randf_range(25.0, 80.0)
-		elif skill_id == "reliability":
-			skills[skill_id] = rng.randf_range(30.0, 85.0)
-		else:
-			skills[skill_id] = rng.randf_range(18.0, 68.0)
-
 	var primary_skill_id: String = PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(
 		data.profession_id
 	)
-	skills[primary_skill_id] = rng.randf_range(56.0, 94.0)
-
 	var specialization_skill_id: String = (
 		PROFESSION_CATALOG_SCRIPT.get_specialization_skill_id(
 			data.profession_id,
 			data.specialization_id
 		)
 	)
-	if not specialization_skill_id.is_empty():
-		skills[specialization_skill_id] = rng.randf_range(56.0, 94.0)
+	var profession_skill_ids: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+			data.profession_id,
+			data.specialization_id
+		)
+	)
+	var skills: Dictionary = {}
+	for skill_id in profession_skill_ids:
+		if skill_id == primary_skill_id:
+			skills[skill_id] = rng.randf_range(56.0, 94.0)
+		elif skill_id == specialization_skill_id:
+			skills[skill_id] = rng.randf_range(58.0, 94.0)
+		elif skill_id == "reliability":
+			skills[skill_id] = rng.randf_range(38.0, 88.0)
+		else:
+			skills[skill_id] = rng.randf_range(18.0, 78.0)
 
 	data.skills = skills
 
