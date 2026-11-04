@@ -94,10 +94,12 @@ Run from the project root:
 
 ~~~bash
 godot --headless --path . --script res://tests/employee_management_smoke_test.gd
+godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
 ~~~
 
 The test covers:
 1. exact 19-profession catalogue and agreed per-department counts;
+2. profession-specific skill profiles, skill serialization and rejection of unrelated skills;
 2. valid specialization generation, skill mapping and serialization;
 3. balanced market representation of all six departments;
 4. compatibility with the six Character System v2 profession IDs and verified schedules;
