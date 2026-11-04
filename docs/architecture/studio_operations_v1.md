@@ -6,7 +6,7 @@
 
 ## Scope
 
-Studio Operations v1 connects the active employee roster to the two existing starter buildings. Employees with supported production professions receive automatic workplace assignments, move to an exterior work point and perform profession-specific work while on shift.
+Studio Operations v1 connects the active employee roster to the two existing starter buildings. Employees with supported production professions receive automatic workplace assignments, walk through the building entrance to an interior workstation and perform profession-specific work while on shift.
 
 The slice also replaces instant screenplay generation with a time-based writing project and ensures the recruitment market offers a technician in every standard cycle.
 
@@ -35,9 +35,17 @@ Assignments are recalculated when:
 - an employee leaves or a fixed-term contract expires;
 - the player places another building.
 
-\`CharacterManager\` owns assignments and connects them to \`CharacterActor\`. The building manager provides world-space exterior work positions. An actor follows its assigned destination, stops at the work point, and resumes its previous patrol route when off duty.
+\`CharacterManager\` owns assignments and connects them to \`CharacterActor\`. Each building actor exposes a four-point route: outside approach, doorway threshold, interior corridor and assigned workstation. During breaks and off-duty time, employees reverse the route and leave through the same entrance before resuming their patrol.
 
-This is direct point-to-point movement, not NavMesh pathfinding. The work points are outside the building; interiors, collision-aware navigation, room layouts and indoor animations are future work.
+Movement uses deterministic waypoints rather than NavMesh pathfinding. It clamps each movement step to avoid overshooting at accelerated simulation speeds. Collision-aware dynamic navigation and obstacle avoidance remain future work.
+
+## Visible building interiors
+
+Both starter buildings now contain procedural 3D interiors. The Script Department has three desks, monitors, keyboards, chairs, a bookshelf and a research board. The Sound Stage has a set backdrop, platform, floor marks, two camera rigs, lighting stands, a director monitor and a technical equipment rack. Workplace points are placed beside the matching props.
+
+The roof assembly is hidden and the camera-facing wall is cut away when the camera is within 36 world units of a building. At a wider view, the full exterior roof and walls return. The interior remains part of the same 3D scene; employees are not hidden or replaced by UI representations.
+
+\`CharacterVisual\` adds procedural profession-specific work poses using the existing arm and leg pivots. Writers, producers and casting staff type or work at desks; directors gesture; camera operators hold a camera stance; technicians perform equipment work; actors and extras rehearse. The existing walk animation remains the movement state and is restored when an employee leaves the workstation.
 
 ## Work tasks and skill growth
 
@@ -104,9 +112,10 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/employee_work_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/employee_market_critical_roles_test.gd
 & $godot --headless --path . --script res://tests/script_writing_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 ~~~
 
-These tests cover profession-to-building assignment, workplace capacity and skill progression, guaranteed technician availability, writing-time scaling, work-shift/workplace gates, interruptions, completion and project serialization.
+These tests cover profession-to-building assignment, workplace capacity and skill progression, guaranteed technician availability, writing-time scaling, work-shift/workplace gates, interruptions, completion and project serialization. The interior smoke test also checks room props, rotated building routes, doorway traversal, work animation activation and leaving through the entrance.
 
 ## Explicit boundaries
 
