@@ -44,7 +44,8 @@ static func has_building_type(building_type_id: String) -> bool:
 static func get_definition(building_type_id: String) -> Dictionary:
 	if not BUILDINGS.has(building_type_id):
 		return {}
-	return (BUILDINGS[building_type_id] as Dictionary).duplicate(true)
+	var definition: Dictionary = BUILDINGS[building_type_id]
+	return definition.duplicate(true)
 
 
 static func get_title(building_type_id: String) -> String:
