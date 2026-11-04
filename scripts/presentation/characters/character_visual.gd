@@ -135,6 +135,17 @@ func _advance_performance_animation() -> void:
 			left_arm = -1.02 + sin(_animation_phase * 1.7) * 0.18
 			right_arm = -1.02 - sin(_animation_phase * 1.7) * 0.18
 			body_lean = sin(_animation_phase * 1.3) * 0.055
+		"pointing":
+			left_arm = -0.22 + motion * 0.2
+			right_arm = -1.18 + sin(_animation_phase * 1.4) * 0.12
+			body_lean = -0.025
+		"greeting":
+			left_arm = -0.18
+			right_arm = -1.28 + sin(_animation_phase * 2.4) * 0.24
+		"searching":
+			left_arm = -0.64 + motion * 0.2
+			right_arm = -0.52 - motion * 0.2
+			body_lean = 0.025
 		"rehearsing":
 			left_arm = -0.34 + motion * 0.45
 			right_arm = -0.42 - motion * 0.45
