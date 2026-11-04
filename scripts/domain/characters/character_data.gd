@@ -183,8 +183,9 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	)
 	for skill_id in profession_skill_ids:
 		var skill_value: float = 0.0
-		if raw_skills is Dictionary and raw_skills.has(skill_id):
-			skill_value = clampf(float(raw_skills[skill_id]), 0.0, 100.0)
+		if raw_skills is Dictionary:
+			if raw_skills.has(skill_id):
+				skill_value = clampf(float(raw_skills[skill_id]), 0.0, 100.0)
 		restored_skills[skill_id] = skill_value
 	result.skills = restored_skills
 
