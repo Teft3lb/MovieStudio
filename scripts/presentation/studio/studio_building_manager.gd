@@ -521,7 +521,7 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 			]
 		)
 		_script_writer_option.set_item_metadata(
-			_script_writer_option.item_count - 1,
+			_script_writer_option.get_item_count() - 1,
 			str(employee.id)
 		)
 		writer_count += 1
@@ -543,7 +543,7 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 			SCRIPT_GENERATOR_SCRIPT.get_genre_title(genre_id)
 		)
 		_script_genre_option.set_item_metadata(
-			_script_genre_option.item_count - 1,
+			_script_genre_option.get_item_count() - 1,
 			genre_id
 		)
 	_script_genre_option.select(0)
