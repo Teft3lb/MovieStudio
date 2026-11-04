@@ -46,7 +46,7 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 6. Press \`R\` to rotate by 90 degrees.
 7. Right click or \`Esc\` cancels build mode.
 
-Placement is restricted to the current 100 × 100 m prototype plot. A 1.5 m minimum gap is enforced between building footprints. Buildings cannot overlap or extend beyond the plot.
+Placement is restricted to the current 100 × 100 m prototype plot. A 1.5 m minimum gap is enforced between building footprints. Buildings cannot overlap, obstruct the existing access road or extend beyond the plot.
 
 Construction is free in this slice because Studio Economy has not been implemented. The UI states this explicitly.
 
