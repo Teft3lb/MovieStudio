@@ -822,10 +822,15 @@ func _refresh_detail_panel() -> void:
 	_stress_bar.value = stress
 
 	var skill_lines: Array[String] = []
-	var skill_titles: Dictionary = PROFESSION_CATALOG_SCRIPT.get_skill_titles()
-	for skill_id in skill_titles.keys():
+	var profession_skill_ids: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+			employee.profession_id,
+			employee.specialization_id
+		)
+	)
+	for skill_id in profession_skill_ids:
 		skill_lines.append("%s: %d / 100" % [
-			skill_titles[skill_id],
+			PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
 			roundi(float(skills.get(skill_id, 0.0))),
 		])
 	_detail_skills_label.text = "\n".join(skill_lines)
