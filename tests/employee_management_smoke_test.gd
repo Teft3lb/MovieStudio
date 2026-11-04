@@ -63,8 +63,8 @@ func _run_tests() -> void:
 func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) -> void:
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
 	_expect(
-		profession_ids.size() == 19,
-		"The profession catalog must contain exactly 19 focused professions."
+		profession_ids.size() == 20,
+		"The profession catalog must contain exactly 20 focused professions."
 	)
 
 	for profession_id in profession_ids:
@@ -129,7 +129,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 
 	var expected_department_counts: Dictionary = {
 		"creative": 6,
-		"production": 3,
+		"production": 4,
 		"facility": 3,
 		"catering": 3,
 		"administration": 2,

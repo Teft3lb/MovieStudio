@@ -96,6 +96,7 @@ Completion is explicit: \`status = completed\`, all scene results exist, progres
 Run with Godot 4.7.2 from the project root:
 
 ~~~powershell
+& $godot --headless --path . --script res://tests/film_editing_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
