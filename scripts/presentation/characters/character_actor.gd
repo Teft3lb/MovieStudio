@@ -12,6 +12,14 @@ var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
 var _selection_ring: MeshInstance3D
+var _workplace_building_id: String = ""
+var _workplace_path: Array[Vector3] = []
+var _workplace_commute_path: Array[Vector3] = []
+var _workplace_path_index: int = 0
+var _workplace_work_style: String = ""
+var _has_workplace_destination: bool = false
+var _is_at_workplace: bool = false
+var _is_leaving_workplace: bool = false
 
 
 func setup(
@@ -49,13 +57,17 @@ func _process(delta: float) -> void:
 	if is_zero_approx(simulation_delta):
 		return
 
+	if _has_workplace_destination and not _workplace_path.is_empty():
+		_process_workplace_movement(simulation_delta)
+		return
+
 	if _route.size() < 2:
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
 
 	var target: Vector3 = _route[_route_index]
-	var direction: Vector3 = target - position
+	var direction: Vector3 = target - global_position
 	direction.y = 0.0
 
 	if direction.length_squared() <= 0.09:
@@ -65,16 +77,190 @@ func _process(delta: float) -> void:
 		return
 
 	direction = direction.normalized()
-	position += direction * _move_speed * simulation_delta
-	look_at(position + direction, Vector3.UP)
+	global_position += direction * _move_speed * simulation_delta
+	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
+
+
+func _process_workplace_movement(simulation_delta: float) -> void:
+	if _workplace_path_index >= _workplace_path.size():
+		_finish_workplace_arrival()
+		_advance_visual(simulation_delta)
+		return
+
+	var target: Vector3 = _workplace_path[_workplace_path_index]
+	var direction: Vector3 = target - global_position
+	direction.y = 0.0
+
+	if direction.length_squared() <= 0.25:
+		if _workplace_path_index < _workplace_path.size() - 1:
+			_workplace_path_index += 1
+			_set_walking(false)
+			_advance_visual(simulation_delta)
+			return
+
+		if _is_leaving_workplace:
+			_finish_leaving_workplace()
+		else:
+			_finish_workplace_arrival()
+		_advance_visual(simulation_delta)
+		return
+
+	_is_at_workplace = false
+	_set_working(false)
+	direction = direction.normalized()
+	global_position = global_position.move_toward(
+		target,
+		_move_speed * simulation_delta
+	)
+	look_at(global_position + direction, Vector3.UP)
+	_set_walking(true)
+	_advance_visual(simulation_delta)
+
+
+func _finish_workplace_arrival() -> void:
+	_is_at_workplace = true
+	_is_leaving_workplace = false
+	_face_workplace()
+	_set_walking(false)
+	_set_working(true)
+
+
+func _face_workplace() -> void:
+	if _workplace_path.size() < 2:
+		return
+	var last_index: int = _workplace_path.size() - 1
+	var direction: Vector3 = (
+		_workplace_path[last_index] - _workplace_path[last_index - 1]
+	)
+	direction.y = 0.0
+	if direction.length_squared() > 0.001:
+		look_at(global_position + direction.normalized(), Vector3.UP)
+
+
+func _finish_leaving_workplace() -> void:
+	_workplace_building_id = ""
+	_workplace_path.clear()
+	_workplace_commute_path.clear()
+	_workplace_path_index = 0
+	_has_workplace_destination = false
+	_is_at_workplace = false
+	_is_leaving_workplace = false
+	_set_walking(false)
+	_set_working(false)
 
 
 func get_character_id() -> String:
 	if character_data == null:
 		return ""
 	return str(character_data.id)
+
+
+func assign_workplace_route(
+	building_id: String,
+	route: Array[Vector3],
+	work_style: String
+) -> void:
+	if route.is_empty():
+		clear_workplace()
+		return
+
+	if (
+		_workplace_building_id == building_id
+		and _workplace_commute_path == route
+		and _has_workplace_destination
+		and not _is_leaving_workplace
+	):
+		return
+
+	_workplace_building_id = building_id
+	_workplace_commute_path = route.duplicate()
+	_workplace_path = route.duplicate()
+	_workplace_path_index = 0
+	_workplace_work_style = work_style
+	_has_workplace_destination = true
+	_is_at_workplace = false
+	_is_leaving_workplace = false
+	_set_working(false)
+
+
+func assign_workplace(building_id: String, destination: Vector3) -> void:
+	var route: Array[Vector3] = [destination]
+	assign_workplace_route(building_id, route, "")
+
+
+func leave_workplace() -> void:
+	if _is_leaving_workplace:
+		return
+	if not _has_workplace_destination or _workplace_path.is_empty():
+		_finish_leaving_workplace()
+		return
+
+	var exit_path: Array[Vector3] = []
+	for index in range(_workplace_path_index - 1, -1, -1):
+		exit_path.append(_workplace_path[index])
+
+	if exit_path.is_empty():
+		_finish_leaving_workplace()
+		return
+
+	_workplace_path = exit_path
+	_workplace_path_index = 0
+	_is_at_workplace = false
+	_is_leaving_workplace = true
+	_set_working(false)
+
+
+func clear_workplace() -> void:
+	_workplace_building_id = ""
+	_workplace_path.clear()
+	_workplace_commute_path.clear()
+	_workplace_path_index = 0
+	_has_workplace_destination = false
+	_is_at_workplace = false
+	_is_leaving_workplace = false
+	_set_walking(false)
+	_set_working(false)
+
+
+func snap_to_workplace() -> void:
+	if not _has_workplace_destination or _workplace_commute_path.is_empty():
+		return
+	_workplace_path = _workplace_commute_path.duplicate()
+	global_position = _workplace_commute_path[
+		_workplace_commute_path.size() - 1
+	]
+	_workplace_path_index = _workplace_path.size() - 1
+	_is_at_workplace = true
+	_is_leaving_workplace = false
+	_face_workplace()
+	_set_walking(false)
+	_set_working(true)
+
+
+func snap_outside_workplace() -> void:
+	if _has_workplace_destination and not _workplace_commute_path.is_empty():
+		global_position = _workplace_commute_path[0]
+	_finish_leaving_workplace()
+
+
+func get_workplace_building_id() -> String:
+	return _workplace_building_id
+
+
+func is_at_workplace() -> bool:
+	return _is_at_workplace
+
+
+func is_leaving_workplace() -> bool:
+	return _is_leaving_workplace
+
+
+func is_work_animation_active() -> bool:
+	if not is_instance_valid(_visual):
+		return false
+	return bool(_visual.call("is_working"))
 
 
 func set_selected(value: bool) -> void:
@@ -90,6 +276,15 @@ func _advance_visual(simulation_delta: float) -> void:
 func _set_walking(value: bool) -> void:
 	if is_instance_valid(_visual):
 		_visual.call("set_walking", value)
+
+
+func _set_working(value: bool) -> void:
+	if is_instance_valid(_visual):
+		_visual.call(
+			"set_working",
+			value,
+			_workplace_work_style
+		)
 
 
 func _create_name_tag() -> void:

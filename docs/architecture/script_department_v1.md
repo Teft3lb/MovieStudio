@@ -83,7 +83,10 @@ It is an input for the future film-success model, not a guaranteed probability o
 - The Script Department UI reads employees through \`CharacterManager.get_employees()\`.
 - The selected screenwriter's skills directly affect the score.
 - The latest generated script is held by \`StudioBuildingManager\` in runtime memory and displayed by the Sound Stage.
-- The current implementation generates immediately when the player presses the button. Time-based writer work, task assignment, progress and interruptions are future Studio Operations / Employee AI work.
+- Pressing the order button creates a `ScriptWritingProject`; the final `FilmScriptData` is generated only after the required work time is completed.
+- The writer must be assigned to the Script Department, reach its work point, be on shift and have sufficient energy.
+- Writing time scales with scene count, role count, writing skill and reliability. Work pauses during travel, breaks, off-duty hours, low energy and random 10–35 minute interruptions.
+- Workplace assignment and task progress are implemented by Studio Operations v1. Projects remain runtime-only until campaign save/load is added.
 
 ## Smoke test
 

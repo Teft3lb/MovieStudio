@@ -1,6 +1,8 @@
 extends Node3D
 class_name StudioBuildingManager
 
+signal buildings_changed
+
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
 )
@@ -15,6 +17,9 @@ const BUILDING_ACTOR_SCRIPT = preload(
 )
 const SCRIPT_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/script_department/script_generator.gd"
+)
+const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/script_department/script_writing_system.gd"
 )
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
@@ -32,7 +37,8 @@ const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 
 var _game_clock: Node
 var _character_manager: Node
-var _script_generator: RefCounted
+var _script_writing_system: RefCounted
+var _active_writing_project: Variant
 
 var _buildings: Array = []
 var _building_actors: Dictionary = {}
@@ -54,6 +60,8 @@ var _script_genre_option: OptionButton
 var _script_scene_count: SpinBox
 var _script_role_count: SpinBox
 var _script_generate_button: Button
+var _script_progress_bar: ProgressBar
+var _script_progress_label: Label
 var _script_result_label: Label
 
 var _preview_mesh: MeshInstance3D
@@ -63,7 +71,8 @@ var _preview_material: StandardMaterial3D
 func setup(game_clock: Node, character_manager: Node) -> void:
 	_game_clock = game_clock
 	_character_manager = character_manager
-	_script_generator = SCRIPT_GENERATOR_SCRIPT.new()
+	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
+	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	_spawn_initial_buildings()
 	_build_ui()
@@ -78,6 +87,30 @@ func _process(_delta: float) -> void:
 func is_placing_building() -> bool:
 	return not _placing_building_type_id.is_empty()
 
+
+func get_buildings() -> Array:
+	return _buildings.duplicate()
+
+
+func get_workplace_path(
+	building_id: String,
+	slot_index: int
+) -> Array[Vector3]:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return []
+	var path: Array[Vector3] = actor.call(
+		"get_workplace_path",
+		slot_index
+	)
+	return path
+
+
+func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
+	var path: Array[Vector3] = get_workplace_path(building_id, slot_index)
+	if path.is_empty():
+		return Vector3.ZERO
+	return path[path.size() - 1]
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
@@ -148,6 +181,7 @@ func _create_building(
 
 	if is_player_placed:
 		_refresh_build_status()
+		buildings_changed.emit()
 	return building_data
 
 
@@ -208,13 +242,13 @@ func _build_ui() -> void:
 func _build_building_detail_panel() -> void:
 	_building_detail_panel = PanelContainer.new()
 	_building_detail_panel.name = "BuildingDetailPanel"
-	_building_detail_panel.position = Vector2(360.0, 210.0)
-	_building_detail_panel.custom_minimum_size = Vector2(410.0, 0.0)
+	_building_detail_panel.position = Vector2(760.0, 210.0)
+	_building_detail_panel.custom_minimum_size = Vector2(430.0, 0.0)
 	_building_detail_panel.visible = false
 	_build_canvas.add_child(_building_detail_panel)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(390.0, 420.0)
+	scroll.custom_minimum_size = Vector2(410.0, 560.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_building_detail_panel.add_child(scroll)
 
@@ -489,17 +523,39 @@ func _refresh_building_detail() -> void:
 	var eligible_staff: Array = _get_eligible_staff(
 		str(building.building_type_id)
 	)
+	var assigned_staff: Array = _get_assigned_staff(str(building.id))
+	var assigned_names: Array[String] = []
+	for employee in assigned_staff:
+		assigned_names.append(
+			"%s — %s" % [
+				employee.get_full_name(),
+				_get_profession_title(str(employee.profession_id)),
+			]
+		)
+	var assigned_text: String = (
+		", ".join(assigned_names)
+		if not assigned_names.is_empty()
+		else "пока нет"
+	)
 	var staff_summary := Label.new()
 	staff_summary.text = (
-		"Рабочие места: %d  ·  Сотрудники подходящих профессий: %d\nРазмер участка: %.0f × %.0f м"
-		% [capacity, eligible_staff.size(), footprint.x, footprint.y]
-	)
+		"Рабочие места: %d  ·  Назначено: %d\nСотрудники: %s\n"
+		+ "Подходят по профессии: %d  ·  Участок: %.0f × %.0f м"
+	) % [
+		capacity,
+		assigned_staff.size(),
+		assigned_text,
+		eligible_staff.size(),
+		footprint.x,
+		footprint.y,
+	]
+	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
 
 	if str(building.building_type_id) == "script_department":
-		_build_script_department_detail(eligible_staff)
+		_build_script_department_detail(assigned_staff)
 	elif str(building.building_type_id) == "sound_stage":
-		_build_sound_stage_detail(eligible_staff)
+		_build_sound_stage_detail(assigned_staff)
 
 
 func _build_script_department_detail(eligible_staff: Array) -> void:
@@ -583,15 +639,28 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	roles_column.add_child(_script_role_count)
 
 	_script_generate_button = Button.new()
-	_script_generate_button.text = "СОЗДАТЬ СЦЕНАРИЙ"
+	_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
 	_script_generate_button.disabled = writer_count == 0
 	_script_generate_button.pressed.connect(_on_generate_script_pressed)
 	_building_detail_layout.add_child(_script_generate_button)
 
+	_script_progress_bar = ProgressBar.new()
+	_script_progress_bar.min_value = 0.0
+	_script_progress_bar.max_value = 100.0
+	_script_progress_bar.show_percentage = true
+	_script_progress_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_building_detail_layout.add_child(_script_progress_bar)
+
+	_script_progress_label = Label.new()
+	_script_progress_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_script_progress_label.add_theme_font_size_override("font_size", 11)
+	_building_detail_layout.add_child(_script_progress_label)
+
 	var generation_note := Label.new()
 	generation_note.text = (
-		"Рейтинг зависит от навыков сценариста, жанра и параметров заказа. "
-		+ "Звёзды показывают потенциал, а не гарантируют кассовый успех."
+		"Написание занимает игровое время. Количество сцен, ролей, навыки "
+		+ "и надёжность сценариста влияют на срок. Возможны звонки и творческие паузы. "
+		+ "Итоговый рейтинг зависит от навыков и жанра, но не гарантирует кассовый успех."
 	)
 	generation_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	generation_note.add_theme_font_size_override("font_size", 10)
@@ -601,17 +670,18 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_script_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_script_result_label.custom_minimum_size = Vector2(0.0, 120.0)
 	_building_detail_layout.add_child(_script_result_label)
-	_script_result_label.text = (
-		_format_script_summary(_latest_script)
-		if _latest_script != null
-		else "Сценарии ещё не создавались."
-	)
+	_update_script_writing_ui()
 
 
 func _on_generate_script_pressed() -> void:
 	if not is_instance_valid(_script_writer_option):
 		return
 	if _script_writer_option.disabled or _script_writer_option.selected < 0:
+		return
+	if (
+		_active_writing_project != null
+		and str(_active_writing_project.status) == "in_progress"
+	):
 		return
 
 	var writer_id: String = str(
@@ -621,6 +691,9 @@ func _on_generate_script_pressed() -> void:
 	)
 	var writer: Variant = _find_employee(writer_id)
 	if writer == null:
+		_show_script_generation_error(
+			"Выбранный сценарист больше не работает в студии."
+		)
 		return
 
 	var genre_id: String = str(
@@ -629,6 +702,7 @@ func _on_generate_script_pressed() -> void:
 		)
 	)
 	var script_id: String = "SCR-%04d" % _next_script_sequence
+	var project_id: String = "WRK-%04d" % _next_script_sequence
 	var seed: int = (
 		int(_game_clock.current_day) * 100000
 		+ int(_game_clock.current_hour) * 1000
@@ -637,22 +711,167 @@ func _on_generate_script_pressed() -> void:
 	)
 	_next_script_sequence += 1
 
-	_latest_script = _script_generator.call(
-		"generate",
+	_active_writing_project = _script_writing_system.call(
+		"start_project",
 		writer,
 		genre_id,
 		roundi(_script_scene_count.value),
 		roundi(_script_role_count.value),
 		seed,
-		script_id
+		project_id,
+		script_id,
+		int(_game_clock.current_day),
+		int(_game_clock.current_hour),
+		int(_game_clock.current_minute)
 	)
-	if _latest_script == null:
+	if _active_writing_project == null:
 		_show_script_generation_error(
-			"Не удалось создать сценарий. Проверьте, что выбран сотрудник с профессией «Сценарист»."
+			"Не удалось начать работу. Проверьте профессию выбранного сотрудника."
 		)
 		return
 
-	_refresh_building_detail()
+	_update_script_writing_ui()
+
+
+func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
+	if (
+		_active_writing_project == null
+		or str(_active_writing_project.status) != "in_progress"
+	):
+		return
+
+	var writer_id: String = str(_active_writing_project.writer_id)
+	var writer: Variant = _find_employee(writer_id)
+	var at_workplace: bool = false
+	if writer != null and is_instance_valid(_character_manager):
+		at_workplace = bool(
+			_character_manager.call(
+				"is_employee_at_workplace",
+				writer_id,
+				"script_department"
+			)
+		)
+
+	var result: Dictionary = _script_writing_system.call(
+		"advance_minute",
+		_active_writing_project,
+		writer,
+		at_workplace
+	)
+	if bool(result.get("completed", false)):
+		_latest_script = result.get("script")
+	elif bool(result.get("failed", false)):
+		_show_script_generation_error(
+			str(_active_writing_project.last_activity_message)
+		)
+
+	_update_script_writing_ui()
+
+
+func _update_script_writing_ui() -> void:
+	if not is_instance_valid(_script_progress_bar):
+		return
+	if not is_instance_valid(_script_progress_label):
+		return
+	if not is_instance_valid(_script_result_label):
+		return
+
+	if _active_writing_project == null:
+		_script_progress_bar.value = 0.0
+		_script_progress_label.text = "Сценарий ещё не заказан."
+		_script_result_label.text = _format_script_summary(_latest_script)
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.disabled
+			)
+		return
+
+	var project: Variant = _active_writing_project
+	_script_progress_bar.value = float(project.get_progress_percent())
+	var remaining_minutes: int = int(project.get_remaining_work_minutes())
+	var remaining_hours: float = float(remaining_minutes) / 60.0
+	var remaining_shifts: int = ceili(float(remaining_minutes) / 480.0)
+	var progress_text: String = (
+		"Рабочее время: %d / %d минут · осталось около %.1f ч (%d смен)"
+		% [
+			int(project.completed_work_minutes),
+			int(project.required_work_minutes),
+			remaining_hours,
+			remaining_shifts,
+		]
+	)
+	var interruption_text: String = (
+		"Прерываний за проект: %d" % int(project.interruption_count)
+	)
+
+	if str(project.status) == "in_progress":
+		_script_progress_label.text = (
+			"%s\n%s\n%s"
+			% [
+				str(project.last_activity_message),
+				progress_text,
+				interruption_text,
+			]
+		)
+		_script_result_label.text = (
+			"Сценарист: %s\nЖанр: %s · %d сцен · %d ролей\n"
+			+ "Сценарий пока находится в разработке."
+		) % [
+			str(project.writer_name),
+			SCRIPT_GENERATOR_SCRIPT.get_genre_title(str(project.genre_id)),
+			int(project.scene_count),
+			int(project.role_count),
+		]
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "СЦЕНАРИЙ В РАБОТЕ"
+			_script_generate_button.disabled = true
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = true
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = true
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = false
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = false
+	elif str(project.status) == "completed":
+		_script_progress_label.text = (
+			"Сценарий завершён.\n%s\n%s"
+			% [progress_text, interruption_text]
+		)
+		_script_result_label.text = _format_script_summary(_latest_script)
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "НАЧАТЬ НОВЫЙ СЦЕНАРИЙ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.get_item_count() == 0
+			)
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = false
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = false
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = true
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = true
+	else:
+		_script_progress_label.text = str(project.last_activity_message)
+		_script_result_label.text = "Проект сценария остановлен."
+		if is_instance_valid(_script_generate_button):
+			_script_generate_button.text = "НАЧАТЬ НОВЫЙ СЦЕНАРИЙ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.get_item_count() == 0
+			)
+		if is_instance_valid(_script_writer_option):
+			_script_writer_option.disabled = false
+		if is_instance_valid(_script_genre_option):
+			_script_genre_option.disabled = false
+		if is_instance_valid(_script_scene_count):
+			_script_scene_count.editable = true
+		if is_instance_valid(_script_role_count):
+			_script_role_count.editable = true
 
 
 func _show_script_generation_error(message: String) -> void:
@@ -719,9 +938,20 @@ func _build_sound_stage_detail(eligible_staff: Array) -> void:
 
 	var project_label := Label.new()
 	project_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if _latest_script == null:
+	if (
+		_active_writing_project != null
+		and str(_active_writing_project.status) == "in_progress"
+	):
 		project_label.text = (
-			"Нет сценария для производства. Сначала создай сценарий в сценарном отделе."
+			"Сейчас пишется сценарий: %s\nПрогресс: %.0f%%"
+			% [
+				str(_active_writing_project.writer_name),
+				float(_active_writing_project.get_progress_percent()),
+			]
+		)
+	elif _latest_script == null:
+		project_label.text = (
+			"Нет готового сценария. Создай заказ в сценарном отделе."
 		)
 	else:
 		project_label.text = (
@@ -785,6 +1015,15 @@ func _build_sound_stage_detail(eligible_staff: Array) -> void:
 	limitation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	limitation.add_theme_font_size_override("font_size", 10)
 	_building_detail_layout.add_child(limitation)
+
+
+func _get_assigned_staff(building_id: String) -> Array:
+	if not is_instance_valid(_character_manager):
+		return []
+	return _character_manager.call(
+		"get_employees_assigned_to_building",
+		building_id
+	)
 
 
 func _get_eligible_staff(building_type_id: String) -> Array:

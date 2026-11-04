@@ -13,6 +13,9 @@ const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_management_system.gd"
 )
+const EMPLOYEE_WORK_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/staff/employee_work_system.gd"
+)
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -32,6 +35,9 @@ var _generator: RefCounted
 var _needs_system: RefCounted
 var _employment_system: Variant
 var _game_clock: Node
+var _workplace_system: RefCounted
+var _studio_building_manager: Node
+var _workplace_assignments: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _roster_buttons: Dictionary = {}
@@ -101,6 +107,119 @@ func get_employees() -> Array:
 
 func get_selected_employee_id() -> String:
 	return _selected_employee_id
+
+
+func initialize_workplaces(building_manager: Node) -> void:
+	_studio_building_manager = building_manager
+	_workplace_system = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
+	if (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_signal("buildings_changed")
+	):
+		var callback: Callable = Callable(
+			self,
+			"_refresh_workplace_assignments"
+		)
+		if not _studio_building_manager.is_connected(
+			"buildings_changed",
+			callback
+		):
+			_studio_building_manager.connect(
+				"buildings_changed",
+				callback
+			)
+	_refresh_workplace_assignments()
+
+
+func get_employees_assigned_to_building(building_id: String) -> Array:
+	var result: Array = []
+	for employee in employees:
+		var assignment: Dictionary = _workplace_assignments.get(
+			str(employee.id),
+			{}
+		)
+		if str(assignment.get("building_id", "")) == building_id:
+			result.append(employee)
+	return result
+
+
+func is_employee_at_workplace(
+	employee_id: String,
+	building_type_id: String = ""
+) -> bool:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	if assignment.is_empty():
+		return false
+	if (
+		not building_type_id.is_empty()
+		and str(assignment.get("building_type_id", "")) != building_type_id
+	):
+		return false
+
+	var actor: Variant = _employee_actors.get(employee_id)
+	if actor == null or not is_instance_valid(actor):
+		return false
+	var employee: Variant = _find_employee(employee_id)
+	if (
+		_game_clock.is_manual_fast_forward
+		and employee != null
+		and str(employee.work_state) == "working"
+	):
+		return true
+	return bool(actor.call("is_at_workplace"))
+
+
+func _refresh_workplace_assignments() -> void:
+	if (
+		_workplace_system == null
+		or not is_instance_valid(_studio_building_manager)
+	):
+		return
+
+	var buildings: Array = _studio_building_manager.call("get_buildings")
+	_workplace_assignments = _workplace_system.call(
+		"build_assignments",
+		employees,
+		buildings
+	)
+
+	for employee in employees:
+		var employee_id: String = str(employee.id)
+		var actor: Variant = _employee_actors.get(employee_id)
+		if actor == null or not is_instance_valid(actor):
+			continue
+
+		var assignment: Dictionary = _workplace_assignments.get(
+			employee_id,
+			{}
+		)
+		if assignment.is_empty() or str(employee.work_state) != "working":
+			actor.call("leave_workplace")
+			continue
+
+		var building_id: String = str(assignment.get("building_id", ""))
+		if (
+			str(actor.call("get_workplace_building_id")) != building_id
+			and not bool(actor.call("is_leaving_workplace"))
+		):
+			var route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				route,
+				str(employee.profession_id)
+			)
+
+	if is_instance_valid(_roster_header):
+		_refresh_roster()
+		_refresh_detail_panel()
 
 
 func _spawn_initial_roster() -> void:
@@ -253,7 +372,7 @@ func _build_roster_panel() -> void:
 	layout.add_child(_market_toggle_button)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(310.0, 390.0)
+	scroll.custom_minimum_size = Vector2(310.0, 600.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
@@ -278,7 +397,7 @@ func _add_roster_button(employee: Variant) -> void:
 
 	var button := Button.new()
 	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(305.0, 56.0)
+	button.custom_minimum_size = Vector2(305.0, 72.0)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.toggle_mode = true
 	button.add_theme_font_size_override("font_size", 12)
@@ -321,7 +440,7 @@ func _build_market_panel() -> void:
 	layout.add_child(_market_status_label)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(350.0, 420.0)
+	scroll.custom_minimum_size = Vector2(350.0, 600.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
@@ -539,6 +658,50 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
 		_needs_system.call("advance_minute", employee, hour)
 
+		var employee_id: String = str(employee.id)
+		var actor: Variant = _employee_actors.get(employee_id)
+		var assignment: Dictionary = _workplace_assignments.get(
+			employee_id,
+			{}
+		)
+		if actor == null or not is_instance_valid(actor):
+			continue
+
+		if assignment.is_empty() or str(employee.work_state) != "working":
+			actor.call("leave_workplace")
+			continue
+
+		var building_id: String = str(assignment.get("building_id", ""))
+		if (
+			str(actor.call("get_workplace_building_id")) != building_id
+			and not bool(actor.call("is_leaving_workplace"))
+			and is_instance_valid(_studio_building_manager)
+		):
+			var route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				route,
+				str(employee.profession_id)
+			)
+
+		var is_at_workplace: bool = bool(
+			actor.call("is_at_workplace")
+		)
+		if _game_clock.is_manual_fast_forward:
+			is_at_workplace = true
+
+		if is_at_workplace:
+			_workplace_system.call(
+				"advance_work_minute",
+				employee,
+				assignment
+			)
+
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
@@ -559,6 +722,7 @@ func _on_game_day_advanced(day: int) -> void:
 				_selected_market_candidate_id = ""
 		_refresh_market_panel()
 
+	_refresh_workplace_assignments()
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_after_staffing_day()
 
@@ -576,6 +740,15 @@ func _refresh_after_staffing_day() -> void:
 
 
 func _on_manual_advance_finished(_minutes_advanced: int) -> void:
+	for employee in employees:
+		var actor: Variant = _employee_actors.get(str(employee.id))
+		if actor == null or not is_instance_valid(actor):
+			continue
+		if str(employee.work_state) == "working":
+			actor.call("snap_to_workplace")
+		else:
+			actor.call("snap_outside_workplace")
+
 	_refresh_market_panel()
 	_refresh_after_staffing_day()
 
@@ -674,6 +847,20 @@ func _find_employee(employee_id: String) -> Variant:
 	return null
 
 
+func _get_workplace_title(employee_id: String) -> String:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	match str(assignment.get("building_type_id", "")):
+		"script_department":
+			return "Сценарный отдел"
+		"sound_stage":
+			return "Съёмочный павильон"
+		_:
+			return "Не назначено"
+
+
 func _refresh_roster() -> void:
 	if is_instance_valid(_roster_header):
 		_roster_header.text = "ПЕРСОНАЛ СТУДИИ  ·  %d" % employees.size()
@@ -685,12 +872,13 @@ func _refresh_roster() -> void:
 			continue
 
 		var needs: Dictionary = employee.needs
-		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%" % [
+		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%\n%s" % [
 			employee.get_full_name(),
 			employee.get_profession_title(),
 			employee.get_work_state_title(),
 			roundi(float(needs.get("energy", 1.0)) * 100.0),
 			roundi(float(needs.get("morale", 0.75)) * 100.0),
+			employee.current_task,
 		]
 		button.button_pressed = employee_id == _selected_employee_id
 
@@ -787,10 +975,17 @@ func _refresh_detail_panel() -> void:
 				employee.career_goal,
 			]
 		)
-		_detail_task_label.text = "СЕЙЧАС: %s\nСтатус: %s" % [
-			employee.current_task,
-			employee.get_work_state_title(),
-		]
+		var workplace_title: String = _get_workplace_title(
+			str(employee.id)
+		)
+		_detail_task_label.text = (
+			"СЕЙЧАС: %s\nСтатус: %s\nРабочее место: %s"
+			% [
+				employee.current_task,
+				employee.get_work_state_title(),
+				workplace_title,
+			]
+		)
 		_detail_schedule_label.text = "Смена: %02d:00–%02d:00  ·  Перерыв: %02d:00–%02d:00" % [
 			employee.shift_start_hour,
 			employee.shift_end_hour,
@@ -903,6 +1098,7 @@ func _on_hire_button_pressed() -> void:
 	)
 	_spawn_employee_actor(employee, employees.size() - 1)
 	_add_roster_button(employee)
+	_refresh_workplace_assignments()
 
 	_selected_market_candidate_id = ""
 	_refresh_market_panel()
@@ -937,6 +1133,7 @@ func _confirm_dismiss_employee() -> void:
 		return
 
 	_remove_employee_actor(employee_id)
+	_refresh_workplace_assignments()
 	_selected_employee_id = ""
 	if not employees.is_empty():
 		_select_employee(str(employees[0].id))

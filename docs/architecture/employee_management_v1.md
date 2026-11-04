@@ -80,7 +80,7 @@ Market refresh and fixed-term expiry are driven by GameClock.day_advanced. They 
 
 Employee needs continue to use the existing GameClock.minute_advanced path.
 
-The development HUD includes manual fast-forward controls for one hour, one day, seven days and thirty days. They invoke the same minute/day signal path as ordinary simulation, work while paused, preserve the selected speed mode and batch roster/detail UI refresh until the operation completes. Manual advancement is capped at 365 days per call. This synchronous test utility advances signal-driven systems such as employee needs, contract expiry and market refresh; it does not replay frame-based CharacterActor movement or visual animations during the skipped interval. Actors resume normal movement after the skip.
+The development HUD includes manual fast-forward controls for one hour, one day, seven days and thirty days. They invoke the same minute/day signal path as ordinary simulation, work while paused, preserve the selected speed mode and batch roster/detail UI refresh until the operation completes. Manual advancement is capped at 365 days per call. This synchronous test utility advances signal-driven systems such as employee needs, contract expiry, market refresh, workplace skill progression and screenplay work. It does not replay frame-based CharacterActor movement or visual animations during the skipped interval. Assigned employees are treated as having completed their commute during the skipped interval and are snapped to their assigned work points when the fast-forward ends during a working shift.
 
 ## Economy boundary
 

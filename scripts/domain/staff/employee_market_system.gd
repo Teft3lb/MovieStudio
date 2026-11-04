@@ -34,9 +34,15 @@ func generate_candidates(count: int, current_day: int) -> Array:
 			profession_pool = PROFESSION_CATALOG_SCRIPT.get_profession_ids_for_department(
 				department_ids[index]
 			)
-		var profession_id: String = profession_pool[
-			_rng.randi_range(0, profession_pool.size() - 1)
-		]
+		var profession_id: String
+		if index == department_ids.size():
+			# A technician is a core production role. Keep one available in
+			# every standard market cycle so the first sound stage cannot stall.
+			profession_id = "technician"
+		else:
+			profession_id = profession_pool[
+				_rng.randi_range(0, profession_pool.size() - 1)
+			]
 		var candidate_id: String = "CAND-D%03d-%02d-%02d" % [
 			current_day,
 			_market_cycle,
