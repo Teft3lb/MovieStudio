@@ -156,7 +156,7 @@ func _build_sound_stage(
 		"FrontSign",
 		Vector3(5.2, 0.72, 0.18),
 		accent_color,
-		Vector3(0.0, 5.0, depth * 0.5 + 0.12)
+		Vector3(0.0, 5.0, depth * 0.5 + 0.24)
 	)
 	_create_label(
 		self,
@@ -326,7 +326,7 @@ func _build_script_department(
 		"OfficeFrontWindowRight",
 		Vector3(1.55, 1.25, 0.12),
 		glass_color,
-		Vector3(2.35, 3.75, depth * 0.5 + 0.09)
+		Vector3(2.35, 3.75, depth * 0.5 + 0.22)
 	)
 	_create_box(
 		self,
