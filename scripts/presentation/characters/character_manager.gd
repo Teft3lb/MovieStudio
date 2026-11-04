@@ -109,6 +109,37 @@ func get_selected_employee_id() -> String:
 	return _selected_employee_id
 
 
+func get_employee_actor(employee_id: String) -> Node:
+	var actor: Variant = _employee_actors.get(employee_id)
+	if actor == null or not is_instance_valid(actor):
+		return null
+	return actor as Node
+
+
+func is_employee_at_scene_mark(employee_id: String) -> bool:
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return false
+	return bool(actor.call("is_at_scene_mark"))
+
+
+func set_employee_task(employee_id: String, task_title: String) -> void:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	employee.current_task = task_title
+
+
+func set_employee_production_action(
+	employee_id: String,
+	action_id: String
+) -> void:
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return
+	actor.call("set_production_action", action_id)
+
+
 func initialize_workplaces(building_manager: Node) -> void:
 	_studio_building_manager = building_manager
 	_workplace_system = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
@@ -744,7 +775,9 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 		var actor: Variant = _employee_actors.get(str(employee.id))
 		if actor == null or not is_instance_valid(actor):
 			continue
-		if str(employee.work_state) == "working":
+		if bool(actor.call("is_in_scene_performance")):
+			actor.call("snap_to_scene_mark")
+		elif str(employee.work_state) == "working":
 			actor.call("snap_to_workplace")
 		else:
 			actor.call("snap_outside_workplace")
