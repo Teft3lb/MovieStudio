@@ -163,10 +163,11 @@ func advance_minute(
 
 	project.rng_state = _rng.state
 	project.completed_work_minutes += 1
-	project.last_activity_message = "Пишет сценарий «%s»" % str(
-		project.genre_id
+	var genre_title: String = SCRIPT_GENERATOR_SCRIPT.get_genre_title(
+		str(project.genre_id)
 	)
-	writer.current_task = "Пишет сценарий «%s»" % str(project.genre_id)
+	project.last_activity_message = "Пишет сценарий «%s»" % genre_title
+	writer.current_task = "Пишет сценарий «%s»" % genre_title
 
 	if project.completed_work_minutes < project.required_work_minutes:
 		return {"advanced": true, "completed": false, "interrupted": false}
