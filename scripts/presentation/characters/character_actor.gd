@@ -446,6 +446,12 @@ func is_work_animation_active() -> bool:
 	return bool(_visual.call("is_working"))
 
 
+func is_scene_animation_active() -> bool:
+	if not is_instance_valid(_visual):
+		return false
+	return bool(_visual.call("is_performing"))
+
+
 func set_selected(value: bool) -> void:
 	if is_instance_valid(_selection_ring):
 		_selection_ring.visible = value
