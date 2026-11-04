@@ -528,6 +528,8 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	if writer_count == 0:
 		_script_writer_option.add_item("Нет сценариста в штате")
 		_script_writer_option.disabled = true
+	else:
+		_script_writer_option.select(0)
 	_building_detail_layout.add_child(_script_writer_option)
 
 	var genre_heading := Label.new()
@@ -544,6 +546,7 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 			_script_genre_option.item_count - 1,
 			genre_id
 		)
+	_script_genre_option.select(0)
 	_building_detail_layout.add_child(_script_genre_option)
 
 	var parameters_row := HBoxContainer.new()
