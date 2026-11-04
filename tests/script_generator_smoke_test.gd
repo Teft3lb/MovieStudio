@@ -112,14 +112,20 @@ func _test_skill_influence(
 	writer: Variant
 ) -> void:
 	var low_payload: Dictionary = writer.to_dict()
-	var low_skills: Dictionary = low_payload.get("skills", {}).duplicate(true)
+	var low_source_skills: Variant = low_payload.get("skills", {})
+	var low_skills: Dictionary = {}
+	if low_source_skills is Dictionary:
+		low_skills = low_source_skills.duplicate(true)
 	for skill_id in ["writing", "story_structure", "dialogue", "creativity", "research"]:
 		low_skills[skill_id] = 10.0
 	low_payload["skills"] = low_skills
 	var low_writer: Variant = CHARACTER_DATA_SCRIPT.from_dict(low_payload)
 
 	var high_payload: Dictionary = writer.to_dict()
-	var high_skills: Dictionary = high_payload.get("skills", {}).duplicate(true)
+	var high_source_skills: Variant = high_payload.get("skills", {})
+	var high_skills: Dictionary = {}
+	if high_source_skills is Dictionary:
+		high_skills = high_source_skills.duplicate(true)
 	for skill_id in ["writing", "story_structure", "dialogue", "creativity", "research"]:
 		high_skills[skill_id] = 100.0
 	high_payload["skills"] = high_skills
