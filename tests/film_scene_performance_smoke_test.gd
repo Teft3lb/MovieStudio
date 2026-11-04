@@ -94,12 +94,19 @@ func _test_character_moves_and_performs_scene() -> void:
 		"The speaking character must display its assigned dialogue."
 	)
 
+	var next_scene_mark: Vector3 = Vector3(2.0, 0.0, -2.0)
 	actor.call(
 		"start_scene_performance",
-		scene_mark,
+		next_scene_mark,
 		Vector3(-1.0, 0.0, -2.5),
 		"dramatic",
 		""
+	)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	assert(
+		actor.global_position.distance_to(next_scene_mark) <= 0.25,
+		"The actor must move to new blocking when the scene phase changes."
 	)
 	assert(
 		not dialogue_label.visible,
