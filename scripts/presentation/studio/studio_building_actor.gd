@@ -149,7 +149,7 @@ func _build_sound_stage(
 		"RollDoorRaisedPanel",
 		Vector3(4.4, 0.35, 0.16),
 		trim_color,
-		Vector3(0.0, 4.35, depth * 0.5 + 0.12)
+		Vector3(0.0, 4.35, depth * 0.5 + 0.24)
 	)
 	_create_box(
 		self,
@@ -162,7 +162,7 @@ func _build_sound_stage(
 		self,
 		"StageSignText",
 		"СЪЁМОЧНЫЙ ПАВИЛЬОН",
-		Vector3(0.0, 5.0, depth * 0.5 + 0.23),
+		Vector3(0.0, 5.0, depth * 0.5 + 0.34),
 		20
 	)
 
@@ -319,7 +319,7 @@ func _build_script_department(
 		"OfficeFrontWindowLeft",
 		Vector3(1.55, 1.25, 0.12),
 		glass_color,
-		Vector3(-2.35, 3.75, depth * 0.5 + 0.09)
+		Vector3(-2.35, 3.75, depth * 0.5 + 0.22)
 	)
 	_create_box(
 		_wall_groups["front"],
@@ -333,13 +333,13 @@ func _build_script_department(
 		"OfficeSign",
 		Vector3(4.6, 0.52, 0.16),
 		accent_color,
-		Vector3(0.0, 2.85, depth * 0.5 + 0.11)
+		Vector3(0.0, 2.85, depth * 0.5 + 0.22)
 	)
 	_create_label(
 		self,
 		"OfficeSignText",
 		"СЦЕНАРНЫЙ ОТДЕЛ",
-		Vector3(0.0, 2.85, depth * 0.5 + 0.22),
+		Vector3(0.0, 2.85, depth * 0.5 + 0.32),
 		18
 	)
 
