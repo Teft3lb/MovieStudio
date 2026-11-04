@@ -222,7 +222,15 @@ func generate(
 		var available_role_indices: Array[int] = []
 		for role_index in range(role_count):
 			available_role_indices.append(role_index)
-		for _role_slot in range(present_role_count):
+
+		var speaker_role_index: int = 0
+		present_roles.append(
+			str(cast_names[speaker_role_index].get("character_name", ""))
+		)
+		available_role_indices.remove_at(
+			available_role_indices.find(speaker_role_index)
+		)
+		for _role_slot in range(present_role_count - 1):
 			var picked_index: int = rng.randi_range(
 				0,
 				available_role_indices.size() - 1
@@ -233,7 +241,7 @@ func generate(
 				str(cast_names[role_pick].get("character_name", ""))
 			)
 
-		var speaker: String = str(cast_names[0].get("character_name", "Герой"))
+		var speaker: String = str(cast_names[speaker_role_index].get("character_name", "Герой"))
 		result.scenes.append({
 			"scene_id": "SCN-%02d" % (scene_index + 1),
 			"scene_number": scene_index + 1,
