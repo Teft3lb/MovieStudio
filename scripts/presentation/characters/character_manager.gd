@@ -826,6 +826,20 @@ func _find_employee(employee_id: String) -> Variant:
 	return null
 
 
+func _get_workplace_title(employee_id: String) -> String:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	match str(assignment.get("building_type_id", "")):
+		"script_department":
+			return "Сценарный отдел"
+		"sound_stage":
+			return "Съёмочный павильон"
+		_:
+			return "Не назначено"
+
+
 func _refresh_roster() -> void:
 	if is_instance_valid(_roster_header):
 		_roster_header.text = "ПЕРСОНАЛ СТУДИИ  ·  %d" % employees.size()
@@ -940,10 +954,17 @@ func _refresh_detail_panel() -> void:
 				employee.career_goal,
 			]
 		)
-		_detail_task_label.text = "СЕЙЧАС: %s\nСтатус: %s" % [
-			employee.current_task,
-			employee.get_work_state_title(),
-		]
+		var workplace_title: String = _get_workplace_title(
+			str(employee.id)
+		)
+		_detail_task_label.text = (
+			"СЕЙЧАС: %s\nСтатус: %s\nРабочее место: %s"
+			% [
+				employee.current_task,
+				employee.get_work_state_title(),
+				workplace_title,
+			]
+		)
 		_detail_schedule_label.text = "Смена: %02d:00–%02d:00  ·  Перерыв: %02d:00–%02d:00" % [
 			employee.shift_start_hour,
 			employee.shift_end_hour,
