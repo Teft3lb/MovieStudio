@@ -1745,11 +1745,8 @@ func _reset_film_crew_actions() -> void:
 		if employee == null:
 			continue
 		_character_manager.call(
-			"set_employee_task",
-			employee_id,
-			PROFESSION_CATALOG_SCRIPT.get_default_task(
-				str(employee.profession_id)
-			)
+			"clear_employee_task",
+			employee_id
 		)
 		_character_manager.call(
 			"set_employee_production_action",
