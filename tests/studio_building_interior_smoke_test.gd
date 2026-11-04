@@ -9,12 +9,22 @@ const BUILDING_DATA_SCRIPT = preload(
 const CHARACTER_VISUAL_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_visual.gd"
 )
+const CHARACTER_ACTOR_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_actor.gd"
+)
+const CHARACTER_GENERATOR_SCRIPT = preload(
+	"res://scripts/domain/characters/character_generator.gd"
+)
+const GAME_CLOCK_SCRIPT = preload(
+	"res://scripts/core/game_clock.gd"
+)
 
 
 func _initialize() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
 	_test_profession_work_animation()
+	_test_employee_enters_and_leaves_workplace()
 
 	print("StudioBuildingInteriorSmokeTest: PASS")
 	quit(0)
@@ -114,6 +124,66 @@ func _assert_workplace_route(
 	assert(
 		slot_index >= 0 and slot_index < capacity,
 		"Test slot must fit the building workplace capacity."
+	)
+
+
+func _test_employee_enters_and_leaves_workplace() -> void:
+	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 912345
+	var employee: Variant = generator.call(
+		"generate",
+		rng,
+		"EMP-INTERIOR-ROUTE",
+		"screenwriter"
+	)
+
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(actor)
+	actor.call("setup", employee, [], clock, 5.0)
+
+	var route: Array[Vector3] = [
+		Vector3(12.0, 0.0, -3.6),
+		Vector3(12.0, 0.0, -5.8),
+		Vector3(12.0, 0.0, -6.8),
+		Vector3(9.65, 0.0, -7.75),
+	]
+	actor.call(
+		"assign_workplace_route",
+		"BLD-INTERIOR-ROUTE",
+		route,
+		"screenwriter"
+	)
+
+	for _step in range(12):
+		actor.call("_process", 10.0)
+
+	assert(
+		bool(actor.call("is_at_workplace")),
+		"An employee must reach the final interior workstation."
+	)
+	assert(
+		bool(actor.call("is_work_animation_active")),
+		"An employee must switch to a profession-specific work animation on arrival."
+	)
+
+	actor.call("leave_workplace")
+	for _step in range(12):
+		actor.call("_process", 10.0)
+
+	assert(
+		str(actor.call("get_workplace_building_id")).is_empty(),
+		"An employee must clear the workplace assignment after exiting."
+	)
+	assert(
+		actor.global_position.is_equal_approx(route[0]),
+		"An employee must leave through the entrance rather than disappear inside."
+	)
+	assert(
+		not bool(actor.call("is_work_animation_active")),
+		"An employee must stop the work animation after leaving."
 	)
 
 
