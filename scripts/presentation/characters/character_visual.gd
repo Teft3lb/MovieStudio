@@ -150,6 +150,9 @@ func _advance_performance_animation() -> void:
 		"reviewing":
 			left_arm = -0.30 + motion * 0.2
 			right_arm = -0.30 - motion * 0.2
+		"coordinating":
+			left_arm = -0.42 + motion * 0.35
+			right_arm = -0.66 - motion * 0.35
 		_:
 			left_arm = -0.22 + motion * 0.3
 			right_arm = -0.22 - motion * 0.3
