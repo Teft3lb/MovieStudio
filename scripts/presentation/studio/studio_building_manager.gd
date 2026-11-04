@@ -98,9 +98,12 @@ func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
 		return Vector3.ZERO
 
 	var building_type_id: String = str(building.building_type_id)
-	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
-		building_type_id,
-		float(building.rotation_degrees)
+	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
+		building_type_id
+	)
+	var footprint: Vector2 = definition.get(
+		"footprint",
+		Vector2(8.0, 6.0)
 	)
 	var capacity: int = maxi(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity(building_type_id),
