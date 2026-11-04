@@ -49,6 +49,33 @@ func _test_profession_profile(
 			candidate.specialization_id
 		)
 	)
+	var available_specializations: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_specialization_ids(profession_id)
+	)
+	for specialization_id in available_specializations:
+		var specialized_skill_ids: Array[String] = (
+			PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+				profession_id,
+				specialization_id
+			)
+		)
+		var mapped_skill_id: String = (
+			PROFESSION_CATALOG_SCRIPT.get_specialization_skill_id(
+				profession_id,
+				specialization_id
+			)
+		)
+		assert(
+			specialized_skill_ids.size() >= 4
+			and specialized_skill_ids.size() <= 8,
+			"Every specialization must keep the profession within the 4–8 skill limit."
+		)
+		assert(
+			not mapped_skill_id.is_empty()
+			and specialized_skill_ids.has(mapped_skill_id),
+			"Every specialization must map to a skill in its profession profile."
+		)
+
 	var generated_skill_ids: Array[String] = []
 	for skill_id in candidate.skills.keys():
 		generated_skill_ids.append(str(skill_id))
@@ -159,7 +186,10 @@ func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> vo
 func _test_serialization_filter(generator: Variant, rng: RandomNumberGenerator) -> void:
 	var actor: Variant = generator.call("generate", rng, "SKILL-FILTER-ACTOR", "actor")
 	var payload: Dictionary = actor.to_dict()
-	var injected_skills: Dictionary = payload.get("skills", {}).duplicate(true)
+	var source_skills: Variant = payload.get("skills", {})
+	var injected_skills: Dictionary = {}
+	if source_skills is Dictionary:
+		injected_skills = source_skills.duplicate(true)
 	injected_skills["culinary"] = 99.0
 	injected_skills["security"] = 88.0
 	payload["skills"] = injected_skills
