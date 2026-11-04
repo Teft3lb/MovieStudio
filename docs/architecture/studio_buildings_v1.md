@@ -31,7 +31,7 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 
 ### Presentation
 
-- \`StudioBuildingActor\` creates the 3D model, building hitbox, name label and selection marker.
+- \`StudioBuildingActor\` creates the exterior, cutaway walls, roof assembly, interior props, workplace routes, building hitbox, name label and selection marker.
 - \`StudioBuildingManager\` owns placed building instances, build mode, preview, selection and building detail panels.
 - \`CharacterManager.get_employees()\` exposes a copy of the active roster for workplace and production interfaces.
 - \`main.gd\` initializes the building manager after scene children have completed their setup.
@@ -58,8 +58,8 @@ The building panel:
 - lists active screenwriters available in the studio roster;
 - allows the player to choose a screenwriter;
 - exposes genre, scene count and role count;
-- generates a structured script and displays its title, logline, cast, scene beats, locations, actions and dialogue;
-- displays a one-to-five-star potential rating and a bounded popularity modifier.
+- starts a time-based writing project and displays progress, remaining work time and interruptions;
+- generates the structured script after the writing project is completed and displays its one-to-five-star potential rating and bounded popularity modifier.
 
 ### Sound Stage
 
@@ -83,8 +83,6 @@ The current implementation does **not** yet:
 - provide full skeletal work animations or interactive interior equipment;
 - assign dedicated buildings to facility, catering, administration and marketing staff;
 - produce scenes or films;
-- persist building state in a campaign save.
-
 Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 will add casting, scene scheduling and shooting.
 
 ## Smoke tests
@@ -93,6 +91,7 @@ Run from the project root using Godot 4.7.2:
 
 ~~~powershell
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 ~~~
 
-The test covers the building catalogue, accepted professions, serialization, plot bounds, overlap rejection and 90-degree footprint rotation.
+The building system test covers the catalogue, accepted professions, serialization, plot bounds, overlap rejection and 90-degree footprint rotation. The interior test covers room props, rotated workplace routes, doorway traversal, work animation activation and exiting the building.
