@@ -169,6 +169,17 @@ func set_production_scene(
 	)
 
 
+func set_stage_camera_target(
+	building_id: String,
+	target_position: Vector3,
+	active: bool
+) -> void:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return
+	actor.call("set_camera_target", target_position, active)
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
 		_handle_placement_input(event)
@@ -1389,6 +1400,9 @@ func _sync_film_scene_performance() -> bool:
 		or str(_active_film_project.status) != "in_production"
 		or _active_film_script == null
 	):
+		var idle_stage_id: String = _get_sound_stage_building_id()
+		if not idle_stage_id.is_empty():
+			set_stage_camera_target(idle_stage_id, Vector3.ZERO, false)
 		for employee_id in _active_scene_performer_ids:
 			var actor: Variant = _character_manager.call(
 				"get_employee_actor",
@@ -1425,6 +1439,19 @@ func _sync_film_scene_performance() -> bool:
 		)
 
 	var focus_point: Vector3 = get_scene_focus_point(stage_id)
+	var camera_target: Vector3 = focus_point
+	if not marks.is_empty():
+		camera_target = Vector3.ZERO
+		for mark in marks:
+			camera_target += mark
+		camera_target /= float(marks.size())
+		camera_target.y += 1.2
+	var camera_active: bool = (
+		str(_active_film_project.current_phase) == "rehearsal"
+		or str(_active_film_project.current_phase) == "shooting"
+		or str(_active_film_project.current_phase) == "review"
+	)
+	set_stage_camera_target(stage_id, camera_target, camera_active)
 	var new_active_ids: Array[String] = []
 	var all_at_marks: bool = not performer_ids.is_empty()
 	for performer_index in range(performer_ids.size()):
