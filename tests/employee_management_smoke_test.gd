@@ -165,7 +165,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			"The initial market must represent every employee department."
 		)
 
-	for legacy_profession_id in [
+	for core_profession_id in [
 		"actor",
 		"director",
 		"screenwriter",
@@ -173,15 +173,15 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		"producer",
 		"technician",
 	]:
-		var legacy_schedule: Dictionary = PROFESSION_CATALOG_SCRIPT.get_schedule(
-			legacy_profession_id
+		var core_schedule: Dictionary = PROFESSION_CATALOG_SCRIPT.get_schedule(
+			core_profession_id
 		)
 		assert(
-			int(legacy_schedule.get("shift_start_hour", -1)) == 8
-			and int(legacy_schedule.get("shift_end_hour", -1)) == 17
-			and int(legacy_schedule.get("break_start_hour", -1)) == 12
-			and int(legacy_schedule.get("break_end_hour", -1)) == 13,
-			"Existing Character System v2 professions must keep their verified schedule."
+			int(core_schedule.get("shift_start_hour", -1)) == 8
+			and int(core_schedule.get("shift_end_hour", -1)) == 17
+			and int(core_schedule.get("break_start_hour", -1)) == 12
+			and int(core_schedule.get("break_end_hour", -1)) == 13,
+			"Character System v2 core professions must keep their verified schedule."
 		)
 
 	assert(
