@@ -25,6 +25,7 @@ var _workplace_path: Array[Vector3] = []
 var _workplace_commute_path: Array[Vector3] = []
 var _workplace_path_index: int = 0
 var _workplace_work_style: String = ""
+var _production_action_id: String = ""
 var _has_workplace_destination: bool = false
 var _is_at_workplace: bool = false
 var _is_leaving_workplace: bool = false
@@ -164,13 +165,16 @@ func start_scene_performance(
 
 
 func set_production_action(action_id: String) -> void:
+	_production_action_id = action_id
 	if not is_instance_valid(_visual):
 		return
-	if action_id.is_empty():
-		_visual.call("set_performance_action", "")
-		_set_working(true)
-	else:
-		_visual.call("set_performance_action", action_id)
+	if _scene_performance_active:
+		return
+	if _is_at_workplace:
+		if _production_action_id.is_empty():
+			_set_working(true)
+		else:
+			_visual.call("set_performance_action", _production_action_id)
 
 
 func return_to_workplace() -> void:
@@ -458,7 +462,11 @@ func _set_walking(value: bool) -> void:
 
 
 func _set_working(value: bool) -> void:
-	if is_instance_valid(_visual):
+	if not is_instance_valid(_visual):
+		return
+	if value and not _production_action_id.is_empty():
+		_visual.call("set_performance_action", _production_action_id)
+	else:
 		_visual.call(
 			"set_working",
 			value,
