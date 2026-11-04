@@ -95,6 +95,10 @@ func get_employee_count() -> int:
 	return employees.size()
 
 
+func get_employees() -> Array:
+	return employees.duplicate()
+
+
 func get_selected_employee_id() -> String:
 	return _selected_employee_id
 
