@@ -856,7 +856,11 @@ func _update_script_writing_ui() -> void:
 		_script_progress_label.text = str(project.last_activity_message)
 		_script_result_label.text = "Проект сценария остановлен."
 		if is_instance_valid(_script_generate_button):
-			_script_generate_button.disabled = false
+			_script_generate_button.text = "НАЧАТЬ НОВЫЙ СЦЕНАРИЙ"
+			_script_generate_button.disabled = (
+				not is_instance_valid(_script_writer_option)
+				or _script_writer_option.get_item_count() == 0
+			)
 		if is_instance_valid(_script_writer_option):
 			_script_writer_option.disabled = false
 		if is_instance_valid(_script_genre_option):
