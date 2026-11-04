@@ -147,12 +147,15 @@ func advance_minute(
 		BASE_INTERRUPTION_CHANCE + clampf(stress, 0.0, 1.0) * 0.0015
 	)
 	if _rng.randf() < interruption_chance:
-		project.interruption_minutes_remaining = _rng.randi_range(10, 35)
-		project.interruption_count += 1
-		project.interruption_message = INTERRUPTION_MESSAGES[
+		var interruption_duration: int = _rng.randi_range(10, 35)
+		var interruption_message: String = INTERRUPTION_MESSAGES[
 			_rng.randi_range(0, INTERRUPTION_MESSAGES.size() - 1)
 		]
-		project.last_activity_message = project.interruption_message
+		apply_interruption(
+			project,
+			interruption_duration,
+			interruption_message
+		)
 		project.rng_state = _rng.state
 		writer.current_task = project.interruption_message
 		return {
@@ -202,6 +205,25 @@ func advance_minute(
 		"interrupted": false,
 		"script": completed_script,
 	}
+
+
+func apply_interruption(
+	project: Variant,
+	duration_minutes: int,
+	message: String
+) -> bool:
+	if project == null or str(project.status) != "in_progress":
+		return false
+
+	project.interruption_minutes_remaining = clampi(
+		duration_minutes,
+		1,
+		240
+	)
+	project.interruption_count += 1
+	project.interruption_message = message
+	project.last_activity_message = message
+	return true
 
 
 func _get_non_working_message(work_state: String) -> String:
