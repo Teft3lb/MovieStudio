@@ -14,11 +14,11 @@ The data-driven `ProfessionCatalog` is the single source of truth for department
 
 The focused catalogue contains **19 professions across six departments**: six creative roles, three production roles, three facility roles, three catering roles, two administration roles and two marketing roles. See [Profession Catalogue](profession_catalog.md) for the exact IDs and specialization mappings.
 
-The creative department retains the greatest role depth. Other departments use broad professions with profile-level specializations instead of separate jobs for every task. The previous 40-role draft's 21 additional IDs are migration aliases only; they are normalized into the 19 active professions and never appear as separate market candidates.
+The creative department retains the greatest role depth. Other departments use broad professions rather than separate jobs for every task. Specializations are limited to technicians, production designers and marketing managers. The previous 40-role draft's 21 additional IDs are migration aliases only; they are normalized into the 19 active professions and never appear as separate market candidates.
 
 The eight-candidate market is seeded and initially distributes candidates across all six departments. New skill keys are merged with defaults when loading older CharacterData payloads, and the six Character System v2 profession IDs and verified schedules remain supported.
 
-The catalogue provides profession-level profile data, specialization, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
+The catalogue provides profession-level profile data, focused specializations for three professions, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
 
 ## Domain modules
 
