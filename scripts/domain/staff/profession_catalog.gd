@@ -28,6 +28,30 @@ const LEGACY_PROFESSION_IDS: Array[String] = [
 	"technician",
 ]
 
+const LEGACY_PROFESSION_ALIASES: Dictionary = {
+	"assistant_camera_operator": {"profession_id": "camera_operator", "specialization_id": "assistant"},
+	"gaffer": {"profession_id": "technician", "specialization_id": "lighting"},
+	"lighting_technician": {"profession_id": "technician", "specialization_id": "lighting"},
+	"sound_engineer": {"profession_id": "technician", "specialization_id": "sound"},
+	"boom_operator": {"profession_id": "technician", "specialization_id": "sound"},
+	"film_editor": {"profession_id": "technician", "specialization_id": "editing"},
+	"set_builder": {"profession_id": "production_designer", "specialization_id": "sets"},
+	"costume_designer": {"profession_id": "production_designer", "specialization_id": "costumes"},
+	"makeup_artist": {"profession_id": "production_designer", "specialization_id": "makeup"},
+	"props_master": {"profession_id": "production_designer", "specialization_id": "props"},
+	"electrician": {"profession_id": "maintenance_worker", "specialization_id": "electrical"},
+	"sous_chef": {"profession_id": "chef", "specialization_id": "assistant"},
+	"cafeteria_worker": {"profession_id": "waiter", "specialization_id": "canteen"},
+	"receptionist": {"profession_id": "secretary", "specialization_id": "reception"},
+	"hr_manager": {"profession_id": "secretary", "specialization_id": "personnel"},
+	"accountant": {"profession_id": "secretary", "specialization_id": "accounting"},
+	"office_manager": {"profession_id": "secretary", "specialization_id": "office"},
+	"advertising_manager": {"profession_id": "marketing_manager", "specialization_id": "advertising"},
+	"social_media_manager": {"profession_id": "marketing_manager", "specialization_id": "social_media"},
+	"graphic_designer": {"profession_id": "marketing_manager", "specialization_id": "design"},
+	"press_officer": {"profession_id": "pr_specialist", "specialization_id": "press"},
+}
+
 const SKILL_TITLES: Dictionary = {
 	"acting": "Актёрское мастерство",
 	"directing": "Режиссура",
@@ -92,15 +116,6 @@ const PROFESSIONS: Dictionary = {
 			"Постоянно переписывает черновики в поисках точной истории.",
 		],
 	},
-	"technician": {
-		"title": "Техник", "department": "production", "primary_skill": "technical",
-		"base_salary": 70, "task": "Обслуживает оборудование",
-		"goal": "Возглавить технический отдел",
-		"biographies": [
-			"Любит разбираться в механизмах и не терпит неисправное оборудование.",
-			"Считает, что хорошая съёмка начинается с надёжной техники.",
-		],
-	},
 	"producer": {
 		"title": "Продюсер", "department": "creative", "primary_skill": "management",
 		"base_salary": 135, "task": "Координирует производство",
@@ -128,58 +143,13 @@ const PROFESSIONS: Dictionary = {
 			"Начинал помощником на съёмках и постепенно освоил камеру.",
 		],
 	},
-	"assistant_camera_operator": {
-		"title": "Ассистент оператора", "department": "production", "primary_skill": "camera_work",
-		"base_salary": 62, "task": "Готовит объективы и оборудование камеры",
-		"goal": "Стать самостоятельным кинооператором",
+	"technician": {
+		"title": "Техник", "department": "production", "primary_skill": "technical",
+		"base_salary": 70, "task": "Обслуживает оборудование",
+		"goal": "Возглавить технический отдел",
 		"biographies": [
-			"Следит за объективами и настройками, чтобы съёмка не теряла ни минуты.",
-			"Учится у опытных операторов и постепенно осваивает сложную технику.",
-		],
-	},
-	"gaffer": {
-		"title": "Главный осветитель", "department": "production", "primary_skill": "lighting",
-		"base_salary": 88, "task": "Выставляет свет на съёмочной площадке",
-		"goal": "Возглавить световую группу крупной постановки",
-		"biographies": [
-			"Умеет превращать обычный павильон в выразительное кинематографическое пространство.",
-			"Знает осветительное оборудование и любит сложные световые схемы.",
-		],
-	},
-	"lighting_technician": {
-		"title": "Техник по свету", "department": "production", "primary_skill": "lighting",
-		"base_salary": 68, "task": "Обслуживает осветительное оборудование",
-		"goal": "Стать главным осветителем",
-		"biographies": [
-			"Подготавливает приборы, кабели и стойки перед началом съёмок.",
-			"Быстро устраняет неполадки и внимательно соблюдает технику безопасности.",
-		],
-	},
-	"sound_engineer": {
-		"title": "Звукорежиссёр", "department": "production", "primary_skill": "sound",
-		"base_salary": 92, "task": "Настраивает запись звука",
-		"goal": "Отвечать за звук в большом кинопроекте",
-		"biographies": [
-			"Слышит детали, которые ускользают от остальных членов съёмочной группы.",
-			"Считает чистую запись звука обязательной частью хорошего фильма.",
-		],
-	},
-	"boom_operator": {
-		"title": "Оператор микрофона", "department": "production", "primary_skill": "sound",
-		"base_salary": 64, "task": "Работает с микрофоном на площадке",
-		"goal": "Стать звукорежиссёром",
-		"biographies": [
-			"Умеет двигаться бесшумно и держать микрофон точно вне границ кадра.",
-			"Начинал с небольших площадок и хочет отвечать за звук целиком.",
-		],
-	},
-	"film_editor": {
-		"title": "Монтажёр", "department": "production", "primary_skill": "editing",
-		"base_salary": 100, "task": "Монтирует отснятый материал",
-		"goal": "Смонтировать фильм, который получит признание критиков",
-		"biographies": [
-			"Чувствует ритм сцены и умеет находить сильные моменты в отснятом материале.",
-			"Любит превращать разрозненные дубли в цельную историю.",
+			"Любит разбираться в механизмах и не терпит неисправное оборудование.",
+			"Считает, что хорошая съёмка начинается с надёжной техники.",
 		],
 	},
 	"production_designer": {
@@ -189,42 +159,6 @@ const PROFESSIONS: Dictionary = {
 		"biographies": [
 			"Продумывает пространство кадра и следит за визуальной целостностью фильма.",
 			"Умеет превращать эскизы в выразительные съёмочные декорации.",
-		],
-	},
-	"set_builder": {
-		"title": "Рабочий декорационного цеха", "department": "production", "primary_skill": "maintenance",
-		"base_salary": 72, "task": "Строит и ремонтирует декорации",
-		"goal": "Стать мастером декорационного цеха",
-		"biographies": [
-			"Умеет работать с деревом, крепежом и материалами для декораций.",
-			"Любит видеть, как пустой павильон превращается в кинематографическую площадку.",
-		],
-	},
-	"costume_designer": {
-		"title": "Художник по костюмам", "department": "production", "primary_skill": "costume_design",
-		"base_salary": 96, "task": "Подбирает и готовит костюмы",
-		"goal": "Создать костюмы для исторического фильма",
-		"biographies": [
-			"Внимательно изучает эпохи и характеры, подбирая одежду для персонажей.",
-			"Умеет сочетать практичность костюма с визуальным образом героя.",
-		],
-	},
-	"makeup_artist": {
-		"title": "Гримёр", "department": "production", "primary_skill": "makeup",
-		"base_salary": 84, "task": "Готовит актёров к съёмкам",
-		"goal": "Возглавить гримёрный отдел",
-		"biographies": [
-			"Работает с гримом и причёсками, помогая актёрам перевоплощаться.",
-			"Любит сложные образы и внимательно следит за непрерывностью грима между дублями.",
-		],
-	},
-	"props_master": {
-		"title": "Реквизитор", "department": "production", "primary_skill": "technical",
-		"base_salary": 74, "task": "Готовит реквизит для съёмок",
-		"goal": "Возглавить реквизиторскую службу",
-		"biographies": [
-			"Следит, чтобы каждый предмет в кадре находился на своём месте.",
-			"Умеет быстро находить нужный реквизит и поддерживать порядок в мастерской.",
 		],
 	},
 	"cleaner": {
@@ -245,15 +179,6 @@ const PROFESSIONS: Dictionary = {
 			"Быстро реагирует на заявки и поддерживает помещения в рабочем состоянии.",
 		],
 	},
-	"electrician": {
-		"title": "Электрик", "department": "facility", "primary_skill": "technical",
-		"base_salary": 82, "task": "Проверяет электросети и оборудование",
-		"goal": "Стать главным инженером студии",
-		"biographies": [
-			"Знает, насколько важны исправные сети для безопасной работы павильонов.",
-			"Предпочитает устранять неисправности до того, как они остановят производство.",
-		],
-	},
 	"security_guard": {
 		"title": "Охранник", "department": "facility", "primary_skill": "security",
 		"base_salary": 56, "task": "Патрулирует территорию студии",
@@ -270,15 +195,6 @@ const PROFESSIONS: Dictionary = {
 		"biographies": [
 			"Любит готовить для больших коллективов и умеет планировать кухонную работу.",
 			"Считает, что хорошая еда помогает съёмочной группе выдерживать длинные смены.",
-		],
-	},
-	"sous_chef": {
-		"title": "Помощник повара", "department": "catering", "primary_skill": "culinary",
-		"base_salary": 66, "task": "Помогает готовить блюда на кухне",
-		"goal": "Стать шеф-поваром",
-		"biographies": [
-			"Быстро готовит заготовки и следит за порядком на рабочем месте.",
-			"Учится у шеф-повара и хочет однажды отвечать за меню.",
 		],
 	},
 	"bartender": {
@@ -299,15 +215,6 @@ const PROFESSIONS: Dictionary = {
 			"Знает, как организовать работу зала во время большого обеденного перерыва.",
 		],
 	},
-	"cafeteria_worker": {
-		"title": "Работник столовой", "department": "catering", "primary_skill": "hospitality",
-		"base_salary": 43, "task": "Подготавливает столовую к приёму сотрудников",
-		"goal": "Стать старшим смены столовой",
-		"biographies": [
-			"Готовит зал к обеду и помогает поддерживать порядок в столовой.",
-			"Знает повседневные потребности большого коллектива студии.",
-		],
-	},
 	"secretary": {
 		"title": "Секретарь", "department": "administration", "primary_skill": "administration",
 		"base_salary": 66, "task": "Работает с документами и расписанием",
@@ -326,42 +233,6 @@ const PROFESSIONS: Dictionary = {
 			"Знает, как защищать время подопечного и координировать его встречи.",
 		],
 	},
-	"receptionist": {
-		"title": "Администратор ресепшена", "department": "administration", "primary_skill": "communication",
-		"base_salary": 52, "task": "Встречает гостей и посетителей",
-		"goal": "Стать офис-менеджером",
-		"biographies": [
-			"Первым встречает гостей студии и помогает им сориентироваться.",
-			"Умеет работать с посетителями, звонками и входящими запросами.",
-		],
-	},
-	"hr_manager": {
-		"title": "HR-менеджер", "department": "administration", "primary_skill": "administration",
-		"base_salary": 102, "task": "Работает с наймом и кадровыми документами",
-		"goal": "Возглавить кадровую службу крупной студии",
-		"biographies": [
-			"Умеет оценивать кандидатов и находить специалистов для разных отделов.",
-			"Считает, что сильная студия начинается с правильной команды.",
-		],
-	},
-	"accountant": {
-		"title": "Бухгалтер", "department": "administration", "primary_skill": "administration",
-		"base_salary": 106, "task": "Ведёт финансовые документы",
-		"goal": "Стать финансовым директором",
-		"biographies": [
-			"Любит точность и умеет находить ошибки в финансовых документах.",
-			"Следит за счетами и помогает руководству понимать расходы студии.",
-		],
-	},
-	"office_manager": {
-		"title": "Офис-менеджер", "department": "administration", "primary_skill": "administration",
-		"base_salary": 86, "task": "Организует повседневную работу офиса",
-		"goal": "Возглавить административную службу",
-		"biographies": [
-			"Следит за тем, чтобы офисная работа не мешала творческому процессу.",
-			"Координирует заявки, помещения и повседневные организационные вопросы.",
-		],
-	},
 	"marketing_manager": {
 		"title": "Маркетолог", "department": "marketing", "primary_skill": "marketing",
 		"base_salary": 112, "task": "Планирует продвижение фильмов",
@@ -369,15 +240,6 @@ const PROFESSIONS: Dictionary = {
 		"biographies": [
 			"Изучает аудиторию и умеет находить сильные стороны будущего фильма.",
 			"Любит превращать творческую идею в понятную рекламную кампанию.",
-		],
-	},
-	"advertising_manager": {
-		"title": "Рекламный менеджер", "department": "marketing", "primary_skill": "marketing",
-		"base_salary": 106, "task": "Организует рекламные кампании",
-		"goal": "Провести национальную рекламную кампанию фильма",
-		"biographies": [
-			"Координирует рекламные материалы, сроки и размещение объявлений.",
-			"Умеет распределять рекламный бюджет между разными каналами.",
 		],
 	},
 	"pr_specialist": {
@@ -389,33 +251,55 @@ const PROFESSIONS: Dictionary = {
 			"Следит за общественной реакцией и помогает студии правильно отвечать на события.",
 		],
 	},
-	"social_media_manager": {
-		"title": "SMM-специалист", "department": "marketing", "primary_skill": "marketing",
-		"base_salary": 86, "task": "Ведёт каналы студии и фильмов",
-		"goal": "Создать крупное сообщество поклонников студии",
-		"biographies": [
-			"Следит за реакцией аудитории и умеет поддерживать интерес к проектам.",
-			"Создаёт публикации и планирует контент для каналов студии.",
-		],
-	},
-	"graphic_designer": {
-		"title": "Дизайнер рекламы", "department": "marketing", "primary_skill": "creativity",
-		"base_salary": 92, "task": "Создаёт афиши и рекламные материалы",
-		"goal": "Разработать визуальный стиль крупной кинорекламы",
-		"biographies": [
-			"Умеет превращать идею фильма в выразительную афишу и рекламный образ.",
-			"Работает с типографикой, цветом и композицией.",
-		],
-	},
-	"press_officer": {
-		"title": "Пресс-секретарь", "department": "marketing", "primary_skill": "communication",
-		"base_salary": 92, "task": "Готовит пресс-релизы и общается с прессой",
-		"goal": "Стать руководителем пресс-службы",
-		"biographies": [
-			"Умеет готовить официальные заявления и отвечать на запросы прессы.",
-			"Помогает организовывать интервью, премьеры и пресс-показы.",
-		],
-	},
+}
+
+const SPECIALIZATIONS: Dictionary = {
+	"camera_operator": [
+		{"id": "cinematography", "title": "Кинооперация", "skill_id": "camera_work"},
+		{"id": "assistant", "title": "Ассистентская работа", "skill_id": "technical"},
+	],
+	"technician": [
+		{"id": "lighting", "title": "Свет", "skill_id": "lighting"},
+		{"id": "sound", "title": "Звук", "skill_id": "sound"},
+		{"id": "equipment", "title": "Оборудование", "skill_id": "technical"},
+		{"id": "editing", "title": "Монтаж", "skill_id": "editing"},
+	],
+	"production_designer": [
+		{"id": "sets", "title": "Декорации", "skill_id": "set_design"},
+		{"id": "costumes", "title": "Костюмы", "skill_id": "costume_design"},
+		{"id": "makeup", "title": "Грим", "skill_id": "makeup"},
+		{"id": "props", "title": "Реквизит", "skill_id": "technical"},
+	],
+	"maintenance_worker": [
+		{"id": "electrical", "title": "Электрика", "skill_id": "technical"},
+		{"id": "building", "title": "Обслуживание зданий", "skill_id": "maintenance"},
+	],
+	"chef": [
+		{"id": "kitchen", "title": "Кухня", "skill_id": "culinary"},
+		{"id": "assistant", "title": "Помощник повара", "skill_id": "culinary"},
+	],
+	"waiter": [
+		{"id": "canteen", "title": "Столовое обслуживание", "skill_id": "hospitality"},
+	],
+	"secretary": [
+		{"id": "reception", "title": "Приёмная", "skill_id": "communication"},
+		{"id": "office", "title": "Организация офиса", "skill_id": "administration"},
+		{"id": "personnel", "title": "Кадровое делопроизводство", "skill_id": "administration"},
+		{"id": "accounting", "title": "Бухгалтерия", "skill_id": "administration"},
+	],
+	"personal_assistant": [
+		{"id": "talent", "title": "Сопровождение звёзд", "skill_id": "communication"},
+		{"id": "schedule", "title": "Расписание и организация", "skill_id": "administration"},
+	],
+	"marketing_manager": [
+		{"id": "advertising", "title": "Реклама", "skill_id": "marketing"},
+		{"id": "social_media", "title": "Социальные сети", "skill_id": "communication"},
+		{"id": "design", "title": "Рекламный дизайн", "skill_id": "creativity"},
+	],
+	"pr_specialist": [
+		{"id": "press", "title": "Пресса", "skill_id": "communication"},
+		{"id": "relations", "title": "Связи с общественностью", "skill_id": "communication"},
+	],
 }
 
 static func get_department_ids() -> Array[String]:
@@ -450,15 +334,26 @@ static func get_profession_ids_for_department(department_id: String) -> Array[St
 
 
 static func has_profession(profession_id: String) -> bool:
-	return PROFESSIONS.has(profession_id)
+	return PROFESSIONS.has(profession_id) or LEGACY_PROFESSION_ALIASES.has(profession_id)
 
 
 static func normalize_profession_id(profession_id: String) -> String:
-	return profession_id if PROFESSIONS.has(profession_id) else "technician"
+	if PROFESSIONS.has(profession_id):
+		return profession_id
+	var legacy_alias: Dictionary = LEGACY_PROFESSION_ALIASES.get(profession_id, {})
+	return str(legacy_alias.get("profession_id", "technician"))
+
+
+static func get_legacy_specialization_id(profession_id: String) -> String:
+	var legacy_alias: Dictionary = LEGACY_PROFESSION_ALIASES.get(profession_id, {})
+	return str(legacy_alias.get("specialization_id", ""))
 
 
 static func get_profession(profession_id: String) -> Dictionary:
-	return PROFESSIONS.get(normalize_profession_id(profession_id), PROFESSIONS["technician"])
+	return PROFESSIONS.get(
+		normalize_profession_id(profession_id),
+		PROFESSIONS["technician"]
+	)
 
 
 static func get_profession_title(profession_id: String) -> String:
@@ -507,8 +402,33 @@ static func get_skill_titles() -> Dictionary:
 	return SKILL_TITLES.duplicate(true)
 
 
+static func get_specialization_ids(profession_id: String) -> Array[String]:
+	var result: Array[String] = []
+	var options: Array = SPECIALIZATIONS.get(normalize_profession_id(profession_id), [])
+	for option in options:
+		result.append(str(option.get("id", "")))
+	return result
+
+
+static func get_specialization_title(profession_id: String, specialization_id: String) -> String:
+	var options: Array = SPECIALIZATIONS.get(normalize_profession_id(profession_id), [])
+	for option in options:
+		if str(option.get("id", "")) == specialization_id:
+			return str(option.get("title", ""))
+	return ""
+
+
+static func get_specialization_skill_id(profession_id: String, specialization_id: String) -> String:
+	var options: Array = SPECIALIZATIONS.get(normalize_profession_id(profession_id), [])
+	for option in options:
+		if str(option.get("id", "")) == specialization_id:
+			return str(option.get("skill_id", ""))
+	return ""
+
+
 static func get_schedule(profession_id: String) -> Dictionary:
-	if LEGACY_PROFESSION_IDS.has(profession_id):
+	var normalized_profession_id: String = normalize_profession_id(profession_id)
+	if LEGACY_PROFESSION_IDS.has(normalized_profession_id):
 		return {
 			"shift_start_hour": 8,
 			"shift_end_hour": 17,
@@ -516,7 +436,9 @@ static func get_schedule(profession_id: String) -> Dictionary:
 			"break_end_hour": 13,
 		}
 
-	var department_id: String = str(get_profession(profession_id).get("department", "creative"))
+	var department_id: String = str(
+		get_profession(normalized_profession_id).get("department", "creative")
+	)
 	match department_id:
 		"catering":
 			return {
