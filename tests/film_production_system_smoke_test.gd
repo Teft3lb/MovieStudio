@@ -38,6 +38,7 @@ func _initialize() -> void:
 	assert(project != null, "A valid script and crew must start production.")
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
+	_test_mid_phase_progress(system, script, project)
 	_test_project_serialization(project)
 	_test_full_film_completion(system, script, project)
 	_test_retake_limit()
@@ -165,6 +166,52 @@ func _test_production_pause(
 	assert(
 		not str(project.pause_reason).is_empty(),
 		"Paused production must explain why it is waiting."
+	)
+	var cast_pause: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		false,
+		{}
+	)
+	assert(
+		not bool(cast_pause.get("advanced", false))
+		and int(project.total_elapsed_minutes) == before,
+		"Production must also pause when the current scene cast is unavailable."
+	)
+
+
+func _test_mid_phase_progress(
+	system: RefCounted,
+	script: Variant,
+	project: Variant
+) -> void:
+	var snapshot: Dictionary = {
+		"acting_average": 80.0,
+		"directing": 80.0,
+		"camera_work": 80.0,
+		"technical": 80.0,
+		"energy": 0.9,
+		"morale": 0.9,
+		"stress": 0.1,
+	}
+	for _minute_index in range(4):
+		system.call(
+			"advance_minute",
+			project,
+			script,
+			true,
+			true,
+			snapshot
+		)
+	assert(
+		int(project.phase_minutes_elapsed) == 4,
+		"Active production minutes must advance the current phase."
+	)
+	assert(
+		float(project.get_progress_percent()) > 0.0,
+		"Film progress must advance independently from screenplay writing."
 	)
 
 
