@@ -12,17 +12,13 @@ Employee Management v1 introduces a complete basic staffing lifecycle while pres
 
 The data-driven `ProfessionCatalog` is the single source of truth for department membership, localized job titles, primary skills, base salary expectations, career goals, biography pools, default work-task descriptions and department-level schedules.
 
-The current catalogue contains 40 professions across six departments:
-- Creative: actor, extra, director, screenwriter, producer, casting director.
-- Production: camera operator, assistant camera operator, gaffer, lighting technician, sound engineer, boom operator, film editor, production designer, set builder, costume designer, makeup artist, props master and legacy general technician.
-- Facility: cleaner, maintenance worker, electrician, security guard.
-- Catering: chef, sous-chef, bartender, waiter, cafeteria worker.
-- Administration: secretary, personal assistant, receptionist, HR manager, accountant, office manager.
-- Marketing: marketing manager, advertising manager, PR specialist, social media manager, advertising graphic designer, press officer.
+The focused catalogue contains **19 professions across six departments**: six creative roles, three production roles, three facility roles, three catering roles, two administration roles and two marketing roles. See [Profession Catalogue](profession_catalog.md) for the exact IDs and specialization mappings.
 
-The eight-candidate market is seeded and initially distributes candidates across all six departments. New skill keys are merged with defaults when loading older CharacterData payloads, and the legacy `technician` profession remains supported.
+The creative department retains the greatest role depth. Other departments use broad professions with profile-level specializations instead of separate jobs for every task. The previous 40-role draft's 21 additional IDs are migration aliases only; they are normalized into the 19 active professions and never appear as separate market candidates.
 
-The catalogue currently provides profession-specific profile data, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
+The eight-candidate market is seeded and initially distributes candidates across all six departments. New skill keys are merged with defaults when loading older CharacterData payloads, and the six Character System v2 profession IDs and verified schedules remain supported.
+
+The catalogue provides profession-level profile data, specialization, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
 
 ## Domain modules
 
@@ -101,17 +97,19 @@ godot --headless --path . --script res://tests/employee_management_smoke_test.gd
 ~~~
 
 The test covers:
-1. generation and metadata for all 40 professions;
-2. balanced market representation of all six departments;
-3. compatibility with the legacy technician role and older CharacterData skill payloads;
-4. permanent contracts for the starting roster;
-5. contract serialization round-trip;
-6. candidate hiring and removal from the market;
-7. selected contract type and salary calculation;
-8. duplicate-hire rejection;
-9. dismissal, contract termination and former-employee archive;
-10. seven-day market refresh;
-11. fixed-term contract expiry after the final active day.
+1. exact 19-profession catalogue and agreed per-department counts;
+2. valid specialization generation, skill mapping and serialization;
+3. balanced market representation of all six departments;
+4. migration of all 21 IDs from the previous 40-role draft;
+5. compatibility with the six Character System v2 profession IDs and older CharacterData payloads;
+6. permanent contracts for the starting roster;
+7. contract serialization round-trip;
+8. candidate hiring and removal from the market;
+9. selected contract type and salary calculation;
+10. duplicate-hire rejection;
+11. dismissal, contract termination and former-employee archive;
+12. seven-day market refresh;
+13. fixed-term contract expiry after the final active day.
 
 A separate clock test is available:
 
