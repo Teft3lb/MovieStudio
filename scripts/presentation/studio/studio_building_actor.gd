@@ -79,6 +79,29 @@ func get_workplace_position(slot_index: int) -> Vector3:
 	return path[path.size() - 1]
 
 
+func get_scene_mark(slot_index: int) -> Vector3:
+	var scene_marks: Array[Vector3] = [
+		Vector3(-3.0, 0.0, -3.35),
+		Vector3(-1.0, 0.0, -3.35),
+		Vector3(1.0, 0.0, -3.35),
+		Vector3(3.0, 0.0, -3.35),
+		Vector3(-2.2, 0.0, -1.85),
+		Vector3(0.0, 0.0, -1.85),
+		Vector3(2.2, 0.0, -1.85),
+		Vector3(3.4, 0.0, -1.85),
+	]
+	var normalized_index: int = clampi(
+		slot_index,
+		0,
+		scene_marks.size() - 1
+	)
+	return to_global(scene_marks[normalized_index])
+
+
+func get_scene_focus_point() -> Vector3:
+	return to_global(Vector3(0.0, 1.45, -4.35))
+
+
 func _build_visual() -> void:
 	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
 		str(building_data.building_type_id)
