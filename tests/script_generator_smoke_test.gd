@@ -15,7 +15,7 @@ const FILM_SCRIPT_DATA_SCRIPT = preload(
 
 
 func _initialize() -> void:
-	var writer := _create_writer()
+	var writer: Variant = _create_writer()
 	var generator: RefCounted = SCRIPT_GENERATOR_SCRIPT.new()
 
 	_test_requested_script_structure(generator, writer)
