@@ -38,6 +38,7 @@ var _game_clock: Node
 var _workplace_system: RefCounted
 var _studio_building_manager: Node
 var _workplace_assignments: Dictionary = {}
+var _employee_task_overrides: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _roster_buttons: Dictionary = {}
