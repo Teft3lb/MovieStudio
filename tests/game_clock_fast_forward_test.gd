@@ -104,6 +104,10 @@ func _initialize() -> void:
 		"Market refresh must replace the initial candidate pool."
 	)
 
+	# GameClock extends Node rather than RefCounted, so release it explicitly
+	# before exiting this standalone SceneTree test.
+	clock.free()
+
 	print("GameClockFastForwardTest: PASS")
 	quit(0)
 
