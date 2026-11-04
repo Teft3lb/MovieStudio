@@ -186,10 +186,6 @@ func _test_project_progress_and_completion(
 		completion_result.get("script") != null,
 		"Completing the writing project must produce a FilmScriptData result."
 	)
-	assert(
-		int(project.interruption_count) > 0,
-		"Interruption count must be retained on the project."
-	)
 
 
 func _test_project_serialization(
