@@ -29,7 +29,7 @@ const LEGACY_PROFESSION_IDS: Array[String] = [
 ]
 
 const LEGACY_PROFESSION_ALIASES: Dictionary = {
-	"assistant_camera_operator": {"profession_id": "camera_operator", "specialization_id": "assistant"},
+	"assistant_camera_operator": {"profession_id": "camera_operator", "specialization_id": ""},
 	"gaffer": {"profession_id": "technician", "specialization_id": "lighting"},
 	"lighting_technician": {"profession_id": "technician", "specialization_id": "lighting"},
 	"sound_engineer": {"profession_id": "technician", "specialization_id": "sound"},
@@ -39,17 +39,17 @@ const LEGACY_PROFESSION_ALIASES: Dictionary = {
 	"costume_designer": {"profession_id": "production_designer", "specialization_id": "costumes"},
 	"makeup_artist": {"profession_id": "production_designer", "specialization_id": "makeup"},
 	"props_master": {"profession_id": "production_designer", "specialization_id": "props"},
-	"electrician": {"profession_id": "maintenance_worker", "specialization_id": "electrical"},
-	"sous_chef": {"profession_id": "chef", "specialization_id": "assistant"},
-	"cafeteria_worker": {"profession_id": "waiter", "specialization_id": "canteen"},
-	"receptionist": {"profession_id": "secretary", "specialization_id": "reception"},
-	"hr_manager": {"profession_id": "secretary", "specialization_id": "personnel"},
-	"accountant": {"profession_id": "secretary", "specialization_id": "accounting"},
-	"office_manager": {"profession_id": "secretary", "specialization_id": "office"},
+	"electrician": {"profession_id": "maintenance_worker", "specialization_id": ""},
+	"sous_chef": {"profession_id": "chef", "specialization_id": ""},
+	"cafeteria_worker": {"profession_id": "waiter", "specialization_id": ""},
+	"receptionist": {"profession_id": "secretary", "specialization_id": ""},
+	"hr_manager": {"profession_id": "secretary", "specialization_id": ""},
+	"accountant": {"profession_id": "secretary", "specialization_id": ""},
+	"office_manager": {"profession_id": "secretary", "specialization_id": ""},
 	"advertising_manager": {"profession_id": "marketing_manager", "specialization_id": "advertising"},
 	"social_media_manager": {"profession_id": "marketing_manager", "specialization_id": "social_media"},
 	"graphic_designer": {"profession_id": "marketing_manager", "specialization_id": "design"},
-	"press_officer": {"profession_id": "pr_specialist", "specialization_id": "press"},
+	"press_officer": {"profession_id": "pr_specialist", "specialization_id": ""},
 }
 
 const SKILL_TITLES: Dictionary = {
@@ -254,10 +254,6 @@ const PROFESSIONS: Dictionary = {
 }
 
 const SPECIALIZATIONS: Dictionary = {
-	"camera_operator": [
-		{"id": "cinematography", "title": "Кинооперация", "skill_id": "camera_work"},
-		{"id": "assistant", "title": "Ассистентская работа", "skill_id": "technical"},
-	],
 	"technician": [
 		{"id": "lighting", "title": "Свет", "skill_id": "lighting"},
 		{"id": "sound", "title": "Звук", "skill_id": "sound"},
@@ -270,35 +266,10 @@ const SPECIALIZATIONS: Dictionary = {
 		{"id": "makeup", "title": "Грим", "skill_id": "makeup"},
 		{"id": "props", "title": "Реквизит", "skill_id": "technical"},
 	],
-	"maintenance_worker": [
-		{"id": "electrical", "title": "Электрика", "skill_id": "technical"},
-		{"id": "building", "title": "Обслуживание зданий", "skill_id": "maintenance"},
-	],
-	"chef": [
-		{"id": "kitchen", "title": "Кухня", "skill_id": "culinary"},
-		{"id": "assistant", "title": "Помощник повара", "skill_id": "culinary"},
-	],
-	"waiter": [
-		{"id": "canteen", "title": "Столовое обслуживание", "skill_id": "hospitality"},
-	],
-	"secretary": [
-		{"id": "reception", "title": "Приёмная", "skill_id": "communication"},
-		{"id": "office", "title": "Организация офиса", "skill_id": "administration"},
-		{"id": "personnel", "title": "Кадровое делопроизводство", "skill_id": "administration"},
-		{"id": "accounting", "title": "Бухгалтерия", "skill_id": "administration"},
-	],
-	"personal_assistant": [
-		{"id": "talent", "title": "Сопровождение звёзд", "skill_id": "communication"},
-		{"id": "schedule", "title": "Расписание и организация", "skill_id": "administration"},
-	],
 	"marketing_manager": [
 		{"id": "advertising", "title": "Реклама", "skill_id": "marketing"},
 		{"id": "social_media", "title": "Социальные сети", "skill_id": "communication"},
 		{"id": "design", "title": "Рекламный дизайн", "skill_id": "creativity"},
-	],
-	"pr_specialist": [
-		{"id": "press", "title": "Пресса", "skill_id": "communication"},
-		{"id": "relations", "title": "Связи с общественностью", "skill_id": "communication"},
 	],
 }
 
