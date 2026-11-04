@@ -195,7 +195,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 	)
 
 	var technician_candidate: Variant = generator.call(
-		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
+		"generate", rng, "PROF-TEST-TECHNICIAN", "technician"
 	)
 	assert(
 		technician_candidate.get_profession_title() == "Техник",
