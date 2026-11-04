@@ -2,13 +2,13 @@
 
 **Engine:** Godot 4.7.2  
 **Module:** `scripts/domain/staff/profession_catalog.gd`  
-20 active professions
+**Status:** 20 active professions with profession-specific skill profiles.
 
 ## Design
 
 The catalogue is the single source of truth for department membership, localized profession titles, salary expectations, biographies, career goals, default work tasks, schedules, specializations and skill profiles.
 
-20 professions across six departments
+The studio has **20 professions across six departments**
 
 Every profession receives **4–8 relevant skills**, not the entire studio-wide skill catalogue. Reliability is broadly useful across the workforce; communication appears only where the role actually requires it. A profession's primary skill is always included. A supported specialization adds its own skill where it is distinct from the base profile.
 
@@ -17,7 +17,7 @@ Every profession receives **4–8 relevant skills**, not the entire studio-wide 
 | Department | Count | Profession IDs |
 |---|---:|---|
 | Creative | 6 | `actor`, `extra`, `director`, `screenwriter`, `producer`, `casting_director` |
-| Production | 4 | \`camera_operator\`, \`technician\`, \`production_designer\`, \`film_editor\` |
+| Production | 4 | `camera_operator`, `technician`, `production_designer`, `film_editor` |
 | Facility | 3 | `cleaner`, `maintenance_worker`, `security_guard` |
 | Catering | 3 | `chef`, `bartender`, `waiter` |
 | Administration | 2 | `secretary`, `personal_assistant` |

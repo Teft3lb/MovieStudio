@@ -2,7 +2,7 @@
 
 **Engine:** Godot 4.7.2  
 **Branch:** main  
-**Status:** first playable post-production workflow.
+**Status:** initial implementation; Godot runtime verification pending.
 
 ## Goal
 

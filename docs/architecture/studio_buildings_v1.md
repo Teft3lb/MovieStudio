@@ -39,7 +39,7 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 
 ### Placement controls
 
-Click **Построить сценарный отдел**, **Построить съёмочный павильон** or **Построить монтажный отдел**.
+1. Click **Построить сценарный отдел**, **Построить съёмочный павильон** or **Построить монтажный отдел**.
 2. Move the mouse over the plot to position the preview.
 3. Placement snaps to a 2 m grid.
 4. Green preview means valid placement; red means invalid.
@@ -72,7 +72,7 @@ The building panel:
 
 The starting roster covers three of the four required positions. The standard recruitment market now guarantees at least one technician candidate in every eight-person market cycle.
 
-The stage is a production-readiness interface only. It does not yet shoot scenes.
+The Sound Stage is the player-facing production workspace for Film Production v1. It hosts casting and crew assignments, scene blocking, rehearsal, takes, retakes and recorded scene results.
 
 ### Editing Suite
 
