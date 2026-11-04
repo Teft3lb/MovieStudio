@@ -13,6 +13,9 @@ const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_management_system.gd"
 )
+const EMPLOYEE_WORK_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/staff/employee_work_system.gd"
+)
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -32,6 +35,9 @@ var _generator: RefCounted
 var _needs_system: RefCounted
 var _employment_system: Variant
 var _game_clock: Node
+var _workplace_system: RefCounted
+var _studio_building_manager: Node
+var _workplace_assignments: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _roster_buttons: Dictionary = {}
@@ -101,6 +107,87 @@ func get_employees() -> Array:
 
 func get_selected_employee_id() -> String:
 	return _selected_employee_id
+
+
+func initialize_workplaces(building_manager: Node) -> void:
+	_studio_building_manager = building_manager
+	_workplace_system = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
+	if (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_signal("buildings_changed")
+	):
+		var callback: Callable = Callable(
+			self,
+			"_refresh_workplace_assignments"
+		)
+		if not _studio_building_manager.is_connected(
+			"buildings_changed",
+			callback
+		):
+			_studio_building_manager.connect(
+				"buildings_changed",
+				callback
+			)
+	_refresh_workplace_assignments()
+
+
+func is_employee_at_workplace(
+	employee_id: String,
+	building_type_id: String = ""
+) -> bool:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	if assignment.is_empty():
+		return false
+	if (
+		not building_type_id.is_empty()
+		and str(assignment.get("building_type_id", "")) != building_type_id
+	):
+		return false
+
+	var actor: Variant = _employee_actors.get(employee_id)
+	if actor == null or not is_instance_valid(actor):
+		return false
+	return bool(actor.call("is_at_workplace"))
+
+
+func _refresh_workplace_assignments() -> void:
+	if (
+		_workplace_system == null
+		or not is_instance_valid(_studio_building_manager)
+	):
+		return
+
+	var buildings: Array = _studio_building_manager.call("get_buildings")
+	_workplace_assignments = _workplace_system.call(
+		"build_assignments",
+		employees,
+		buildings
+	)
+
+	for employee in employees:
+		var employee_id: String = str(employee.id)
+		var actor: Variant = _employee_actors.get(employee_id)
+		if actor == null or not is_instance_valid(actor):
+			continue
+
+		var assignment: Dictionary = _workplace_assignments.get(
+			employee_id,
+			{}
+		)
+		if assignment.is_empty() or str(employee.work_state) == "off_duty":
+			actor.call("clear_workplace")
+			continue
+
+		var building_id: String = str(assignment.get("building_id", ""))
+		var destination: Vector3 = _studio_building_manager.call(
+			"get_workplace_position",
+			building_id,
+			int(assignment.get("slot_index", 0))
+		)
+		actor.call("assign_workplace", building_id, destination)
 
 
 func _spawn_initial_roster() -> void:
@@ -539,6 +626,39 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
 		_needs_system.call("advance_minute", employee, hour)
 
+		var employee_id: String = str(employee.id)
+		var actor: Variant = _employee_actors.get(employee_id)
+		var assignment: Dictionary = _workplace_assignments.get(
+			employee_id,
+			{}
+		)
+		if actor == null or not is_instance_valid(actor):
+			continue
+
+		if assignment.is_empty() or str(employee.work_state) == "off_duty":
+			actor.call("clear_workplace")
+			continue
+
+		var building_id: String = str(assignment.get("building_id", ""))
+		if str(actor.call("get_workplace_building_id")) != building_id:
+			if is_instance_valid(_studio_building_manager):
+				var destination: Vector3 = _studio_building_manager.call(
+					"get_workplace_position",
+					building_id,
+					int(assignment.get("slot_index", 0))
+				)
+				actor.call("assign_workplace", building_id, destination)
+
+		if (
+			str(employee.work_state) == "working"
+			and bool(actor.call("is_at_workplace"))
+		):
+			_workplace_system.call(
+				"advance_work_minute",
+				employee,
+				assignment
+			)
+
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
@@ -559,6 +679,7 @@ func _on_game_day_advanced(day: int) -> void:
 				_selected_market_candidate_id = ""
 		_refresh_market_panel()
 
+	_refresh_workplace_assignments()
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_after_staffing_day()
 
@@ -903,6 +1024,7 @@ func _on_hire_button_pressed() -> void:
 	)
 	_spawn_employee_actor(employee, employees.size() - 1)
 	_add_roster_button(employee)
+	_refresh_workplace_assignments()
 
 	_selected_market_candidate_id = ""
 	_refresh_market_panel()
@@ -937,6 +1059,7 @@ func _confirm_dismiss_employee() -> void:
 		return
 
 	_remove_employee_actor(employee_id)
+	_refresh_workplace_assignments()
 	_selected_employee_id = ""
 	if not employees.is_empty():
 		_select_employee(str(employees[0].id))
