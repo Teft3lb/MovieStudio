@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 
 const PROFESSION_TITLES: Dictionary = {
 	"actor": "Актёр",
@@ -41,6 +41,15 @@ var age: int = 30
 var experience: float = 0.0
 var popularity: float = 0.0
 var daily_salary: int = 0
+var biography: String = ""
+var career_goal: String = ""
+
+var shift_start_hour: int = 8
+var shift_end_hour: int = 17
+var break_start_hour: int = 12
+var break_end_hour: int = 13
+var work_state: String = "working"
+var current_task: String = ""
 
 var skills: Dictionary = {
 	"acting": 0.0,
@@ -96,14 +105,34 @@ func get_primary_skill_value() -> float:
 	return float(skills.get(get_primary_skill_id(), 0.0))
 
 
+func get_work_state_title() -> String:
+	match work_state:
+		"working":
+			return "На смене"
+		"break":
+			return "Перерыв"
+		"resting":
+			return "Восстанавливается"
+		"off_duty":
+			return "Вне смены"
+		_:
+			return "Неизвестно"
+
+
 func get_ui_summary() -> Dictionary:
 	return {
 		"id": id,
 		"full_name": get_full_name(),
 		"profession_title": get_profession_title(),
+		"age": age,
+		"experience": experience,
+		"popularity": popularity,
+		"current_task": current_task,
+		"work_state_title": get_work_state_title(),
+		"energy": roundi(float(needs.get("energy", 1.0)) * 100.0),
+		"morale": roundi(float(needs.get("morale", 0.75)) * 100.0),
 		"primary_skill_title": get_primary_skill_title(),
 		"primary_skill_value": roundi(get_primary_skill_value()),
-		"morale": roundi(float(needs.get("morale", 0.75)) * 100.0),
 		"daily_salary": daily_salary,
 	}
 
@@ -119,6 +148,14 @@ func to_dict() -> Dictionary:
 		"experience": experience,
 		"popularity": popularity,
 		"daily_salary": daily_salary,
+		"biography": biography,
+		"career_goal": career_goal,
+		"shift_start_hour": shift_start_hour,
+		"shift_end_hour": shift_end_hour,
+		"break_start_hour": break_start_hour,
+		"break_end_hour": break_end_hour,
+		"work_state": work_state,
+		"current_task": current_task,
 		"skills": skills.duplicate(true),
 		"personality": personality.duplicate(true),
 		"needs": needs.duplicate(true),
@@ -140,6 +177,14 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
 	result.daily_salary = maxi(int(payload.get("daily_salary", 0)), 0)
+	result.biography = str(payload.get("biography", ""))
+	result.career_goal = str(payload.get("career_goal", ""))
+	result.shift_start_hour = clampi(int(payload.get("shift_start_hour", 8)), 0, 23)
+	result.shift_end_hour = clampi(int(payload.get("shift_end_hour", 17)), 1, 24)
+	result.break_start_hour = clampi(int(payload.get("break_start_hour", 12)), 0, 23)
+	result.break_end_hour = clampi(int(payload.get("break_end_hour", 13)), 1, 24)
+	result.work_state = str(payload.get("work_state", "working"))
+	result.current_task = str(payload.get("current_task", ""))
 
 	var raw_skills: Variant = payload.get("skills", {})
 	if raw_skills is Dictionary:

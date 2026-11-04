@@ -25,6 +25,7 @@
 - [GDD v0.3](docs/GDD/GDD_v0.3.md)
 - [Обзор технической архитектуры](docs/architecture/overview.md)
 - [Character System v1](docs/architecture/character_system.md)
+- [Character System v2](docs/architecture/character_system_v2.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии
