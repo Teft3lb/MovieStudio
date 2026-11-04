@@ -3,11 +3,6 @@ extends SceneTree
 const EMPLOYEE_MARKET_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_market_system.gd"
 )
-const PROFESSION_CATALOG_SCRIPT = preload(
-	"res://scripts/domain/staff/profession_catalog.gd"
-)
-
-
 func _initialize() -> void:
 	var market: RefCounted = EMPLOYEE_MARKET_SYSTEM_SCRIPT.new()
 	market.call("setup", 884422)
