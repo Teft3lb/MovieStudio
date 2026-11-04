@@ -14,6 +14,9 @@ var _is_selected: bool = false
 var _roof_assembly: Node3D
 var _wall_groups: Dictionary = {}
 var _interior_root: Node3D
+var _production_slate_label: Label3D
+var _production_phase_label: Label3D
+var _camera_rigs: Array[Node3D] = []
 var _workplace_points: Array[Vector3] = []
 var _entrance_inside: Vector3 = Vector3.ZERO
 var _entrance_outside: Vector3 = Vector3.ZERO
@@ -77,6 +80,71 @@ func get_workplace_position(slot_index: int) -> Vector3:
 	if path.is_empty():
 		return global_position
 	return path[path.size() - 1]
+
+
+func get_scene_mark(
+	slot_index: int,
+	phase_id: String = "preparation",
+	scene_index: int = 0
+) -> Vector3:
+	var scene_marks: Array[Vector3] = [
+		Vector3(-3.0, 0.0, -3.35),
+		Vector3(-1.0, 0.0, -3.35),
+		Vector3(1.0, 0.0, -3.35),
+		Vector3(3.0, 0.0, -3.35),
+		Vector3(-2.2, 0.0, -1.85),
+		Vector3(0.0, 0.0, -1.85),
+		Vector3(2.2, 0.0, -1.85),
+		Vector3(3.4, 0.0, -1.85),
+	]
+	var normalized_index: int = clampi(
+		slot_index,
+		0,
+		scene_marks.size() - 1
+	)
+	var mark: Vector3 = scene_marks[normalized_index]
+	if posmod(scene_index, 2) == 1:
+		mark.x = -mark.x
+	match phase_id:
+		"rehearsal":
+			mark.x += 0.22 if mark.x < 0.0 else -0.22
+			mark.z += 0.28
+		"shooting":
+			mark.x += 0.38 if mark.x < 0.0 else -0.38
+			mark.z += 0.52 if normalized_index % 2 == 0 else -0.18
+		"review":
+			mark.z += 0.12
+	return to_global(mark)
+
+
+func get_scene_focus_point() -> Vector3:
+	return to_global(Vector3(0.0, 1.45, -4.35))
+
+
+func set_production_scene(
+	scene_number: int,
+	scene_title: String,
+	phase_title: String
+) -> void:
+	if is_instance_valid(_production_slate_label):
+		if scene_number > 0:
+			_production_slate_label.text = (
+				"СЦЕНА %02d · %s" % [scene_number, scene_title]
+			)
+		else:
+			_production_slate_label.text = scene_title
+	if is_instance_valid(_production_phase_label):
+		_production_phase_label.text = phase_title
+
+
+func set_camera_target(target_position: Vector3, active: bool) -> void:
+	for camera_rig in _camera_rigs:
+		if not is_instance_valid(camera_rig):
+			continue
+		if active:
+			camera_rig.look_at(target_position, Vector3.UP)
+		else:
+			camera_rig.rotation = Vector3.ZERO
 
 
 func _build_visual() -> void:
@@ -216,15 +284,20 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 			Vector3(mark_x, 0.055, 0.0)
 		)
 
-	_create_camera_rig(
-		Vector3(-5.0, 0.0, -0.6),
-		metal_color,
-		equipment_color
+	_camera_rigs.clear()
+	_camera_rigs.append(
+		_create_camera_rig(
+			Vector3(-5.0, 0.0, -0.6),
+			metal_color,
+			equipment_color
+		)
 	)
-	_create_camera_rig(
-		Vector3(5.0, 0.0, -0.6),
-		metal_color,
-		equipment_color
+	_camera_rigs.append(
+		_create_camera_rig(
+			Vector3(5.0, 0.0, -0.6),
+			metal_color,
+			equipment_color
+		)
 	)
 	_create_light_stand(
 		Vector3(-5.6, 0.0, -4.1),
@@ -255,6 +328,7 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Color(0.10, 0.25, 0.30),
 		Vector3(-width * 0.5 + 1.1, 1.18, depth * 0.5 - 1.0)
 	)
+	_create_film_slate()
 
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -528,42 +602,86 @@ func _create_floor(
 	_interior_root.add_child(instance)
 
 
+func _create_film_slate() -> void:
+	_create_box(
+		_interior_root,
+		"FilmSlateBody",
+		Vector3(2.0, 1.05, 0.16),
+		Color(0.075, 0.085, 0.095),
+		Vector3(0.0, 1.15, 2.55)
+	)
+	_create_box(
+		_interior_root,
+		"FilmSlateClapper",
+		Vector3(2.08, 0.14, 0.2),
+		Color(0.72, 0.70, 0.62),
+		Vector3(0.0, 1.75, 2.55)
+	)
+
+	_production_slate_label = Label3D.new()
+	_production_slate_label.name = "ProductionSceneSlate"
+	_production_slate_label.position = Vector3(0.0, 1.28, 2.43)
+	_production_slate_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_production_slate_label.font_size = 15
+	_production_slate_label.outline_size = 5
+	_production_slate_label.modulate = Color(0.97, 0.95, 0.88)
+	_production_slate_label.no_depth_test = true
+	_production_slate_label.text = "СЪЁМКИ НЕ ИДУТ"
+	_interior_root.add_child(_production_slate_label)
+
+	_production_phase_label = Label3D.new()
+	_production_phase_label.name = "ProductionPhaseSlate"
+	_production_phase_label.position = Vector3(0.0, 0.91, 2.43)
+	_production_phase_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_production_phase_label.font_size = 11
+	_production_phase_label.outline_size = 4
+	_production_phase_label.modulate = Color(0.82, 0.86, 0.88)
+	_production_phase_label.no_depth_test = true
+	_production_phase_label.text = "ПАВИЛЬОН ГОТОВ"
+	_interior_root.add_child(_production_phase_label)
+
+
 func _create_camera_rig(
 	local_position: Vector3,
 	metal_color: Color,
 	equipment_color: Color
-) -> void:
+) -> Node3D:
+	var rig := Node3D.new()
+	rig.name = "CameraRig_%d" % _camera_rigs.size()
+	rig.position = local_position
+	_interior_root.add_child(rig)
 	_create_cylinder(
-		_interior_root,
+		rig,
 		"CameraTripodBase",
 		0.38,
 		0.10,
 		metal_color,
-		local_position + Vector3(0.0, 0.10, 0.0)
+		Vector3(0.0, 0.10, 0.0)
 	)
 	_create_cylinder(
-		_interior_root,
+		rig,
 		"CameraTripodColumn",
 		0.075,
 		1.25,
 		metal_color,
-		local_position + Vector3(0.0, 0.72, 0.0)
+		Vector3(0.0, 0.72, 0.0)
 	)
 	_create_box(
-		_interior_root,
+		rig,
 		"CinemaCameraBody",
 		Vector3(0.68, 0.48, 0.82),
 		equipment_color,
-		local_position + Vector3(0.0, 1.45, -0.18)
+		Vector3(0.0, 1.45, -0.18)
 	)
 	_create_cylinder(
-		_interior_root,
+		rig,
 		"CameraLens",
 		0.19,
 		0.42,
 		Color(0.08, 0.10, 0.12),
-		local_position + Vector3(0.0, 1.45, -0.78)
+		Vector3(0.0, 1.45, -0.78)
 	)
+	return rig
 
 
 func _create_light_stand(

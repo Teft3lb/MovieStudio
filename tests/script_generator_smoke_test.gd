@@ -79,9 +79,21 @@ func _test_requested_script_structure(
 		assert(scene.has("location"), "Each scene must have a location.")
 		assert(scene.has("action"), "Each scene must have an action.")
 		assert(scene.has("dialogue"), "Each scene must have dialogue.")
+		var scene_characters: Array = scene.get("characters", [])
 		assert(
-			scene.get("characters", []).size() >= 1,
+			scene_characters.size() >= 1,
 			"Each generated scene must feature at least one character."
+		)
+		var dialogue: String = str(scene.get("dialogue", ""))
+		var speaker_separator: int = dialogue.find(":")
+		assert(speaker_separator > 0, "Every scene must identify its dialogue speaker.")
+		var speaker_name: String = dialogue.substr(
+			0,
+			speaker_separator
+		).strip_edges()
+		assert(
+			scene_characters.has(speaker_name),
+			"The speaking character must be present in the generated scene."
 		)
 
 

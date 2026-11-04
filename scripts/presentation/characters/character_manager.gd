@@ -38,6 +38,7 @@ var _game_clock: Node
 var _workplace_system: RefCounted
 var _studio_building_manager: Node
 var _workplace_assignments: Dictionary = {}
+var _employee_task_overrides: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _roster_buttons: Dictionary = {}
@@ -107,6 +108,70 @@ func get_employees() -> Array:
 
 func get_selected_employee_id() -> String:
 	return _selected_employee_id
+
+
+func get_employee_actor(employee_id: String) -> Node:
+	var actor: Variant = _employee_actors.get(employee_id)
+	if actor == null or not is_instance_valid(actor):
+		return null
+	return actor as Node
+
+
+func is_employee_at_scene_mark(employee_id: String) -> bool:
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return false
+	return bool(actor.call("is_at_scene_mark"))
+
+
+func is_employee_assigned_to_building(
+	employee_id: String,
+	building_type_id: String
+) -> bool:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	return (
+		not assignment.is_empty()
+		and str(assignment.get("building_type_id", "")) == building_type_id
+	)
+
+
+func set_employee_task(employee_id: String, task_title: String) -> void:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	_employee_task_overrides[employee_id] = task_title
+	if str(employee.current_task) == task_title:
+		return
+	employee.current_task = task_title
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_roster()
+		_refresh_detail_panel()
+
+
+func clear_employee_task(employee_id: String) -> void:
+	_employee_task_overrides.erase(employee_id)
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	employee.current_task = PROFESSION_CATALOG_SCRIPT.get_default_task(
+		str(employee.profession_id)
+	)
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_roster()
+		_refresh_detail_panel()
+
+
+func set_employee_production_action(
+	employee_id: String,
+	action_id: String
+) -> void:
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return
+	actor.call("set_production_action", action_id)
 
 
 func initialize_workplaces(building_manager: Node) -> void:
@@ -268,6 +333,7 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 
 
 func _remove_employee_actor(employee_id: String) -> void:
+	_employee_task_overrides.erase(employee_id)
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor != null and is_instance_valid(actor):
 		actor.queue_free()
@@ -701,6 +767,13 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 				employee,
 				assignment
 			)
+			if (
+				str(employee.work_state) == "working"
+				and _employee_task_overrides.has(employee_id)
+			):
+				employee.current_task = str(
+					_employee_task_overrides[employee_id]
+				)
 
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
@@ -744,7 +817,9 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 		var actor: Variant = _employee_actors.get(str(employee.id))
 		if actor == null or not is_instance_valid(actor):
 			continue
-		if str(employee.work_state) == "working":
+		if bool(actor.call("is_in_scene_performance")):
+			actor.call("snap_to_scene_mark")
+		elif str(employee.work_state) == "working":
 			actor.call("snap_to_workplace")
 		else:
 			actor.call("snap_outside_workplace")
