@@ -19,20 +19,11 @@ Do not merge a stacked child pull request directly into \`main\` while its paren
 
 ## Current transition
 
-The repository currently has a legacy stacked draft chain:
+The legacy dependency chain PR #1–#6 (Project Foundation, Character System v1/v2, Employee Management, Studio Buildings and Studio Operations) has been merged into \`main\`. The original source branches are historical and contain no work that is absent from \`main\`; they may be deleted after confirming the merged PRs in GitHub.
 
-1. PR #1 \`feature/project-foundation\` → \`main\`
-2. PR #2 \`feature/character-system-v1\` → \`feature/project-foundation\`
-3. PR #3 \`feature/character-system-v2\` → \`feature/character-system-v1\`
-4. PR #4 \`feature/employee-management-v1\` → \`feature/character-system-v2\`
-5. PR #5 \`feature/studio-buildings-v1\` → \`feature/employee-management-v1\`
-6. PR #6 \`feature/studio-operations-v1\` → \`feature/studio-buildings-v1\`
+The current vertical slice is Film Production v1 and all of its follow-up implementation stays on \`feature/film-production-v1\`. No additional feature branch should be created for small fixes or tests in this slice.
 
-These branches are not yet merged into \`main\`. Keep them until the corresponding pull requests are reviewed and integrated; do not remove their commits just to reduce the visible branch count.
-
-All follow-up work for the current Studio Operations slice, including visible interiors and employee work animations, stays on \`feature/studio-operations-v1\`. No additional feature branch is needed.
-
-After the chain is integrated, remove merged source branches and return to the normal policy: \`main\` plus at most one active feature branch.
+The intended working set is \`main\` plus this one active feature branch. After PR #7 is merged, delete its source branch and return to \`main\` only until the next major vertical slice begins.
 
 ## Branch cleanup
 
