@@ -99,8 +99,11 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/script_generator_smoke_test.gd
+& $godot --headless --path . --script res://tests/script_writing_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/employee_work_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/employee_market_critical_roles_test.gd
 & $godot --headless --path . --script res://tests/employee_management_smoke_test.gd
 & $godot --headless --path . --script res://tests/character_system_v2_smoke_test.gd
 & $godot --headless --path . --script res://tests/game_clock_fast_forward_test.gd
