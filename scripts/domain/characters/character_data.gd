@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 3
+const SCHEMA_VERSION: int = 4
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -10,6 +10,7 @@ var id: String = ""
 var first_name: String = ""
 var last_name: String = ""
 var profession_id: String = "actor"
+var specialization_id: String = ""
 var age: int = 30
 
 var experience: float = 0.0
@@ -80,6 +81,13 @@ func get_profession_title() -> String:
 	return PROFESSION_CATALOG_SCRIPT.get_profession_title(profession_id)
 
 
+func get_specialization_title() -> String:
+	return PROFESSION_CATALOG_SCRIPT.get_specialization_title(
+		profession_id,
+		specialization_id
+	)
+
+
 func get_department_title() -> String:
 	return PROFESSION_CATALOG_SCRIPT.get_department_title_for_profession(profession_id)
 
@@ -135,6 +143,7 @@ func to_dict() -> Dictionary:
 		"first_name": first_name,
 		"last_name": last_name,
 		"profession_id": profession_id,
+		"specialization_id": specialization_id,
 		"age": age,
 		"experience": experience,
 		"popularity": popularity,
@@ -163,7 +172,16 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.id = str(payload.get("id", ""))
 	result.first_name = str(payload.get("first_name", ""))
 	result.last_name = str(payload.get("last_name", ""))
-	result.profession_id = str(payload.get("profession_id", "actor"))
+	var raw_profession_id: String = str(payload.get("profession_id", "actor"))
+	result.profession_id = PROFESSION_CATALOG_SCRIPT.normalize_profession_id(
+		raw_profession_id
+	)
+	result.specialization_id = str(
+		payload.get(
+			"specialization_id",
+			PROFESSION_CATALOG_SCRIPT.get_legacy_specialization_id(raw_profession_id)
+		)
+	)
 	result.age = maxi(int(payload.get("age", 30)), 18)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
