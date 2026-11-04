@@ -251,7 +251,7 @@ func _build_ui() -> void:
 func _build_building_detail_panel() -> void:
 	_building_detail_panel = PanelContainer.new()
 	_building_detail_panel.name = "BuildingDetailPanel"
-	_building_detail_panel.position = Vector2(360.0, 210.0)
+	_building_detail_panel.position = Vector2(760.0, 210.0)
 	_building_detail_panel.custom_minimum_size = Vector2(430.0, 0.0)
 	_building_detail_panel.visible = false
 	_build_canvas.add_child(_building_detail_panel)
@@ -909,9 +909,20 @@ func _build_sound_stage_detail(eligible_staff: Array) -> void:
 
 	var project_label := Label.new()
 	project_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if _latest_script == null:
+	if (
+		_active_writing_project != null
+		and str(_active_writing_project.status) == "in_progress"
+	):
 		project_label.text = (
-			"Нет сценария для производства. Сначала создай сценарий в сценарном отделе."
+			"Сейчас пишется сценарий: %s\nПрогресс: %.0f%%"
+			% [
+				str(_active_writing_project.writer_name),
+				float(_active_writing_project.get_progress_percent()),
+			]
+		)
+	elif _latest_script == null:
+		project_label.text = (
+			"Нет готового сценария. Создай заказ в сценарном отделе."
 		)
 	else:
 		project_label.text = (
