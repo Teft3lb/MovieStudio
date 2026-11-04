@@ -83,6 +83,42 @@ func _test_sound_stage_interior() -> void:
 	_assert_workplace_route(actor, 0, 8, 14.0, 12.0)
 	_assert_workplace_route(actor, 7, 8, 14.0, 12.0)
 
+	var preparation_mark: Vector3 = actor.call(
+		"get_scene_mark",
+		0,
+		"preparation",
+		0
+	)
+	var shooting_mark: Vector3 = actor.call(
+		"get_scene_mark",
+		0,
+		"shooting",
+		0
+	)
+	assert(
+		preparation_mark.distance_to(shooting_mark) > 0.4,
+		"Actors must receive different blocking marks during the shooting phase."
+	)
+
+	var slate: Label3D = actor.get_node_or_null(
+		"Interior/ProductionSceneSlate"
+	) as Label3D
+	assert(
+		slate != null,
+		"Sound Stage must contain a visible production slate."
+	)
+	actor.call(
+		"set_production_scene",
+		2,
+		"Кульминация",
+		"Съёмка дубля"
+	)
+	assert(
+		slate.text.contains("02")
+		and slate.text.contains("Кульминация"),
+		"Production slate must display the active scene."
+	)
+
 
 func _assert_workplace_route(
 	actor: Node3D,
