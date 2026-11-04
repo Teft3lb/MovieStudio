@@ -131,13 +131,6 @@ func initialize_workplaces(building_manager: Node) -> void:
 	_refresh_workplace_assignments()
 
 
-func employee_work_state(employee_id: String) -> String:
-	var employee: Variant = _find_employee(employee_id)
-	if employee == null:
-		return ""
-	return str(employee.work_state)
-
-
 func get_employees_assigned_to_building(building_id: String) -> Array:
 	var result: Array = []
 	for employee in employees:
@@ -169,9 +162,11 @@ func is_employee_at_workplace(
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor == null or not is_instance_valid(actor):
 		return false
+	var employee: Variant = _find_employee(employee_id)
 	if (
 		_game_clock.is_manual_fast_forward
-		and str(employee_work_state(employee_id)) == "working"
+		and employee != null
+		and str(employee.work_state) == "working"
 	):
 		return true
 	return bool(actor.call("is_at_workplace"))
