@@ -25,7 +25,9 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	assert(
-		building_ids == ["script_department", "sound_stage"],
+		building_ids.size() == 2
+		and building_ids[0] == "script_department"
+		and building_ids[1] == "sound_stage",
 		"The first building slice must expose the script department and sound stage."
 	)
 	assert(
