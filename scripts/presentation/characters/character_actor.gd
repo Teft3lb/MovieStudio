@@ -122,8 +122,21 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 func _finish_workplace_arrival() -> void:
 	_is_at_workplace = true
 	_is_leaving_workplace = false
+	_face_workplace()
 	_set_walking(false)
 	_set_working(true)
+
+
+func _face_workplace() -> void:
+	if _workplace_path.size() < 2:
+		return
+	var last_index: int = _workplace_path.size() - 1
+	var direction: Vector3 = (
+		_workplace_path[last_index] - _workplace_path[last_index - 1]
+	)
+	direction.y = 0.0
+	if direction.length_squared() > 0.001:
+		look_at(global_position + direction.normalized(), Vector3.UP)
 
 
 func _finish_leaving_workplace() -> void:
@@ -221,6 +234,7 @@ func snap_to_workplace() -> void:
 	_workplace_path_index = _workplace_path.size() - 1
 	_is_at_workplace = true
 	_is_leaving_workplace = false
+	_face_workplace()
 	_set_walking(false)
 	_set_working(true)
 
