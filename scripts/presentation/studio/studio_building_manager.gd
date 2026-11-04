@@ -1168,6 +1168,10 @@ func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
 			if str(employee.profession_id) == profession_id:
 				result[profession_id] = str(employee.id)
 				break
+	for employee in assigned_staff:
+		if str(employee.profession_id) == "producer":
+			result["producer"] = str(employee.id)
+			break
 	return result
 
 
@@ -1176,7 +1180,7 @@ func _are_production_assignments_ready(
 	cast_assignments: Dictionary
 ) -> bool:
 	var employee_ids: Array[String] = []
-	for profession_id in ["director", "camera_operator", "technician"]:
+	for profession_id in ["director", "camera_operator", "technician", "producer"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
@@ -1300,7 +1304,7 @@ func _advance_film_production() -> void:
 
 func _are_film_crew_ready() -> bool:
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in ["director", "camera_operator", "technician"]:
+	for profession_id in ["director", "camera_operator", "technician", "producer"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
