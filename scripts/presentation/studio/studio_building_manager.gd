@@ -524,17 +524,33 @@ func _refresh_building_detail() -> void:
 		str(building.building_type_id)
 	)
 	var assigned_staff: Array = _get_assigned_staff(str(building.id))
+	var assigned_names: Array[String] = []
+	for employee in assigned_staff:
+		assigned_names.append(
+			"%s — %s" % [
+				employee.get_full_name(),
+				_get_profession_title(str(employee.profession_id)),
+			]
+		)
+	var assigned_text: String = (
+		", ".join(assigned_names)
+		if not assigned_names.is_empty()
+		else "пока нет"
+	)
 	var staff_summary := Label.new()
 	staff_summary.text = (
-		"Рабочие места: %d  ·  Назначено: %d\nПодходят по профессии: %d  ·  Участок: %.0f × %.0f м"
+		"Рабочие места: %d  ·  Назначено: %d\nСотрудники: %s\n"
+		+ "Подходят по профессии: %d  ·  Участок: %.0f × %.0f м"
 		% [
 			capacity,
 			assigned_staff.size(),
+			assigned_text,
 			eligible_staff.size(),
 			footprint.x,
 			footprint.y,
 		]
 	)
+	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
 
 	if str(building.building_type_id) == "script_department":
