@@ -1,0 +1,66 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/presentation/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/presentation/orbit_camera_controller.gd" id="2_camera"]
+[ext_resource type="Script" path="res://scripts/core/game_clock.gd" id="3_clock"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(100, 100)
+
+[sub_resource type="StandardMaterial3D" id="Material_ground"]
+albedo_color = Color(0.22, 0.27, 0.23, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_stage"]
+size = Vector3(8, 4, 6)
+
+[sub_resource type="StandardMaterial3D" id="Material_stage"]
+albedo_color = Color(0.55, 0.48, 0.39, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_office"]
+size = Vector3(6, 3, 5)
+
+[sub_resource type="StandardMaterial3D" id="Material_office"]
+albedo_color = Color(0.38, 0.45, 0.55, 1)
+roughness = 0.9
+
+[sub_resource type="BoxMesh" id="BoxMesh_road"]
+size = Vector3(4, 0.08, 80)
+
+[sub_resource type="StandardMaterial3D" id="Material_road"]
+albedo_color = Color(0.13, 0.14, 0.15, 1)
+roughness = 1.0
+
+[node name="MovieStudio" type="Node3D"]
+script = ExtResource("1_main")
+
+[node name="GameClock" type="Node" parent="."]
+script = ExtResource("3_clock")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+script = ExtResource("2_camera")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.8, -0.5, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("PlaneMesh_ground")
+material_override = SubResource("Material_ground")
+
+[node name="StageBuilding" type="MeshInstance3D" parent="."]
+position = Vector3(0, 2, 0)
+mesh = SubResource("BoxMesh_stage")
+material_override = SubResource("Material_stage")
+
+[node name="OfficeBuilding" type="MeshInstance3D" parent="."]
+position = Vector3(-12, 1.5, -5)
+mesh = SubResource("BoxMesh_office")
+material_override = SubResource("Material_office")
+
+[node name="AccessRoad" type="MeshInstance3D" parent="."]
+position = Vector3(10, 0.02, 0)
+mesh = SubResource("BoxMesh_road")
+material_override = SubResource("Material_road")

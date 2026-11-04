@@ -1,0 +1,19 @@
+config_version=5
+
+[application]
+
+config/name="MovieStudio"
+run/main_scene="res://scenes/main.tscn"
+
+[display]
+
+window/size/viewport_width=1600
+window/size/viewport_height=900
+window/size/window_width_override=1280
+window/size/window_height_override=720
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"
+environment/defaults/default_clear_color=Color(0.08, 0.1, 0.13, 1)
