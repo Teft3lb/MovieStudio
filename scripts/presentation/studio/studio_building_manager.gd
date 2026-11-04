@@ -541,15 +541,14 @@ func _refresh_building_detail() -> void:
 	staff_summary.text = (
 		"Рабочие места: %d  ·  Назначено: %d\nСотрудники: %s\n"
 		+ "Подходят по профессии: %d  ·  Участок: %.0f × %.0f м"
-		% [
-			capacity,
-			assigned_staff.size(),
-			assigned_text,
-			eligible_staff.size(),
-			footprint.x,
-			footprint.y,
-		]
-	)
+	) % [
+		capacity,
+		assigned_staff.size(),
+		assigned_text,
+		eligible_staff.size(),
+		footprint.x,
+		footprint.y,
+	]
 	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
 
