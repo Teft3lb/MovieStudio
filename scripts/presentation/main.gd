@@ -13,6 +13,10 @@ func _ready() -> void:
 	game_clock.minute_advanced.connect(_on_minute_advanced)
 	game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
 	studio_building_manager.call("setup", game_clock, character_manager)
+	character_manager.call(
+		"initialize_workplaces",
+		studio_building_manager
+	)
 	_build_debug_hud()
 	_refresh_hud()
 
