@@ -198,7 +198,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
 	)
 	assert(
-		legacy_technician.get_profession_title() == "Техник",
+		technician_candidate.get_profession_title() == "Техник",
 		"Character System v2 technician profiles must remain supported."
 	)
 
