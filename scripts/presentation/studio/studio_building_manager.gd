@@ -1382,10 +1382,14 @@ func _update_film_stage_slate() -> void:
 	)
 	if not str(_active_film_project.pause_reason).is_empty():
 		phase_title = "ПАУЗА: %s" % str(_active_film_project.pause_reason)
+	var slate_title: String = "%s · %s" % [
+		str(scene.get("beat", "Съёмочная сцена")),
+		str(scene.get("location", "Павильон")),
+	]
 	set_production_scene(
 		stage_id,
 		int(scene.get("scene_number", _active_film_project.current_scene_index + 1)),
-		str(scene.get("beat", "Съёмочная сцена")),
+		slate_title,
 		phase_title
 	)
 
