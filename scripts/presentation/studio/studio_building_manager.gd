@@ -21,7 +21,7 @@ const PROFESSION_CATALOG_SCRIPT = preload(
 )
 
 const GRID_SIZE: float = 2.0
-const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-14.0, 0.0, -8.0)
+const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
 const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 	"director",
