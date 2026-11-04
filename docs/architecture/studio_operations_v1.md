@@ -119,4 +119,4 @@ These tests cover profession-to-building assignment, workplace capacity and skil
 
 ## Explicit boundaries
 
-Studio Operations v1 does **not** yet start film production. The Sound Stage still reports crew readiness and displays the latest completed script. Film Production v1 must add role casting, actor assignment, scene scheduling, shooting progress and the explicit start-filming action.
+Studio Operations v1 established the workplace and crew-readiness foundation but did not itself start film production. That boundary has since been extended by **Film Production v1**, documented in \`docs/architecture/film_production_v1.md\`. Film Production v1 adds role casting, actor blocking, scene phases, takes, retakes, camera tracking and completed-film results. Editing, release, distribution and campaign persistence remain future systems.
