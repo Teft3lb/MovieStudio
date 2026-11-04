@@ -16,6 +16,9 @@ const BUILDING_ACTOR_SCRIPT = preload(
 const SCRIPT_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/script_department/script_generator.gd"
 )
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 
 const GRID_SIZE: float = 2.0
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-14.0, 0.0, -8.0)
@@ -803,4 +806,4 @@ func _find_employee(employee_id: String) -> Variant:
 
 
 func _get_profession_title(profession_id: String) -> String:
-	return ProfessionCatalog.get_profession_title(profession_id)
+	return PROFESSION_CATALOG_SCRIPT.get_profession_title(profession_id)
