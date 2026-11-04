@@ -179,7 +179,9 @@ func _test_project_serialization(project: Variant) -> void:
 
 func _test_retake_limit() -> void:
 	var script: Variant = _create_script()
-	script.scenes = [script.scenes[0]]
+	var first_scene: Dictionary = script.scenes[0]
+	script.scenes.clear()
+	script.scenes.append(first_scene)
 	script.scene_count = 1
 	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
 	var crew_assignments: Dictionary = {
@@ -202,6 +204,7 @@ func _test_retake_limit() -> void:
 		8,
 		0
 	)
+	assert(project != null, "A valid one-scene script must start a retake test.")
 	var poor_snapshot: Dictionary = {
 		"acting_average": 0.0,
 		"directing": 0.0,
