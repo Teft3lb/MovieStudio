@@ -58,15 +58,17 @@ func set_walking(value: bool) -> void:
 	_walking = value
 	if value:
 		_working = false
+		_performing = false
+		_performance_action = ""
 
 
 func set_working(value: bool, work_style: String = "") -> void:
 	_working = value
 	_work_style = work_style
+	_performing = false
+	_performance_action = ""
 	if value:
 		_walking = false
-		_performing = false
-		_performance_action = ""
 
 
 func set_performance_action(action_id: String) -> void:
