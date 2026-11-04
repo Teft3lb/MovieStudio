@@ -21,6 +21,9 @@ const SCRIPT_GENERATOR_SCRIPT = preload(
 const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/script_department/script_writing_system.gd"
 )
+const FILM_PRODUCTION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/film_production/film_production_system.gd"
+)
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -38,7 +41,13 @@ const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 var _game_clock: Node
 var _character_manager: Node
 var _script_writing_system: RefCounted
+var _film_production_system: RefCounted
 var _active_writing_project: Variant
+var _active_film_project: Variant
+var _active_film_script: Variant
+var _film_cast_assignments: Dictionary = {}
+var _cast_assignment_script_id: String = ""
+var _active_scene_performer_ids: Array[String] = []
 
 var _buildings: Array = []
 var _building_actors: Dictionary = {}
@@ -64,6 +73,12 @@ var _script_progress_bar: ProgressBar
 var _script_progress_label: Label
 var _script_result_label: Label
 
+var _film_cast_options: Dictionary = {}
+var _film_production_status_label: Label
+var _film_production_progress_bar: ProgressBar
+var _film_production_detail_label: Label
+var _film_production_start_button: Button
+
 var _preview_mesh: MeshInstance3D
 var _preview_material: StandardMaterial3D
 
@@ -72,6 +87,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_game_clock = game_clock
 	_character_manager = character_manager
 	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
+	_film_production_system = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	_spawn_initial_buildings()
@@ -111,6 +127,20 @@ func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
 	if path.is_empty():
 		return Vector3.ZERO
 	return path[path.size() - 1]
+
+func get_scene_mark(building_id: String, slot_index: int) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	return actor.call("get_scene_mark", slot_index)
+
+
+func get_scene_focus_point(building_id: String) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	return actor.call("get_scene_focus_point")
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
