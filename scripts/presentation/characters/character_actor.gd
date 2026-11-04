@@ -199,6 +199,7 @@ func leave_workplace() -> void:
 func clear_workplace() -> void:
 	_workplace_building_id = ""
 	_workplace_path.clear()
+	_workplace_commute_path.clear()
 	_workplace_path_index = 0
 	_has_workplace_destination = false
 	_is_at_workplace = false
