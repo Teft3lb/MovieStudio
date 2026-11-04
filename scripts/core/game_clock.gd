@@ -40,18 +40,26 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
-	var speed_multiplier: float = float(SPEED_MULTIPLIERS.get(speed_mode, 0.0))
-	if is_zero_approx(speed_multiplier):
+	var simulation_delta: float = get_simulation_delta(delta)
+	if is_zero_approx(simulation_delta):
 		return
 
 	var seconds_per_minute: float = maxf(real_seconds_per_game_minute, 0.01)
-	_accumulator += delta * speed_multiplier
+	_accumulator += simulation_delta
 
 	var advanced_minutes: int = 0
 	while _accumulator >= seconds_per_minute and advanced_minutes < MAX_CATCH_UP_MINUTES_PER_FRAME:
 		_accumulator -= seconds_per_minute
 		_advance_one_minute()
 		advanced_minutes += 1
+
+
+func get_speed_multiplier() -> float:
+	return float(SPEED_MULTIPLIERS.get(speed_mode, 0.0))
+
+
+func get_simulation_delta(real_delta: float) -> float:
+	return maxf(real_delta, 0.0) * get_speed_multiplier()
 
 
 func set_speed_mode(mode: int) -> void:
