@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_DATA_SCRIPT = preload(
 	"res://scripts/domain/characters/character_data.gd"
@@ -12,12 +12,16 @@ const PROFESSION_CATALOG_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 55190427
 
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
-	assert(
+	_expect(
 		profession_ids.size() == 19,
 		"Skill profiles must exist for all 19 active professions."
 	)
@@ -28,8 +32,7 @@ func _initialize() -> void:
 	_test_role_separation(generator, rng)
 	_test_serialization_filter(generator, rng)
 
-	print("CharacterSkillProfilesSmokeTest: PASS")
-	quit(0)
+	_finish_test("CharacterSkillProfilesSmokeTest")
 
 
 func _test_profession_profile(
@@ -65,12 +68,12 @@ func _test_profession_profile(
 				specialization_id
 			)
 		)
-		assert(
+		_expect(
 			specialized_skill_ids.size() >= 4
 			and specialized_skill_ids.size() <= 8,
 			"Every specialization must keep the profession within the 4–8 skill limit."
 		)
-		assert(
+		_expect(
 			not mapped_skill_id.is_empty()
 			and specialized_skill_ids.has(mapped_skill_id),
 			"Every specialization must map to a skill in its profession profile."
@@ -80,32 +83,32 @@ func _test_profession_profile(
 	for skill_id in candidate.skills.keys():
 		generated_skill_ids.append(str(skill_id))
 
-	assert(
+	_expect(
 		expected_skill_ids.size() >= 4 and expected_skill_ids.size() <= 8,
 		"Every profession must have between four and eight relevant skills."
 	)
-	assert(
+	_expect(
 		generated_skill_ids.size() == expected_skill_ids.size(),
 		"Generated skill count must match the profession profile."
 	)
-	assert(
+	_expect(
 		candidate.skills.has(candidate.get_primary_skill_id()),
 		"Every generated character must have its primary profession skill."
 	)
 
 	expected_skill_ids.sort()
 	generated_skill_ids.sort()
-	assert(
+	_expect(
 		generated_skill_ids == expected_skill_ids,
 		"Generated characters must not receive unrelated profession skills."
 	)
 
 	for skill_id in expected_skill_ids:
-		assert(
+		_expect(
 			not PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id).is_empty(),
 			"Every profile skill must have a localized title."
 		)
-		assert(
+		_expect(
 			float(candidate.skills[skill_id]) >= 0.0
 			and float(candidate.skills[skill_id]) <= 100.0,
 			"Generated skill values must stay within 0–100."
@@ -118,17 +121,17 @@ func _test_profession_profile(
 		)
 	)
 	if not specialization_skill_id.is_empty():
-		assert(
+		_expect(
 			candidate.skills.has(specialization_skill_id),
 			"Generated specialization must add its mapped professional skill."
 		)
 
 	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(candidate.to_dict())
-	assert(
+	_expect(
 		restored.skills == candidate.skills,
 		"Profession-specific skills must survive CharacterData serialization."
 	)
-	assert(
+	_expect(
 		restored.specialization_id == candidate.specialization_id,
 		"Profession specialization must survive CharacterData serialization."
 	)
@@ -143,7 +146,7 @@ func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> vo
 		"generate", rng, "SKILL-WRITER", "screenwriter"
 	)
 
-	assert(
+	_expect(
 		actor.skills.has("acting")
 		and actor.skills.has("improvisation")
 		and actor.skills.has("diction")
@@ -151,33 +154,33 @@ func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> vo
 		and not actor.skills.has("maintenance"),
 		"Actors must have a detailed acting profile without service skills."
 	)
-	assert(
+	_expect(
 		chef.skills.has("culinary")
 		and chef.skills.has("menu_planning")
 		and not chef.skills.has("acting")
 		and not chef.skills.has("directing"),
 		"Chefs must have culinary skills without creative-department skills."
 	)
-	assert(
+	_expect(
 		cleaner.skills.has("hygiene")
 		and cleaner.skills.has("maintenance")
 		and not cleaner.skills.has("marketing")
 		and not cleaner.skills.has("acting"),
 		"Cleaners must have facility skills only."
 	)
-	assert(
+	_expect(
 		director.skills.has("directing")
 		and director.skills.has("visual_storytelling")
 		and director.skills.has("actor_direction"),
 		"Directors must have a detailed directing skill profile."
 	)
-	assert(
+	_expect(
 		screenwriter.skills.has("story_structure")
 		and screenwriter.skills.has("dialogue")
 		and screenwriter.skills.has("character_development"),
 		"Screenwriters must have a detailed writing skill profile."
 	)
-	assert(
+	_expect(
 		actor.skills.size() > cleaner.skills.size(),
 		"Creative professions should retain greater skill depth than basic service roles."
 	)
@@ -195,11 +198,11 @@ func _test_serialization_filter(generator: Variant, rng: RandomNumberGenerator) 
 	payload["skills"] = injected_skills
 
 	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(payload)
-	assert(
+	_expect(
 		not restored.skills.has("culinary") and not restored.skills.has("security"),
 		"CharacterData must discard skills outside the character's profession profile."
 	)
-	assert(
+	_expect(
 		restored.skills.size() == actor.skills.size(),
 		"Deserialization must preserve only the profession's defined skill set."
 	)

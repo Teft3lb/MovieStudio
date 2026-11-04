@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const GAME_CLOCK_SCRIPT = preload("res://scripts/core/game_clock.gd")
 const CHARACTER_GENERATOR_SCRIPT = preload(
@@ -15,6 +15,10 @@ var _management: Variant
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var clock: Variant = GAME_CLOCK_SCRIPT.new()
 	clock.current_day = 1
 	clock.current_hour = 8
@@ -39,7 +43,7 @@ func _initialize() -> void:
 		"fixed_30_days",
 		1
 	)
-	assert(
+	_expect(
 		bool(hire_result.get("success", false)),
 		"A 30-day employee contract must be available for the integration test."
 	)
@@ -54,52 +58,52 @@ func _initialize() -> void:
 
 	clock.advance_days(30)
 
-	assert(
+	_expect(
 		clock.current_day == 31,
 		"Thirty fast-forwarded days must advance the game date from day 1 to day 31."
 	)
-	assert(
+	_expect(
 		clock.current_hour == 8 and clock.current_minute == 0,
 		"Fast-forwarding full days must preserve the time of day."
 	)
-	assert(
+	_expect(
 		_advanced_days == 30,
 		"Each crossed midnight must emit day_advanced."
 	)
-	assert(
+	_expect(
 		_advanced_minutes == 30 * 24 * 60,
 		"Manual advancement must emit every minute signal."
 	)
-	assert(
+	_expect(
 		_completed_minutes == 30 * 24 * 60,
 		"Manual advancement must report the exact number of simulated minutes."
 	)
-	assert(
+	_expect(
 		clock.speed_mode == 0,
 		"Manual advancement must preserve the paused simulation state."
 	)
-	assert(
+	_expect(
 		not clock.is_manual_fast_forward,
 		"The clock must leave manual fast-forward mode after completion."
 	)
-	assert(
+	_expect(
 		hired_contract.status == "expired",
 		"A 30-day contract must expire when the fast-forward crosses into day 31."
 	)
-	assert(
+	_expect(
 		_management.employees.size() == 1,
 		"An expired employee must be removed from the active roster."
 	)
-	assert(
+	_expect(
 		_management.former_employees.size() == 1
 		and str(_management.former_employees[0].id) == hired_employee_id,
 		"The expired employee must remain in the former-employee archive."
 	)
-	assert(
+	_expect(
 		_management.market_candidates.size() == 8,
 		"The candidate market must refresh during the 30-day fast-forward."
 	)
-	assert(
+	_expect(
 		str(_management.market_candidates[0].id) != first_market_id,
 		"Market refresh must replace the initial candidate pool."
 	)
@@ -108,8 +112,7 @@ func _initialize() -> void:
 	# before exiting this standalone SceneTree test.
 	clock.free()
 
-	print("GameClockFastForwardTest: PASS")
-	quit(0)
+	_finish_test("GameClockFastForwardTest")
 
 
 func _on_day_advanced(day: int) -> void:

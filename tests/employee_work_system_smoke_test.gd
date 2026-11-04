@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
@@ -12,6 +12,10 @@ const EMPLOYEE_WORK_SYSTEM_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 741258
@@ -64,12 +68,11 @@ func _initialize() -> void:
 	_test_skill_progression(system, actor, assignments)
 	_test_non_working_employees_do_not_gain_skills(system, actor, assignments)
 
-	print("EmployeeWorkSystemSmokeTest: PASS")
-	quit(0)
+	_finish_test("EmployeeWorkSystemSmokeTest")
 
 
 func _test_profession_assignments(assignments: Dictionary) -> void:
-	assert(
+	_expect(
 		str(assignments["EMP-WORK-WRITER"].get("building_type_id", ""))
 		== "script_department",
 		"Screenwriters must be assigned to the Script Department."
@@ -80,12 +83,12 @@ func _test_profession_assignments(assignments: Dictionary) -> void:
 		"EMP-WORK-OPERATOR",
 		"EMP-WORK-TECHNICIAN",
 	]:
-		assert(
+		_expect(
 			str(assignments[employee_id].get("building_type_id", ""))
 			== "sound_stage",
 			"Creative production staff must be assigned to the Sound Stage."
 		)
-	assert(
+	_expect(
 		not assignments.has("EMP-WORK-CLEANER"),
 		"Facility staff must not be assigned to a building that does not accept their profession."
 	)
@@ -108,12 +111,12 @@ func _test_skill_progression(
 	)
 	var after: float = float(employee.skills.get(skill_id, 0.0))
 
-	assert(changed, "A working employee must gain professional experience.")
-	assert(
+	_expect(changed, "A working employee must gain professional experience.")
+	_expect(
 		after > before,
 		"Completing a work minute must improve the primary professional skill."
 	)
-	assert(
+	_expect(
 		after <= 100.0,
 		"Professional skill growth must respect the 100-point cap."
 	)
@@ -136,8 +139,8 @@ func _test_non_working_employees_do_not_gain_skills(
 	)
 	var after: float = float(employee.skills.get(skill_id, 0.0))
 
-	assert(not changed, "Employees on break must not gain work experience.")
-	assert(
+	_expect(not changed, "Employees on break must not gain work experience.")
+	_expect(
 		is_equal_approx(before, after),
 		"Skill values must remain unchanged during a break."
 	)

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
@@ -12,47 +12,50 @@ const PLACEMENT_RULES_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	_test_catalogue()
 	_test_building_serialization()
 	_test_placement_validation()
 
-	print("StudioBuildingSystemSmokeTest: PASS")
-	quit(0)
+	_finish_test("StudioBuildingSystemSmokeTest")
 
 
 func _test_catalogue() -> void:
 	var building_ids: Array[String] = (
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
-	assert(
+	_expect(
 		building_ids.size() == 2
 		and building_ids[0] == "script_department"
 		and building_ids[1] == "sound_stage",
 		"The first building slice must expose the script department and sound stage."
 	)
-	assert(
+	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("script_department") == 3,
 		"The script department must expose three workplace slots."
 	)
-	assert(
+	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("sound_stage") == 8,
 		"The sound stage must expose eight workplace slots."
 	)
-	assert(
+	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
 			"script_department",
 			"screenwriter"
 		),
 		"The script department must accept screenwriters."
 	)
-	assert(
+	_expect(
 		not BUILDING_CATALOG_SCRIPT.accepts_profession(
 			"script_department",
 			"actor"
 		),
 		"The script department must not accept unrelated professions."
 	)
-	assert(
+	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
 			"sound_stage",
 			"camera_operator"
@@ -71,16 +74,16 @@ func _test_building_serialization() -> void:
 	building.is_operational = true
 
 	var restored: Variant = BUILDING_DATA_SCRIPT.from_dict(building.to_dict())
-	assert(restored.id == building.id, "Building ID must survive serialization.")
-	assert(
+	_expect(restored.id == building.id, "Building ID must survive serialization.")
+	_expect(
 		restored.building_type_id == building.building_type_id,
 		"Building type must survive serialization."
 	)
-	assert(
+	_expect(
 		restored.position.is_equal_approx(building.position),
 		"Building position must survive serialization."
 	)
-	assert(
+	_expect(
 		is_equal_approx(restored.rotation_degrees, 90.0),
 		"Building rotation must survive serialization."
 	)
@@ -98,7 +101,7 @@ func _test_placement_validation() -> void:
 		0.0,
 		[existing]
 	)
-	assert(
+	_expect(
 		bool(valid_result.get("valid", false)),
 		"Initial script department and sound stage positions must not overlap."
 	)
@@ -109,7 +112,7 @@ func _test_placement_validation() -> void:
 		0.0,
 		[existing]
 	)
-	assert(
+	_expect(
 		not bool(overlap_result.get("valid", true)),
 		"Buildings must not be placed on top of an existing building."
 	)
@@ -120,7 +123,7 @@ func _test_placement_validation() -> void:
 		0.0,
 		[]
 	)
-	assert(
+	_expect(
 		not bool(bounds_result.get("valid", true)),
 		"Buildings must stay inside the studio plot."
 	)
@@ -131,7 +134,7 @@ func _test_placement_validation() -> void:
 		0.0,
 		[]
 	)
-	assert(
+	_expect(
 		not bool(road_result.get("valid", true)),
 		"Buildings must not obstruct the existing access road."
 	)
@@ -140,7 +143,7 @@ func _test_placement_validation() -> void:
 		"script_department",
 		90.0
 	)
-	assert(
+	_expect(
 		rotated_footprint == Vector2(6.0, 8.0),
 		"Rotating a building by 90 degrees must swap its placement footprint."
 	)

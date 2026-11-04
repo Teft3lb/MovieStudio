@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const FILM_SCRIPT_DATA_SCRIPT = preload(
 	"res://scripts/domain/script_department/film_script_data.gd"
@@ -12,6 +12,10 @@ const FILM_PRODUCTION_PROJECT_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var script: Variant = _create_script()
 	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
 	var crew_assignments: Dictionary = {
@@ -35,7 +39,7 @@ func _initialize() -> void:
 		0
 	)
 
-	assert(project != null, "A valid script and crew must start production.")
+	_expect(project != null, "A valid script and crew must start production.")
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
 	_test_mid_phase_progress(system, script, project)
@@ -55,13 +59,12 @@ func _initialize() -> void:
 		8,
 		0
 	)
-	assert(
+	_expect(
 		rejected_project == null,
 		"Production must reject scripts with unassigned roles."
 	)
 
-	print("FilmProductionSystemSmokeTest: PASS")
-	quit(0)
+	_finish_test("FilmProductionSystemSmokeTest")
 
 
 func _create_script() -> Variant:
@@ -119,16 +122,16 @@ func _test_scene_cast_resolution(
 		script,
 		project
 	)
-	assert(
+	_expect(
 		performers.size() == 2,
 		"Every distinct performer present in a scene must be resolved."
 	)
-	assert(
+	_expect(
 		str(performers[0]) == "EMP-ACTOR-01"
 		and str(performers[1]) == "EMP-ACTOR-02",
 		"Scene characters must map to their assigned employees."
 	)
-	assert(
+	_expect(
 		str(
 			system.call(
 				"get_scene_dialogue_for_employee",
@@ -155,15 +158,15 @@ func _test_production_pause(
 		true,
 		{}
 	)
-	assert(
+	_expect(
 		not bool(result.get("advanced", false)),
 		"Production must pause when a required crew member is unavailable."
 	)
-	assert(
+	_expect(
 		int(project.total_elapsed_minutes) == before,
 		"Paused production must not consume film production time."
 	)
-	assert(
+	_expect(
 		not str(project.pause_reason).is_empty(),
 		"Paused production must explain why it is waiting."
 	)
@@ -175,7 +178,7 @@ func _test_production_pause(
 		false,
 		{}
 	)
-	assert(
+	_expect(
 		not bool(cast_pause.get("advanced", false))
 		and int(project.total_elapsed_minutes) == before,
 		"Production must also pause when the current scene cast is unavailable."
@@ -205,11 +208,11 @@ func _test_mid_phase_progress(
 			true,
 			snapshot
 		)
-	assert(
+	_expect(
 		int(project.phase_minutes_elapsed) == 4,
 		"Active production minutes must advance the current phase."
 	)
-	assert(
+	_expect(
 		float(project.get_progress_percent()) > 0.0,
 		"Film progress must advance independently from screenplay writing."
 	)
@@ -218,7 +221,20 @@ func _test_mid_phase_progress(
 func _test_project_serialization(project: Variant) -> void:
 	var payload: Dictionary = project.to_dict()
 	var restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(payload)
-	assert(
+	_expect(
+		restored.current_scene_elapsed_minutes == project.current_scene_elapsed_minutes,
+		"Elapsed time within the active scene must survive serialization."
+	)
+	var legacy_payload: Dictionary = payload.duplicate(true)
+	legacy_payload.erase("current_scene_elapsed_minutes")
+	var legacy_restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(
+		legacy_payload
+	)
+	_expect(
+		legacy_restored.current_scene_elapsed_minutes == 0,
+		"Older production data without scene elapsed time must default safely to zero."
+	)
+	_expect(
 		restored.to_dict() == payload,
 		"Production phase, assignments and timing must survive serialization."
 	)
@@ -251,7 +267,7 @@ func _test_retake_limit() -> void:
 		8,
 		0
 	)
-	assert(project != null, "A valid one-scene script must start a retake test.")
+	_expect(project != null, "A valid one-scene script must start a retake test.")
 	var poor_snapshot: Dictionary = {
 		"acting_average": 0.0,
 		"directing": 0.0,
@@ -273,15 +289,15 @@ func _test_retake_limit() -> void:
 			poor_snapshot
 		)
 
-	assert(
+	_expect(
 		str(project.status) == "completed",
 		"A scene with repeated low-quality takes must still reach a final result."
 	)
-	assert(
+	_expect(
 		int(project.scene_results[0].get("retakes", 0)) == 2,
 		"Low-quality scenes must request no more than two retakes."
 	)
-	assert(
+	_expect(
 		int(project.total_elapsed_minutes) == int(project.estimated_total_minutes),
 		"Retake and review time must be included in the final schedule estimate."
 	)
@@ -315,34 +331,34 @@ func _test_full_film_completion(
 			snapshot
 		)
 
-	assert(
+	_expect(
 		str(project.status) == "completed",
 		"Every scene must eventually finish and complete the film."
 	)
-	assert(
+	_expect(
 		int(project.completed_scene_count) == 2
 		and project.scene_results.size() == 2,
 		"Every scripted scene must have a recorded production result."
 	)
-	assert(
+	_expect(
 		int(project.final_quality) >= 0
 		and int(project.final_quality) <= 100,
 		"Final film quality must be bounded from 0 to 100."
 	)
-	assert(
+	_expect(
 		float(project.get_progress_percent()) == 100.0,
 		"A completed film must report 100 percent production progress."
 	)
-	assert(
+	_expect(
 		int(project.get_remaining_work_minutes()) == 0,
 		"A completed film must have no remaining production time."
 	)
 	for phase in ["preparation", "rehearsal", "shooting", "review"]:
-		assert(
+		_expect(
 			phases_seen.has(phase),
 			"Every scene must pass through the %s phase." % phase
 		)
-	assert(
+	_expect(
 		int(project.scene_results[0].get("production_minutes", 0)) > 0,
 		"Scene results must retain actual elapsed production time."
 	)

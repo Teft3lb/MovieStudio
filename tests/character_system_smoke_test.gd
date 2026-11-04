@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_DATA_SCRIPT = preload(
 	"res://scripts/domain/characters/character_data.gd"
@@ -13,6 +13,10 @@ const CHARACTER_ACTOR_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	_test_simulation_speed()
 
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
@@ -21,21 +25,21 @@ func _initialize() -> void:
 	rng_a.seed = 123456789
 	var first: Variant = generator.call("generate", rng_a, "TEST-0001", "actor")
 
-	assert(first.id == "TEST-0001", "Generated character ID must be preserved.")
-	assert(first.first_name != "", "Generated character must have a first name.")
-	assert(first.last_name != "", "Generated character must have a last name.")
-	assert(first.skills.has("acting"), "Actor must have an acting skill.")
-	assert(first.appearance.has("skin_tone"), "Character must have appearance data.")
+	_expect(first.id == "TEST-0001", "Generated character ID must be preserved.")
+	_expect(first.first_name != "", "Generated character must have a first name.")
+	_expect(first.last_name != "", "Generated character must have a last name.")
+	_expect(first.skills.has("acting"), "Actor must have an acting skill.")
+	_expect(first.appearance.has("skin_tone"), "Character must have appearance data.")
 
 	var serialized: Dictionary = first.call("to_dict")
 	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(serialized)
 
-	assert(restored.id == first.id, "Serialization must preserve the character ID.")
-	assert(
+	_expect(restored.id == first.id, "Serialization must preserve the character ID.")
+	_expect(
 		restored.get_full_name() == first.get_full_name(),
 		"Serialization must preserve the character name."
 	)
-	assert(
+	_expect(
 		restored.appearance == first.appearance,
 		"Serialization must preserve appearance parameters."
 	)
@@ -44,40 +48,39 @@ func _initialize() -> void:
 	rng_b.seed = 123456789
 	var repeated: Variant = generator.call("generate", rng_b, "TEST-0001", "actor")
 
-	assert(
+	_expect(
 		repeated.call("to_dict") == first.call("to_dict"),
 		"Generation with the same seed and inputs must be deterministic."
 	)
 
 	_test_character_movement_scaling(first)
 
-	print("CharacterSystemSmokeTest: PASS")
-	quit(0)
+	_finish_test("CharacterSystemSmokeTest")
 
 
 func _test_simulation_speed() -> void:
 	var clock: Node = GAME_CLOCK_SCRIPT.new()
 
 	clock.call("set_speed_mode", 0)
-	assert(
+	_expect(
 		is_zero_approx(float(clock.call("get_simulation_delta", 0.25))),
 		"Paused simulation must produce zero simulation delta."
 	)
 
 	clock.call("set_speed_mode", 1)
-	assert(
+	_expect(
 		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 0.25),
 		"Normal speed must preserve real delta."
 	)
 
 	clock.call("set_speed_mode", 2)
-	assert(
+	_expect(
 		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 0.75),
 		"3x speed must triple simulation delta."
 	)
 
 	clock.call("set_speed_mode", 3)
-	assert(
+	_expect(
 		is_equal_approx(float(clock.call("get_simulation_delta", 0.25)), 1.5),
 		"6x speed must multiply simulation delta by six."
 	)
@@ -101,7 +104,7 @@ func _test_character_movement_scaling(character_data: Variant) -> void:
 	clock.call("set_speed_mode", 0)
 	var previous_position: Vector3 = actor.position
 	actor.call("_process", 0.25)
-	assert(
+	_expect(
 		actor.position.is_equal_approx(previous_position),
 		"Character movement must stop while simulation is paused."
 	)
@@ -109,7 +112,7 @@ func _test_character_movement_scaling(character_data: Variant) -> void:
 	clock.call("set_speed_mode", 1)
 	previous_position = actor.position
 	actor.call("_process", 0.25)
-	assert(
+	_expect(
 		is_equal_approx(actor.position.distance_to(previous_position), 0.25),
 		"Character movement must use normal simulation delta at 1x."
 	)
@@ -117,7 +120,7 @@ func _test_character_movement_scaling(character_data: Variant) -> void:
 	clock.call("set_speed_mode", 2)
 	previous_position = actor.position
 	actor.call("_process", 0.25)
-	assert(
+	_expect(
 		is_equal_approx(actor.position.distance_to(previous_position), 0.75),
 		"Character movement must triple at 3x."
 	)
@@ -125,7 +128,7 @@ func _test_character_movement_scaling(character_data: Variant) -> void:
 	clock.call("set_speed_mode", 3)
 	previous_position = actor.position
 	actor.call("_process", 0.25)
-	assert(
+	_expect(
 		is_equal_approx(actor.position.distance_to(previous_position), 1.5),
 		"Character movement must multiply by six at 6x."
 	)

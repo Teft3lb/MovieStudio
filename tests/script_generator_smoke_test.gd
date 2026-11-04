@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_DATA_SCRIPT = preload(
 	"res://scripts/domain/characters/character_data.gd"
@@ -15,6 +15,10 @@ const FILM_SCRIPT_DATA_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var writer: Variant = _create_writer()
 	var generator: RefCounted = SCRIPT_GENERATOR_SCRIPT.new()
 
@@ -23,8 +27,7 @@ func _initialize() -> void:
 	_test_skill_influence(generator, writer)
 	_test_invalid_writer(generator)
 
-	print("ScriptGeneratorSmokeTest: PASS")
-	quit(0)
+	_finish_test("ScriptGeneratorSmokeTest")
 
 
 func _create_writer() -> Variant:
@@ -52,46 +55,46 @@ func _test_requested_script_structure(
 		90125,
 		"SCR-SMOKE-01"
 	)
-	assert(script != null, "A valid screenwriter must generate a script.")
-	assert(script.scene_count == 11, "Generated script must use the requested scene count.")
-	assert(script.role_count == 4, "Generated script must use the requested role count.")
-	assert(script.scenes.size() == 11, "Script data must contain every requested scene.")
-	assert(script.cast.size() == 4, "Script data must contain every requested role.")
-	assert(
+	_expect(script != null, "A valid screenwriter must generate a script.")
+	_expect(script.scene_count == 11, "Generated script must use the requested scene count.")
+	_expect(script.role_count == 4, "Generated script must use the requested role count.")
+	_expect(script.scenes.size() == 11, "Script data must contain every requested scene.")
+	_expect(script.cast.size() == 4, "Script data must contain every requested role.")
+	_expect(
 		script.potential_score >= 0 and script.potential_score <= 100,
 		"Potential score must stay within 0–100."
 	)
-	assert(
+	_expect(
 		script.potential_stars >= 1 and script.potential_stars <= 5,
 		"Potential rating must stay within one to five stars."
 	)
-	assert(
+	_expect(
 		script.popularity_modifier >= 0.8
 		and script.popularity_modifier <= 1.2,
 		"Potential popularity modifier must remain bounded."
 	)
-	assert(not str(script.title).is_empty(), "Generated script must have a title.")
-	assert(not str(script.logline).is_empty(), "Generated script must have a logline.")
+	_expect(not str(script.title).is_empty(), "Generated script must have a title.")
+	_expect(not str(script.logline).is_empty(), "Generated script must have a logline.")
 
 	for scene in script.scenes:
-		assert(scene.has("scene_number"), "Each scene must have a sequence number.")
-		assert(scene.has("beat"), "Each scene must have a dramatic beat.")
-		assert(scene.has("location"), "Each scene must have a location.")
-		assert(scene.has("action"), "Each scene must have an action.")
-		assert(scene.has("dialogue"), "Each scene must have dialogue.")
+		_expect(scene.has("scene_number"), "Each scene must have a sequence number.")
+		_expect(scene.has("beat"), "Each scene must have a dramatic beat.")
+		_expect(scene.has("location"), "Each scene must have a location.")
+		_expect(scene.has("action"), "Each scene must have an action.")
+		_expect(scene.has("dialogue"), "Each scene must have dialogue.")
 		var scene_characters: Array = scene.get("characters", [])
-		assert(
+		_expect(
 			scene_characters.size() >= 1,
 			"Each generated scene must feature at least one character."
 		)
 		var dialogue: String = str(scene.get("dialogue", ""))
 		var speaker_separator: int = dialogue.find(":")
-		assert(speaker_separator > 0, "Every scene must identify its dialogue speaker.")
+		_expect(speaker_separator > 0, "Every scene must identify its dialogue speaker.")
 		var speaker_name: String = dialogue.substr(
 			0,
 			speaker_separator
 		).strip_edges()
-		assert(
+		_expect(
 			scene_characters.has(speaker_name),
 			"The speaking character must be present in the generated scene."
 		)
@@ -107,13 +110,13 @@ func _test_deterministic_generation(
 	var second: Variant = generator.call(
 		"generate", writer, "adventure", 8, 3, 44321, "SCR-DETERMINISTIC"
 	)
-	assert(
+	_expect(
 		first.to_dict() == second.to_dict(),
 		"Identical writer data and seed must produce identical scripts."
 	)
 
 	var restored: Variant = FILM_SCRIPT_DATA_SCRIPT.from_dict(first.to_dict())
-	assert(
+	_expect(
 		restored.to_dict() == first.to_dict(),
 		"Generated script data must survive serialization."
 	)
@@ -149,11 +152,11 @@ func _test_skill_influence(
 	var high_script: Variant = generator.call(
 		"generate", high_writer, "drama", 9, 3, 55221, "SCR-HIGH"
 	)
-	assert(
+	_expect(
 		high_script.potential_score > low_script.potential_score,
 		"Stronger screenwriting skills must improve the potential success score."
 	)
-	assert(
+	_expect(
 		high_script.popularity_modifier > low_script.popularity_modifier,
 		"Higher-rated scripts must carry a stronger future popularity modifier."
 	)
@@ -169,7 +172,7 @@ func _test_invalid_writer(generator: Variant) -> void:
 	var invalid_result: Variant = generator.call(
 		"generate", actor, "drama", 6, 2, 77, "SCR-INVALID"
 	)
-	assert(
+	_expect(
 		invalid_result == null,
 		"Only employees with the screenwriter profession may generate scripts."
 	)

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
@@ -12,6 +12,10 @@ const SCRIPT_WRITING_PROJECT_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var writer: Variant = _create_writer()
 	var system: RefCounted = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
 
@@ -21,8 +25,7 @@ func _initialize() -> void:
 	_test_project_progress_and_completion(system, writer)
 	_test_project_serialization(system, writer)
 
-	print("ScriptWritingSystemSmokeTest: PASS")
-	quit(0)
+	_finish_test("ScriptWritingSystemSmokeTest")
 
 
 func _create_writer() -> Variant:
@@ -53,7 +56,7 @@ func _test_duration_scales_with_order(
 		20,
 		8
 	)
-	assert(
+	_expect(
 		short_duration > 0 and long_duration > short_duration,
 		"More scenes and roles must require more writing time."
 	)
@@ -76,18 +79,18 @@ func _test_workplace_and_shift_gates(
 		8,
 		0
 	)
-	assert(project != null, "A screenwriter must be able to start a writing project.")
+	_expect(project != null, "A screenwriter must be able to start a writing project.")
 	var initial_progress: int = int(project.completed_work_minutes)
 
 	system.call("advance_minute", project, writer, false)
-	assert(
+	_expect(
 		int(project.completed_work_minutes) == initial_progress,
 		"Writing must not progress before the employee reaches the Script Department."
 	)
 
 	writer.work_state = "break"
 	system.call("advance_minute", project, writer, true)
-	assert(
+	_expect(
 		int(project.completed_work_minutes) == initial_progress,
 		"Writing must pause during the employee's scheduled break."
 	)
@@ -118,7 +121,7 @@ func _test_interruption_pauses_progress(
 		5,
 		"Тестовая творческая пауза"
 	)
-	assert(applied, "A valid writing project must accept an interruption event.")
+	_expect(applied, "A valid writing project must accept an interruption event.")
 
 	for _minute_index in range(5):
 		var result: Dictionary = system.call(
@@ -127,16 +130,16 @@ func _test_interruption_pauses_progress(
 			writer,
 			true
 		)
-		assert(
+		_expect(
 			bool(result.get("interrupted", false)),
 			"An active interruption must block screenplay progress."
 		)
 
-	assert(
+	_expect(
 		int(project.completed_work_minutes) == initial_progress,
 		"Interrupted work minutes must not count as writing progress."
 	)
-	assert(
+	_expect(
 		int(project.interruption_count) == 1,
 		"Interruption events must be recorded once per event."
 	)
@@ -178,11 +181,11 @@ func _test_project_progress_and_completion(
 		if bool(result.get("completed", false)):
 			completion_result = result
 
-	assert(
+	_expect(
 		str(project.status) == "completed",
 		"The writing project must eventually complete during sufficient working time."
 	)
-	assert(
+	_expect(
 		completion_result.get("script") != null,
 		"Completing the writing project must produce a FilmScriptData result."
 	)
@@ -208,7 +211,7 @@ func _test_project_serialization(
 	var restored: Variant = SCRIPT_WRITING_PROJECT_SCRIPT.from_dict(
 		project.to_dict()
 	)
-	assert(
+	_expect(
 		restored.to_dict() == project.to_dict(),
 		"Writing project progress and interruption state must survive serialization."
 	)

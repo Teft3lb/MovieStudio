@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const BUILDING_ACTOR_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_actor.gd"
@@ -21,13 +21,16 @@ const GAME_CLOCK_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
 	_test_profession_work_animation()
 	_test_employee_enters_and_leaves_workplace()
 
-	print("StudioBuildingInteriorSmokeTest: PASS")
-	quit(0)
+	_finish_test("StudioBuildingInteriorSmokeTest")
 
 
 func _create_building(building_type_id: String, rotation: float) -> Node3D:
@@ -46,15 +49,15 @@ func _create_building(building_type_id: String, rotation: float) -> Node3D:
 
 func _test_script_department_interior() -> void:
 	var actor: Node3D = _create_building("script_department", 90.0)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/OfficeFloor") != null,
 		"Script Department must contain a visible interior floor."
 	)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/WriterDesk") != null,
 		"Script Department must contain writer desks."
 	)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/ComputerMonitor") != null,
 		"Script Department must contain computer workstations."
 	)
@@ -64,15 +67,15 @@ func _test_script_department_interior() -> void:
 
 func _test_sound_stage_interior() -> void:
 	var actor: Node3D = _create_building("sound_stage", 0.0)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/StageFloor") != null,
 		"Sound Stage must contain an interior floor."
 	)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/MainSetBackdrop") != null,
 		"Sound Stage must contain a film set."
 	)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/CameraRig_0/CinemaCameraBody") != null,
 		"Sound Stage must contain camera equipment."
 	)
@@ -84,7 +87,7 @@ func _test_sound_stage_interior() -> void:
 		Vector3(0.0, 1.0, -4.0),
 		true
 	)
-	assert(
+	_expect(
 		not camera_rig.rotation.is_equal_approx(Vector3.ZERO),
 		"Camera rigs must turn toward the active scene during filming."
 	)
@@ -93,11 +96,11 @@ func _test_sound_stage_interior() -> void:
 		Vector3.ZERO,
 		false
 	)
-	assert(
+	_expect(
 		camera_rig.rotation.is_equal_approx(Vector3.ZERO),
 		"Camera rigs must return to their idle position when filming stops."
 	)
-	assert(
+	_expect(
 		actor.get_node_or_null("Interior/TechnicalEquipmentRack") != null,
 		"Sound Stage must contain a technician equipment station."
 	)
@@ -116,7 +119,7 @@ func _test_sound_stage_interior() -> void:
 		"shooting",
 		0
 	)
-	assert(
+	_expect(
 		preparation_mark.distance_to(shooting_mark) > 0.4,
 		"Actors must receive different blocking marks during the shooting phase."
 	)
@@ -124,7 +127,7 @@ func _test_sound_stage_interior() -> void:
 	var slate: Label3D = actor.get_node_or_null(
 		"Interior/ProductionSceneSlate"
 	) as Label3D
-	assert(
+	_expect(
 		slate != null,
 		"Sound Stage must contain a visible production slate."
 	)
@@ -134,7 +137,7 @@ func _test_sound_stage_interior() -> void:
 		"Кульминация",
 		"Съёмка дубля"
 	)
-	assert(
+	_expect(
 		slate.text.contains("02")
 		and slate.text.contains("Кульминация"),
 		"Production slate must display the active scene."
@@ -152,7 +155,7 @@ func _assert_workplace_route(
 		"get_workplace_path",
 		slot_index
 	)
-	assert(
+	_expect(
 		route.size() == 4,
 		"Workplace routes must contain outside, entrance, corridor and work points."
 	)
@@ -161,24 +164,24 @@ func _assert_workplace_route(
 	var inside: Vector3 = actor.to_local(route[1])
 	var workstation: Vector3 = actor.to_local(route[3])
 
-	assert(
+	_expect(
 		outside.z > depth * 0.5,
 		"The first route point must be outside the front entrance."
 	)
-	assert(
+	_expect(
 		inside.z < depth * 0.5,
 		"The second route point must pass through the entrance into the building."
 	)
-	assert(
+	_expect(
 		absf(workstation.x) < width * 0.5
 		and absf(workstation.z) < depth * 0.5,
 		"The final work point must be inside the building footprint."
 	)
-	assert(
+	_expect(
 		route[0].distance_to(route[1]) > 1.0,
 		"The employee must visibly travel through the entrance."
 	)
-	assert(
+	_expect(
 		slot_index >= 0 and slot_index < capacity,
 		"Test slot must fit the building workplace capacity."
 	)
@@ -205,7 +208,8 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 	root.add_child(clock)
 	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(actor)
-	actor.call("setup", employee, [], clock, 5.0)
+	var empty_waypoints: Array[Vector3] = []
+	actor.call("setup", employee, empty_waypoints, clock, 5.0)
 	actor.call(
 		"assign_workplace_route",
 		"BLD-INTERIOR-ROUTE",
@@ -216,11 +220,11 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 	for _step in range(12):
 		actor.call("_process", 10.0)
 
-	assert(
+	_expect(
 		bool(actor.call("is_at_workplace")),
 		"An employee must reach the final interior workstation."
 	)
-	assert(
+	_expect(
 		bool(actor.call("is_work_animation_active")),
 		"An employee must switch to a profession-specific work animation on arrival."
 	)
@@ -229,15 +233,15 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 	for _step in range(12):
 		actor.call("_process", 10.0)
 
-	assert(
+	_expect(
 		str(actor.call("get_workplace_building_id")).is_empty(),
 		"An employee must clear the workplace assignment after exiting."
 	)
-	assert(
+	_expect(
 		actor.global_position.is_equal_approx(route[0]),
 		"An employee must leave through the entrance rather than disappear inside."
 	)
-	assert(
+	_expect(
 		not bool(actor.call("is_work_animation_active")),
 		"An employee must stop the work animation after leaving."
 	)
@@ -249,12 +253,12 @@ func _test_profession_work_animation() -> void:
 	visual.call("setup", {"appearance": {}})
 	visual.call("set_working", true, "screenwriter")
 	visual.call("advance_simulation", 0.5)
-	assert(
+	_expect(
 		bool(visual.call("is_working")),
 		"CharacterVisual must expose an active working animation state."
 	)
 	visual.call("set_walking", true)
-	assert(
+	_expect(
 		not bool(visual.call("is_working")),
 		"Walking animation must replace the working animation."
 	)

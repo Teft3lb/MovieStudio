@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/smoke_test_base.gd"
 
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
@@ -18,6 +18,10 @@ const CHARACTER_DATA_SCRIPT = preload(
 
 
 func _initialize() -> void:
+	call_deferred("_run_tests")
+
+
+func _run_tests() -> void:
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 4102026
@@ -33,15 +37,15 @@ func _initialize() -> void:
 	var management: Variant = EMPLOYEE_MANAGEMENT_SYSTEM_SCRIPT.new()
 	management.call("initialize", initial_employees, 1, 246810, 4)
 
-	assert(
+	_expect(
 		management.employees.size() == 2,
 		"Initial employees must remain in the active roster."
 	)
-	assert(
+	_expect(
 		management.market_candidates.size() == 4,
 		"Initial market must contain the configured candidate count."
 	)
-	assert(
+	_expect(
 		management.contracts.size() == 2,
 		"Every starting employee must receive a permanent contract."
 	)
@@ -53,13 +57,12 @@ func _initialize() -> void:
 	_test_market_refresh(management)
 	_test_fixed_term_expiry(management)
 
-	print("EmployeeManagementSmokeTest: PASS")
-	quit(0)
+	_finish_test("EmployeeManagementSmokeTest")
 
 
 func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) -> void:
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
-	assert(
+	_expect(
 		profession_ids.size() == 19,
 		"The profession catalog must contain exactly 19 focused professions."
 	)
@@ -68,23 +71,23 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		var candidate: Variant = generator.call(
 			"generate", rng, "PROF-TEST-%s" % profession_id, profession_id
 		)
-		assert(
+		_expect(
 			candidate.profession_id == profession_id,
 			"Generated employee must retain the requested profession."
 		)
-		assert(
+		_expect(
 			not candidate.get_profession_title().is_empty(),
 			"Every profession must have a localized title."
 		)
-		assert(
+		_expect(
 			not candidate.get_department_title().is_empty(),
 			"Every profession must belong to a department."
 		)
-		assert(
+		_expect(
 			candidate.skills.has(candidate.get_primary_skill_id()),
 			"Every profession must map to an existing primary skill."
 		)
-		assert(
+		_expect(
 			candidate.daily_salary > 0,
 			"Every profession must generate a positive salary expectation."
 		)
@@ -93,16 +96,16 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			PROFESSION_CATALOG_SCRIPT.get_specialization_ids(profession_id)
 		)
 		if specialization_ids.is_empty():
-			assert(
+			_expect(
 				candidate.specialization_id.is_empty(),
 				"Professions without specializations must not receive a fabricated specialization."
 			)
 		else:
-			assert(
+			_expect(
 				specialization_ids.has(candidate.specialization_id),
 				"Generated specialization must belong to its profession."
 			)
-			assert(
+			_expect(
 				not candidate.get_specialization_title().is_empty(),
 				"Generated specialization must have a localized title."
 			)
@@ -112,14 +115,14 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 					candidate.specialization_id
 				)
 			)
-			assert(
+			_expect(
 				candidate.skills.has(specialization_skill_id),
 				"Specializations must reuse an existing character skill."
 			)
 			var restored_specialist: Variant = CHARACTER_DATA_SCRIPT.from_dict(
 				candidate.to_dict()
 			)
-			assert(
+			_expect(
 				restored_specialist.specialization_id == candidate.specialization_id,
 				"Specialization must survive CharacterData serialization."
 			)
@@ -140,7 +143,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 				str(department_id)
 			)
 		)
-		assert(
+		_expect(
 			department_professions.size() == int(expected_department_counts.get(
 				str(department_id), -1
 			)),
@@ -160,7 +163,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		)] = true
 
 	for department_id in market_departments.keys():
-		assert(
+		_expect(
 			bool(market_departments[department_id]),
 			"The initial market must represent every employee department."
 		)
@@ -176,7 +179,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		var core_schedule: Dictionary = PROFESSION_CATALOG_SCRIPT.get_schedule(
 			core_profession_id
 		)
-		assert(
+		_expect(
 			int(core_schedule.get("shift_start_hour", -1)) == 8
 			and int(core_schedule.get("shift_end_hour", -1)) == 17
 			and int(core_schedule.get("break_start_hour", -1)) == 12
@@ -184,11 +187,11 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			"Character System v2 core professions must keep their verified schedule."
 		)
 
-	assert(
+	_expect(
 		PROFESSION_CATALOG_SCRIPT.get_profession_title("camera_operator") == "Оператор",
 		"Existing Character System v2 profession titles must remain unchanged."
 	)
-	assert(
+	_expect(
 		PROFESSION_CATALOG_SCRIPT.get_default_task("camera_operator")
 			== "Готовит операторское оборудование",
 		"Existing Character System v2 work-task labels must remain unchanged."
@@ -197,7 +200,7 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 	var technician_candidate: Variant = generator.call(
 		"generate", rng, "PROF-TEST-TECHNICIAN", "technician"
 	)
-	assert(
+	_expect(
 		technician_candidate.get_profession_title() == "Техник",
 		"Character System v2 technician profiles must remain supported."
 	)
@@ -211,15 +214,15 @@ func _test_contract_serialization(management: Variant) -> void:
 	var payload: Dictionary = contract.call("to_dict")
 	var restored: Variant = EMPLOYEE_CONTRACT_SCRIPT.from_dict(payload)
 
-	assert(
+	_expect(
 		restored.contract_id == contract.contract_id,
 		"Contract ID must survive serialization."
 	)
-	assert(
+	_expect(
 		restored.employee_id == employee_id,
 		"Employee ID must survive contract serialization."
 	)
-	assert(
+	_expect(
 		restored.type_id == "permanent" and restored.end_day == 0,
 		"Starting employees must have indefinite contracts."
 	)
@@ -240,35 +243,35 @@ func _test_hiring(management: Variant) -> void:
 		1
 	)
 
-	assert(bool(result.get("success", false)), "A valid market candidate must be hireable.")
-	assert(
+	_expect(bool(result.get("success", false)), "A valid market candidate must be hireable.")
+	_expect(
 		management.employees.size() == 3,
 		"Hiring must add one employee to the active roster."
 	)
-	assert(
+	_expect(
 		management.market_candidates.size() == 3,
 		"Hired candidates must leave the market."
 	)
 
 	var hired_employee: Variant = result.get("employee")
 	var contract: Variant = result.get("contract")
-	assert(
+	_expect(
 		str(hired_employee.id) == candidate_id,
 		"Hiring must preserve the candidate's stable character ID."
 	)
-	assert(
+	_expect(
 		hired_employee.daily_salary == expected_salary,
 		"Employee salary must use the selected contract offer."
 	)
-	assert(
+	_expect(
 		contract.type_id == "fixed_30_days",
 		"The selected contract type must be stored."
 	)
-	assert(
+	_expect(
 		contract.term_days == 30 and contract.end_day == 30,
 		"A 30-day contract signed on day 1 must end on day 30."
 	)
-	assert(
+	_expect(
 		expected_salary >= base_salary,
 		"Fixed-term contracts must not undercut the candidate's salary expectation."
 	)
@@ -279,7 +282,7 @@ func _test_hiring(management: Variant) -> void:
 		"permanent",
 		1
 	)
-	assert(
+	_expect(
 		not bool(duplicate_result.get("success", false)),
 		"A candidate cannot be hired twice."
 	)
@@ -293,18 +296,18 @@ func _test_dismissal(management: Variant) -> void:
 		2
 	)
 
-	assert(bool(result.get("success", false)), "An active employee must be dismissible.")
-	assert(
+	_expect(bool(result.get("success", false)), "An active employee must be dismissible.")
+	_expect(
 		management.employees.size() == 2,
 		"Dismissal must remove the employee from the active roster."
 	)
-	assert(
+	_expect(
 		management.former_employees.size() == 1,
 		"Dismissed employees must remain in the former-employee archive."
 	)
 
 	var contract: Variant = management.call("get_contract", employee_id)
-	assert(
+	_expect(
 		contract.status == "terminated" and contract.termination_day == 2,
 		"Dismissal must terminate the employment contract."
 	)
@@ -313,15 +316,15 @@ func _test_dismissal(management: Variant) -> void:
 func _test_market_refresh(management: Variant) -> void:
 	var result: Dictionary = management.call("advance_day", 8)
 
-	assert(
+	_expect(
 		bool(result.get("market_refreshed", false)),
 		"The market must refresh after seven elapsed game days."
 	)
-	assert(
+	_expect(
 		management.market_candidates.size() == 8,
 		"Market refresh must restore the default candidate pool."
 	)
-	assert(
+	_expect(
 		int(management.call("get_market_days_until_refresh", 8)) == 7,
 		"Market refresh countdown must reset after refresh."
 	)
@@ -336,32 +339,32 @@ func _test_fixed_term_expiry(management: Variant) -> void:
 		"fixed_90_days",
 		8
 	)
-	assert(bool(hire_result.get("success", false)), "Candidate must be hireable on refreshed market.")
+	_expect(bool(hire_result.get("success", false)), "Candidate must be hireable on refreshed market.")
 
 	var contract: Variant = hire_result.get("contract")
-	assert(contract.end_day == 97, "A 90-day contract starting on day 8 must end on day 97.")
+	_expect(contract.end_day == 97, "A 90-day contract starting on day 8 must end on day 97.")
 
 	var before_end: Dictionary = management.call("advance_day", 97)
-	assert(
+	_expect(
 		before_end.get("expired_employees", []).is_empty(),
 		"A fixed-term contract must remain active through its final day."
 	)
 
 	var after_end: Dictionary = management.call("advance_day", 98)
 	var expired: Array = after_end.get("expired_employees", [])
-	assert(
+	_expect(
 		expired.size() == 1 and str(expired[0].id) == candidate_id,
 		"Expired employees must be removed from active staff on the following day."
 	)
-	assert(
+	_expect(
 		management.employees.size() == 2,
 		"Expired employees must no longer count as active staff."
 	)
-	assert(
+	_expect(
 		management.former_employees.size() == 2,
 		"Expired employees must be retained in the former-employee archive."
 	)
-	assert(
+	_expect(
 		contract.status == "expired" and contract.termination_day == 98,
 		"Contract expiry must be recorded."
 	)

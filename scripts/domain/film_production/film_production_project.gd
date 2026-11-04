@@ -174,6 +174,10 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		int(payload.get("total_elapsed_minutes", 0)),
 		0
 	)
+	result.current_scene_elapsed_minutes = maxi(
+		int(payload.get("current_scene_elapsed_minutes", 0)),
+		0
+	)
 	result.estimated_total_minutes = maxi(
 		int(payload.get("estimated_total_minutes", 0)),
 		0

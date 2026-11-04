@@ -1,7 +1,7 @@
 # Film Production v1
 
 **Engine:** Godot 4.7.2  
-**Branch:** \`feature/film-production-v1\`  
+**Branch:** \`main\`  
 **Status:** first playable end-to-end scene-shooting workflow.
 
 ## Goal
@@ -108,6 +108,8 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/character_system_v2_smoke_test.gd
 & $godot --headless --path . --script res://tests/game_clock_fast_forward_test.gd
 ~~~
+
+All smoke-test scripts defer their test bodies until the SceneTree is ready. They share `smoke_test_base.gd`, which accumulates failed expectations and exits with code 1 instead of printing a false PASS.
 
 The production domain test covers role resolution, unavailable-crew pauses, project serialization, all phase transitions, retakes, final quality and completion. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers phase-specific blocking marks, camera tracking and the production slate.
 
