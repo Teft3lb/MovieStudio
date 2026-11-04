@@ -535,17 +535,24 @@ func _refresh_building_detail() -> void:
 	var eligible_staff: Array = _get_eligible_staff(
 		str(building.building_type_id)
 	)
+	var assigned_staff: Array = _get_assigned_staff(str(building.id))
 	var staff_summary := Label.new()
 	staff_summary.text = (
-		"Рабочие места: %d  ·  Сотрудники подходящих профессий: %d\nРазмер участка: %.0f × %.0f м"
-		% [capacity, eligible_staff.size(), footprint.x, footprint.y]
+		"Рабочие места: %d  ·  Назначено: %d\nПодходят по профессии: %d  ·  Участок: %.0f × %.0f м"
+		% [
+			capacity,
+			assigned_staff.size(),
+			eligible_staff.size(),
+			footprint.x,
+			footprint.y,
+		]
 	)
 	_building_detail_layout.add_child(staff_summary)
 
 	if str(building.building_type_id) == "script_department":
 		_build_script_department_detail(eligible_staff)
 	elif str(building.building_type_id) == "sound_stage":
-		_build_sound_stage_detail(eligible_staff)
+		_build_sound_stage_detail(assigned_staff)
 
 
 func _build_script_department_detail(eligible_staff: Array) -> void:
@@ -997,6 +1004,15 @@ func _build_sound_stage_detail(eligible_staff: Array) -> void:
 	limitation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	limitation.add_theme_font_size_override("font_size", 10)
 	_building_detail_layout.add_child(limitation)
+
+
+func _get_assigned_staff(building_id: String) -> Array:
+	if not is_instance_valid(_character_manager):
+		return []
+	return _character_manager.call(
+		"get_employees_assigned_to_building",
+		building_id
+	)
 
 
 func _get_eligible_staff(building_type_id: String) -> Array:
