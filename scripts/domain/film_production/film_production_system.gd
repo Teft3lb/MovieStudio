@@ -152,7 +152,9 @@ func advance_minute(
 					"retake",
 					active_actor_count
 				)
-				project.estimated_total_minutes += retake_duration
+				project.estimated_total_minutes += (
+					retake_duration + REVIEW_MINUTES
+				)
 				_set_phase(project, "shooting", retake_duration)
 				project.last_activity_message = (
 					"Качество дубля %.0f/100. Нужна пересъёмка №%d."
