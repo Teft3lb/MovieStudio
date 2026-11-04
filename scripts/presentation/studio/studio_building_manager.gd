@@ -538,7 +538,7 @@ func _refresh_building_detail() -> void:
 	_building_detail_layout.add_child(staff_summary)
 
 	if str(building.building_type_id) == "script_department":
-		_build_script_department_detail(eligible_staff)
+		_build_script_department_detail(assigned_staff)
 	elif str(building.building_type_id) == "sound_stage":
 		_build_sound_stage_detail(assigned_staff)
 
