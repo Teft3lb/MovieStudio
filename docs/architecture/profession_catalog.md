@@ -1,55 +1,66 @@
 # Profession Catalogue
 
 **Engine:** Godot 4.7.2  
-**Module:** `scripts/domain/staff/profession_catalog.gd`  
-**Status:** first data-driven catalogue integrated with Employee Management v1.
+**Module:** \`scripts/domain/staff/profession_catalog.gd\`  
+**Status:** focused 19-profession catalogue integrated with Employee Management v1.
 
 ## Design
 
-Profession data is centralized instead of duplicating profession-specific dictionaries across CharacterData, CharacterGenerator, EmployeeMarketSystem and CharacterNeedsSystem.
+The catalogue deliberately limits the studio workforce to **19 professions across six departments**. The creative department receives the greatest role depth because actors, directors, screenwriters and producers directly affect the player's film-making decisions. Other departments use broad professions with lightweight specializations rather than a separate job for every production task.
 
-Each profession defines:
+A profession defines:
 - stable profession ID;
-- localized title;
-- department ID;
+- localized title and department;
 - primary skill;
 - base daily salary expectation;
 - default work-task description;
-- career goal;
-- biography pool.
+- career goal and biography pool.
 
-The catalogue also owns localized department titles, skill titles and default work schedules by department. The six Character System v2 professions retain their original 08:00–17:00 shift and 12:00–13:00 break, along with the existing camera-operator title and task label.
+A specialization is a profile attribute, not a separate profession or candidate-market category. It reuses the existing skill model and provides focused skill generation and a clear candidate-profile label.
 
 ## Departments and professions
 
-| Department | Profession IDs |
-|---|---|
-| Creative | `actor`, `extra`, `director`, `screenwriter`, `producer`, `casting_director` |
-| Production | `camera_operator`, `assistant_camera_operator`, `gaffer`, `lighting_technician`, `sound_engineer`, `boom_operator`, `film_editor`, `production_designer`, `set_builder`, `costume_designer`, `makeup_artist`, `props_master`, `technician` |
-| Facility | `cleaner`, `maintenance_worker`, `electrician`, `security_guard` |
-| Catering | `chef`, `sous_chef`, `bartender`, `waiter`, `cafeteria_worker` |
-| Administration | `secretary`, `personal_assistant`, `receptionist`, `hr_manager`, `accountant`, `office_manager` |
-| Marketing | `marketing_manager`, `advertising_manager`, `pr_specialist`, `social_media_manager`, `graphic_designer`, `press_officer` |
+| Department | Count | Profession IDs |
+|---|---:|---|
+| Creative | 6 | \`actor\`, \`extra\`, \`director\`, \`screenwriter\`, \`producer\`, \`casting_director\` |
+| Production | 3 | \`camera_operator\`, \`technician\`, \`production_designer\` |
+| Facility | 3 | \`cleaner\`, \`maintenance_worker\`, \`security_guard\` |
+| Catering | 3 | \`chef\`, \`bartender\`, \`waiter\` |
+| Administration | 2 | \`secretary\`, \`personal_assistant\` |
+| Marketing | 2 | \`marketing_manager\`, \`pr_specialist\` |
+| **Total** | **19** | |
 
-The `technician` ID is retained for compatibility with Character System v2 data.
+## Specializations
+
+Specializations add variety without creating extra profession IDs:
+
+- Camera operator: cinematography, assistant work.
+- Technician: lighting, sound, equipment, editing.
+- Production designer: sets, costumes, makeup, props.
+- Maintenance worker: electrical systems, building maintenance.
+- Chef: kitchen work, assistant chef.
+- Waiter: cafeteria service.
+- Secretary: reception, office administration, personnel records, accounting.
+- Personal assistant: talent support, scheduling.
+- Marketing manager: advertising, social media, advertising design.
+- PR specialist: press, public relations.
+
+Roles without a meaningful specialization remain unspecialized. The catalogue does not fabricate a specialization for every employee.
+
+## Compatibility
+
+The six Character System v2 profession IDs remain stable: \`actor\`, \`director\`, \`screenwriter\`, \`camera_operator\`, \`producer\` and \`technician\`. Their verified 08:00–17:00 schedule and 12:00–13:00 break are preserved, along with the existing camera-operator title and task label.
+
+The previous 40-role draft is not allowed to leak into the active market. Its 21 additional role IDs are retained as migration aliases and resolve to one of the 19 supported professions plus a specialization. Old character payloads without \`specialization_id\` remain loadable.
 
 ## Integration
 
-- CharacterData resolves job title, department and primary skill through the catalogue.
-- CharacterGenerator creates the complete skill set and profession-specific salary, biography, career goal and work schedule.
-- EmployeeMarketSystem samples candidates across all departments so a default eight-person market represents every department.
-- CharacterNeedsSystem uses profession-specific default task descriptions.
-- CharacterManager displays department and profession information in candidate and employee profiles.
+- CharacterData stores and serializes the specialization ID.
+- CharacterGenerator selects a valid specialization and gives its mapped existing skill a profession-appropriate value.
+- EmployeeMarketSystem samples only the 19 active profession IDs and continues to represent all six departments in the initial eight-candidate market.
+- CharacterManager displays a specialization next to the profession when one exists.
+- CharacterNeedsSystem continues to use the profession's default work-task description; specializations do not create separate task loops.
 
-New skill keys are merged with default values when deserializing older CharacterData payloads.
+## Boundaries
 
-## Current boundaries
-
-The catalogue does not yet provide:
-- department-specific buildings or room requirements;
-- uniforms or profession-specific 3D appearance;
-- workstations, equipment requirements or task targets;
-- specialized cleaning, cooking, serving, security or personal-assistant behavior;
-- staffing quotas or department leadership hierarchy.
-
-Those behaviors belong to Studio Operations and Employee AI, which will consume this catalogue rather than maintaining their own profession lists.
+The catalogue does not create department buildings, staffing quotas, dedicated workstations, uniforms, animations or specialized autonomous behaviors. Those belong to later Studio Operations / Employee AI systems.
