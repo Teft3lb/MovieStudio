@@ -196,17 +196,26 @@ func _refresh_workplace_assignments() -> void:
 			employee_id,
 			{}
 		)
-		if assignment.is_empty() or str(employee.work_state) == "off_duty":
-			actor.call("clear_workplace")
+		if assignment.is_empty() or str(employee.work_state) != "working":
+			actor.call("leave_workplace")
 			continue
 
 		var building_id: String = str(assignment.get("building_id", ""))
-		var destination: Vector3 = _studio_building_manager.call(
-			"get_workplace_position",
-			building_id,
-			int(assignment.get("slot_index", 0))
-		)
-		actor.call("assign_workplace", building_id, destination)
+		if (
+			str(actor.call("get_workplace_building_id")) != building_id
+			and not bool(actor.call("is_leaving_workplace"))
+		):
+			var route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				route,
+				str(employee.profession_id)
+			)
 
 	if is_instance_valid(_roster_header):
 		_refresh_roster()
@@ -658,19 +667,27 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if actor == null or not is_instance_valid(actor):
 			continue
 
-		if assignment.is_empty() or str(employee.work_state) == "off_duty":
-			actor.call("clear_workplace")
+		if assignment.is_empty() or str(employee.work_state) != "working":
+			actor.call("leave_workplace")
 			continue
 
 		var building_id: String = str(assignment.get("building_id", ""))
-		if str(actor.call("get_workplace_building_id")) != building_id:
-			if is_instance_valid(_studio_building_manager):
-				var destination: Vector3 = _studio_building_manager.call(
-					"get_workplace_position",
-					building_id,
-					int(assignment.get("slot_index", 0))
-				)
-				actor.call("assign_workplace", building_id, destination)
+		if (
+			str(actor.call("get_workplace_building_id")) != building_id
+			and not bool(actor.call("is_leaving_workplace"))
+			and is_instance_valid(_studio_building_manager)
+		):
+			var route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				route,
+				str(employee.profession_id)
+			)
 
 		var is_at_workplace: bool = bool(
 			actor.call("is_at_workplace")
@@ -678,10 +695,7 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if _game_clock.is_manual_fast_forward:
 			is_at_workplace = true
 
-		if (
-			str(employee.work_state) == "working"
-			and is_at_workplace
-		):
+		if is_at_workplace:
 			_workplace_system.call(
 				"advance_work_minute",
 				employee,
@@ -727,10 +741,13 @@ func _refresh_after_staffing_day() -> void:
 
 func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 	for employee in employees:
-		if str(employee.work_state) != "off_duty":
-			var actor: Variant = _employee_actors.get(str(employee.id))
-			if actor != null and is_instance_valid(actor):
-				actor.call("snap_to_workplace")
+		var actor: Variant = _employee_actors.get(str(employee.id))
+		if actor == null or not is_instance_valid(actor):
+			continue
+		if str(employee.work_state) == "working":
+			actor.call("snap_to_workplace")
+		else:
+			actor.call("snap_outside_workplace")
 
 	_refresh_market_panel()
 	_refresh_after_staffing_day()
