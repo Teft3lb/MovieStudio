@@ -14,11 +14,11 @@ The data-driven `ProfessionCatalog` is the single source of truth for department
 
 The focused catalogue contains **19 professions across six departments**: six creative roles, three production roles, three facility roles, three catering roles, two administration roles and two marketing roles. See [Profession Catalogue](profession_catalog.md) for the exact IDs and specialization mappings.
 
-The creative department retains the greatest role depth. Other departments use broad professions rather than separate jobs for every task. Specializations are limited to technicians, production designers and marketing managers. The previous 40-role draft's 21 additional IDs are migration aliases only; they are normalized into the 19 active professions and never appear as separate market candidates.
+The creative department retains the greatest role depth. Other departments use broad professions rather than separate jobs for every task. Specializations are limited to technicians, production designers and marketing managers. Each profession has its own 4–8 skill profile; unrelated skills are not generated or shown.
 
-The eight-candidate market is seeded and initially distributes candidates across all six departments. New skill keys are merged with defaults when loading older CharacterData payloads, and the six Character System v2 profession IDs and verified schedules remain supported.
+The eight-candidate market is seeded and initially distributes candidates across all six departments. CharacterGenerator creates only the selected profession's skills, and CharacterData stores only those relevant values. The six Character System v2 profession IDs and verified schedules remain supported.
 
-The catalogue provides profession-level profile data, focused specializations for three professions, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
+The catalogue provides profession-level profile data, focused specializations for three professions, profession-specific skill profiles, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
 
 ## Domain modules
 
@@ -100,16 +100,15 @@ The test covers:
 1. exact 19-profession catalogue and agreed per-department counts;
 2. valid specialization generation, skill mapping and serialization;
 3. balanced market representation of all six departments;
-4. migration of all 21 IDs from the previous 40-role draft;
-5. compatibility with the six Character System v2 profession IDs and older CharacterData payloads;
-6. permanent contracts for the starting roster;
-7. contract serialization round-trip;
-8. candidate hiring and removal from the market;
-9. selected contract type and salary calculation;
-10. duplicate-hire rejection;
-11. dismissal, contract termination and former-employee archive;
-12. seven-day market refresh;
-13. fixed-term contract expiry after the final active day.
+4. compatibility with the six Character System v2 profession IDs and verified schedules;
+5. permanent contracts for the starting roster;
+6. contract serialization round-trip;
+7. candidate hiring and removal from the market;
+8. selected contract type and salary calculation;
+9. duplicate-hire rejection;
+10. dismissal, contract termination and former-employee archive;
+11. seven-day market refresh;
+12. fixed-term contract expiry after the final active day.
 
 A separate clock test is available:
 
@@ -128,5 +127,5 @@ Not included:
 - candidate rejection and employee resignation;
 - employee capacity or department staffing limits;
 - contract renewal and renegotiation;
-- save-game integration and schema migrations;
+- save-game integration;
 - relationship effects or morale reactions to dismissal.
