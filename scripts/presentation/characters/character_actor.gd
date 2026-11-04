@@ -120,6 +120,14 @@ func clear_workplace() -> void:
 	_is_at_workplace = false
 
 
+func snap_to_workplace() -> void:
+	if not _has_workplace_destination:
+		return
+	global_position = _workplace_destination
+	_is_at_workplace = true
+	_set_walking(false)
+
+
 func get_workplace_building_id() -> String:
 	return _workplace_building_id
 
