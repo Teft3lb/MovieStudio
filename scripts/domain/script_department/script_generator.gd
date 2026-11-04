@@ -219,12 +219,16 @@ func generate(
 			rng.randi_range(1, mini(role_count, 3))
 		)
 		var present_roles: Array[String] = []
-		var used_roles: Dictionary = {}
-		while present_roles.size() < present_role_count:
-			var role_pick: int = rng.randi_range(0, role_count - 1)
-			if used_roles.has(role_pick):
-				continue
-			used_roles[role_pick] = true
+		var available_role_indices: Array[int] = []
+		for role_index in range(role_count):
+			available_role_indices.append(role_index)
+		for _role_slot in range(present_role_count):
+			var picked_index: int = rng.randi_range(
+				0,
+				available_role_indices.size() - 1
+			)
+			var role_pick: int = available_role_indices[picked_index]
+			available_role_indices.remove_at(picked_index)
 			present_roles.append(
 				str(cast_names[role_pick].get("character_name", ""))
 			)
@@ -279,7 +283,6 @@ func generate(
 		0.80 + float(result.potential_score) / 250.0,
 		0.01
 	)
-	result.logline = result.logline
 	return result
 
 
