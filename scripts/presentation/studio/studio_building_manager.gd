@@ -1572,11 +1572,13 @@ func _apply_film_crew_actions() -> void:
 		"director": "Руководит сценой %d" % scene_number,
 		"camera_operator": "Снимает сцену %d" % scene_number,
 		"technician": "Обслуживает оборудование сцены %d" % scene_number,
+		"producer": "Координирует съёмки фильма",
 	}
 	var action_by_profession: Dictionary = {
 		"director": "directing",
 		"camera_operator": "operating_camera",
 		"technician": "checking_equipment",
+		"producer": "coordinating",
 	}
 	if phase == "review":
 		task_by_profession["director"] = "Просматривает дубль сцены %d" % scene_number
@@ -1588,7 +1590,7 @@ func _apply_film_crew_actions() -> void:
 		task_by_profession["camera_operator"] = "Выставляет кадр сцены %d" % scene_number
 		action_by_profession["technician"] = "checking_equipment"
 
-	for profession_id in ["director", "camera_operator", "technician"]:
+	for profession_id in ["director", "camera_operator", "technician", "producer"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
@@ -1610,7 +1612,7 @@ func _reset_film_crew_actions() -> void:
 	if _active_film_project == null:
 		return
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in ["director", "camera_operator", "technician"]:
+	for profession_id in ["director", "camera_operator", "technician", "producer"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
