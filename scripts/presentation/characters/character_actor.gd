@@ -12,6 +12,14 @@ var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
 var _selection_ring: MeshInstance3D
+var _scene_dialogue_label: Label3D
+var _scene_performance_active: bool = false
+var _scene_returning_to_workplace: bool = false
+var _scene_is_moving: bool = false
+var _scene_target_position: Vector3 = Vector3.ZERO
+var _scene_focus_position: Vector3 = Vector3.ZERO
+var _scene_action_id: String = ""
+var _scene_dialogue: String = ""
 var _workplace_building_id: String = ""
 var _workplace_path: Array[Vector3] = []
 var _workplace_commute_path: Array[Vector3] = []
@@ -43,6 +51,7 @@ func setup(
 	add_child(_visual)
 
 	_create_name_tag()
+	_create_scene_dialogue_label()
 	_create_selection_ring()
 	_create_selection_hitbox()
 
@@ -55,6 +64,10 @@ func _process(delta: float) -> void:
 		_game_clock.call("get_simulation_delta", delta)
 	)
 	if is_zero_approx(simulation_delta):
+		return
+
+	if _scene_performance_active:
+		_process_scene_performance(simulation_delta)
 		return
 
 	if _has_workplace_destination and not _workplace_path.is_empty():
@@ -117,6 +130,168 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
+
+
+func start_scene_performance(
+	target_position: Vector3,
+	focus_position: Vector3,
+	action_id: String,
+	dialogue_text: String = ""
+) -> void:
+	if not _has_workplace_destination:
+		return
+
+	var target_changed: bool = (
+		not _scene_performance_active
+		or _scene_returning_to_workplace
+		or _scene_target_position.distance_to(target_position) > 0.2
+	)
+	_scene_performance_active = true
+	_scene_returning_to_workplace = false
+	_scene_target_position = target_position
+	_scene_focus_position = focus_position
+	_scene_action_id = action_id
+	_scene_dialogue = dialogue_text
+	_set_scene_dialogue(dialogue_text)
+
+	if target_changed:
+		_scene_is_moving = global_position.distance_to(target_position) > 0.25
+		_is_at_workplace = not _scene_is_moving
+	if _scene_is_moving:
+		_set_walking(true)
+	else:
+		_apply_scene_pose()
+
+
+func set_production_action(action_id: String) -> void:
+	if not is_instance_valid(_visual):
+		return
+	if action_id.is_empty():
+		_visual.call("set_performance_action", "")
+		_set_working(true)
+	else:
+		_visual.call("set_performance_action", action_id)
+
+
+func return_to_workplace() -> void:
+	if not _has_workplace_destination or _workplace_commute_path.is_empty():
+		_cancel_scene_performance()
+		return
+
+	var last_index: int = _workplace_commute_path.size() - 1
+	_scene_performance_active = true
+	_scene_returning_to_workplace = true
+	_scene_is_moving = true
+	_scene_target_position = _workplace_commute_path[last_index]
+	_scene_action_id = ""
+	_scene_dialogue = ""
+	_set_scene_dialogue("")
+	_is_at_workplace = false
+	if global_position.distance_to(_scene_target_position) <= 0.25:
+		global_position = _scene_target_position
+		_finish_scene_return()
+	else:
+		_set_walking(true)
+
+
+func snap_to_scene_mark() -> void:
+	if not _scene_performance_active or _scene_returning_to_workplace:
+		return
+	global_position = _scene_target_position
+	_scene_is_moving = false
+	_is_at_workplace = true
+	_face_scene_focus()
+	_apply_scene_pose()
+
+
+func is_at_scene_mark() -> bool:
+	return (
+		_scene_performance_active
+		and not _scene_returning_to_workplace
+		and not _scene_is_moving
+	)
+
+
+func is_in_scene_performance() -> bool:
+	return _scene_performance_active and not _scene_returning_to_workplace
+
+
+func _process_scene_performance(simulation_delta: float) -> void:
+	if _scene_is_moving:
+		var direction: Vector3 = _scene_target_position - global_position
+		direction.y = 0.0
+		if direction.length_squared() <= 0.0625:
+			global_position = _scene_target_position
+			_scene_is_moving = false
+			if _scene_returning_to_workplace:
+				_finish_scene_return()
+			else:
+				_is_at_workplace = true
+				_face_scene_focus()
+				_apply_scene_pose()
+			_advance_visual(simulation_delta)
+			return
+
+		direction = direction.normalized()
+		global_position = global_position.move_toward(
+			_scene_target_position,
+			_move_speed * simulation_delta
+		)
+		look_at(global_position + direction, Vector3.UP)
+		_set_walking(true)
+		_advance_visual(simulation_delta)
+		return
+
+	if _scene_returning_to_workplace:
+		_finish_scene_return()
+		_advance_visual(simulation_delta)
+		return
+
+	_is_at_workplace = true
+	_face_scene_focus()
+	_apply_scene_pose()
+	_advance_visual(simulation_delta)
+
+
+func _finish_scene_return() -> void:
+	_scene_performance_active = false
+	_scene_returning_to_workplace = false
+	_scene_is_moving = false
+	_is_at_workplace = true
+	_set_scene_dialogue("")
+	_face_workplace()
+	_set_working(true)
+
+
+func _face_scene_focus() -> void:
+	var direction: Vector3 = _scene_focus_position - global_position
+	direction.y = 0.0
+	if direction.length_squared() > 0.001:
+		look_at(global_position + direction.normalized(), Vector3.UP)
+
+
+func _apply_scene_pose() -> void:
+	_set_walking(false)
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", _scene_action_id)
+
+
+func _set_scene_dialogue(dialogue_text: String) -> void:
+	if not is_instance_valid(_scene_dialogue_label):
+		return
+	_scene_dialogue_label.text = dialogue_text
+	_scene_dialogue_label.visible = not dialogue_text.is_empty()
+
+
+func _cancel_scene_performance() -> void:
+	_scene_performance_active = false
+	_scene_returning_to_workplace = false
+	_scene_is_moving = false
+	_scene_action_id = ""
+	_scene_dialogue = ""
+	_set_scene_dialogue("")
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", "")
 
 
 func _finish_workplace_arrival() -> void:
@@ -191,6 +366,7 @@ func assign_workplace(building_id: String, destination: Vector3) -> void:
 
 
 func leave_workplace() -> void:
+	_cancel_scene_performance()
 	if _is_leaving_workplace:
 		return
 	if not _has_workplace_destination or _workplace_path.is_empty():
@@ -213,6 +389,7 @@ func leave_workplace() -> void:
 
 
 func clear_workplace() -> void:
+	_cancel_scene_performance()
 	_workplace_building_id = ""
 	_workplace_path.clear()
 	_workplace_commute_path.clear()
@@ -225,6 +402,7 @@ func clear_workplace() -> void:
 
 
 func snap_to_workplace() -> void:
+	_cancel_scene_performance()
 	if not _has_workplace_destination or _workplace_commute_path.is_empty():
 		return
 	_workplace_path = _workplace_commute_path.duplicate()
@@ -240,6 +418,7 @@ func snap_to_workplace() -> void:
 
 
 func snap_outside_workplace() -> void:
+	_cancel_scene_performance()
 	if _has_workplace_destination and not _workplace_commute_path.is_empty():
 		global_position = _workplace_commute_path[0]
 	_finish_leaving_workplace()
@@ -300,6 +479,19 @@ func _create_name_tag() -> void:
 	label.modulate = Color(1.0, 0.96, 0.86)
 	label.no_depth_test = true
 	add_child(label)
+
+
+func _create_scene_dialogue_label() -> void:
+	_scene_dialogue_label = Label3D.new()
+	_scene_dialogue_label.name = "SceneDialogue"
+	_scene_dialogue_label.position = Vector3(0.0, 3.08, 0.0)
+	_scene_dialogue_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_scene_dialogue_label.font_size = 22
+	_scene_dialogue_label.outline_size = 7
+	_scene_dialogue_label.modulate = Color(1.0, 0.96, 0.82)
+	_scene_dialogue_label.no_depth_test = true
+	_scene_dialogue_label.visible = false
+	add_child(_scene_dialogue_label)
 
 
 func _create_selection_ring() -> void:
