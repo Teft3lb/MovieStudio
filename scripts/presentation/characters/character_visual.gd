@@ -60,6 +60,7 @@ func set_walking(value: bool) -> void:
 		_working = false
 		_performing = false
 		_performance_action = ""
+		_reset_upper_body_pose()
 
 
 func set_working(value: bool, work_style: String = "") -> void:
@@ -69,6 +70,14 @@ func set_working(value: bool, work_style: String = "") -> void:
 	_performance_action = ""
 	if value:
 		_walking = false
+		_reset_upper_body_pose()
+
+
+func _reset_upper_body_pose() -> void:
+	if is_instance_valid(_body_root):
+		_body_root.rotation.z = 0.0
+	if is_instance_valid(_head_root):
+		_head_root.rotation = Vector3.ZERO
 
 
 func set_performance_action(action_id: String) -> void:
