@@ -201,7 +201,10 @@ MovieStudio/
 │   ├── core/
 │   ├── application/
 │   ├── domain/
+│   │   ├── studio/
+│   │   └── script_department/
 │   ├── presentation/
+│   │   └── studio/
 │   └── persistence/
 ├── resources/
 │   ├── definitions/
