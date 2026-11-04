@@ -42,6 +42,8 @@ var _left_leg_pivot: Node3D
 var _right_leg_pivot: Node3D
 
 var _walking: bool = false
+var _working: bool = false
+var _work_style: String = ""
 var _animation_phase: float = 0.0
 
 
@@ -51,26 +53,84 @@ func setup(character_payload: Dictionary) -> void:
 
 func set_walking(value: bool) -> void:
 	_walking = value
+	if value:
+		_working = false
+
+
+func set_working(value: bool, work_style: String = "") -> void:
+	_working = value
+	_work_style = work_style
+	if value:
+		_walking = false
+
+
+func is_working() -> bool:
+	return _working
 
 
 func advance_simulation(simulation_delta: float) -> void:
-	_animation_phase += simulation_delta * (7.2 if _walking else 1.8)
+	_animation_phase += simulation_delta * (
+		7.2 if _walking else 3.0 if _working else 1.8
+	)
 
-	var swing_strength: float = 0.55 if _walking else 0.012
-	var swing: float = sin(_animation_phase) * swing_strength
-
-	if is_instance_valid(_left_arm_pivot):
-		_left_arm_pivot.rotation.x = swing
-	if is_instance_valid(_right_arm_pivot):
-		_right_arm_pivot.rotation.x = -swing
-	if is_instance_valid(_left_leg_pivot):
-		_left_leg_pivot.rotation.x = -swing
-	if is_instance_valid(_right_leg_pivot):
-		_right_leg_pivot.rotation.x = swing
+	if _walking:
+		var swing: float = sin(_animation_phase) * 0.55
+		_set_arm_pose(swing, -swing)
+		_set_leg_pose(-swing, swing)
+	elif _working:
+		_advance_work_animation()
+	else:
+		_set_arm_pose(0.0, 0.0)
+		_set_leg_pose(0.0, 0.0)
 
 	if is_instance_valid(_body_root):
-		var bob_amount: float = 0.022 if _walking else 0.006
+		var bob_amount: float = (
+			0.022 if _walking else 0.008 if _working else 0.006
+		)
 		_body_root.position.y = sin(_animation_phase * 2.0) * bob_amount
+
+
+func _advance_work_animation() -> void:
+	var motion: float = sin(_animation_phase * 3.6) * 0.10
+	var left_arm: float = -0.12
+	var right_arm: float = -0.12
+
+	match _work_style:
+		"screenwriter", "producer", "casting_director", "production_designer":
+			left_arm = -0.48 + motion
+			right_arm = -0.52 - motion
+		"camera_operator":
+			left_arm = -0.58 + motion * 0.45
+			right_arm = -0.58 - motion * 0.45
+		"director":
+			left_arm = -0.20 + motion * 0.35
+			right_arm = -0.78 + sin(_animation_phase * 1.8) * 0.28
+		"actor", "extra":
+			left_arm = -0.18 + sin(_animation_phase * 1.8) * 0.20
+			right_arm = -0.18 - sin(_animation_phase * 1.8) * 0.20
+		"technician":
+			left_arm = -0.68 + motion
+			right_arm = -0.72 - motion
+		_:
+			left_arm = -0.18 + motion * 0.25
+			right_arm = -0.18 - motion * 0.25
+
+	_set_arm_pose(left_arm, right_arm)
+	_set_leg_pose(0.0, 0.0)
+
+
+func _set_arm_pose(left_angle: float, right_angle: float) -> void:
+	if is_instance_valid(_left_arm_pivot):
+		_left_arm_pivot.rotation.x = left_angle
+	if is_instance_valid(_right_arm_pivot):
+		_right_arm_pivot.rotation.x = right_angle
+
+
+func _set_leg_pose(left_angle: float, right_angle: float) -> void:
+	if is_instance_valid(_left_leg_pivot):
+		_left_leg_pivot.rotation.x = left_angle
+	if is_instance_valid(_right_leg_pivot):
+		_right_leg_pivot.rotation.x = right_angle
 
 
 func _build_model(character_payload: Dictionary) -> void:
