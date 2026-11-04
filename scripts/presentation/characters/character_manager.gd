@@ -368,9 +368,13 @@ func _refresh_market_panel() -> void:
 		button.custom_minimum_size = Vector2(345.0, 64.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_size_override("font_size", 12)
+		var candidate_role_title: String = candidate.get_profession_title()
+		var candidate_specialization: String = candidate.get_specialization_title()
+		if not candidate_specialization.is_empty():
+			candidate_role_title += " · " + candidate_specialization
 		button.text = "%s — %s\n%s · %s: %d / 100  ·  Запрос: %d ед. / день" % [
 			candidate.get_full_name(),
-			candidate.get_profession_title(),
+			candidate_role_title,
 			candidate.get_department_title(),
 			candidate.get_primary_skill_title(),
 			roundi(candidate.get_primary_skill_value()),
@@ -721,8 +725,12 @@ func _refresh_detail_panel() -> void:
 	var personality: Dictionary = employee.personality
 
 	_detail_name_label.text = employee.get_full_name().to_upper()
+	var employee_role_title: String = employee.get_profession_title()
+	var employee_specialization: String = employee.get_specialization_title()
+	if not employee_specialization.is_empty():
+		employee_role_title += " · " + employee_specialization
 	_detail_profession_label.text = "%s  ·  %s  ·  Возраст: %d" % [
-		employee.get_profession_title(),
+		employee_role_title,
 		employee.get_department_title(),
 		employee.age,
 	]
