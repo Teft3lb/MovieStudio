@@ -1041,7 +1041,15 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	for profession_id in REQUIRED_STAGE_PROFESSIONS:
 		var matching_staff: Array[String] = []
 		for employee in assigned_staff:
-			if str(employee.profession_id) == profession_id:
+			var employee_profession: String = str(employee.profession_id)
+			var matches_position: bool = (
+				employee_profession == profession_id
+				or (
+					profession_id == "actor"
+					and employee_profession == "extra"
+				)
+			)
+			if matches_position:
 				matching_staff.append(str(employee.get_full_name()))
 		if not matching_staff.is_empty():
 			ready_positions += 1
@@ -1197,7 +1205,15 @@ func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
 	var result: Dictionary = {}
 	for profession_id in REQUIRED_STAGE_PROFESSIONS:
 		for employee in assigned_staff:
-			if str(employee.profession_id) == profession_id:
+			var employee_profession: String = str(employee.profession_id)
+			var matches_position: bool = (
+				employee_profession == profession_id
+				or (
+					profession_id == "actor"
+					and employee_profession == "extra"
+				)
+			)
+			if matches_position:
 				result[profession_id] = str(employee.id)
 				break
 	for employee in assigned_staff:
