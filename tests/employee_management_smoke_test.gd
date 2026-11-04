@@ -60,8 +60,8 @@ func _initialize() -> void:
 func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) -> void:
 	var profession_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_ids()
 	assert(
-		profession_ids.size() >= 40,
-		"The profession catalog must include creative, production and service roles."
+		profession_ids.size() == 19,
+		"The profession catalog must contain exactly 19 focused professions."
 	)
 
 	for profession_id in profession_ids:
@@ -89,9 +89,63 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			"Every profession must generate a positive salary expectation."
 		)
 
+		var specialization_ids: Array[String] = (
+			PROFESSION_CATALOG_SCRIPT.get_specialization_ids(profession_id)
+		)
+		if specialization_ids.is_empty():
+			assert(
+				candidate.specialization_id.is_empty(),
+				"Professions without specializations must not receive a fabricated specialization."
+			)
+		else:
+			assert(
+				specialization_ids.has(candidate.specialization_id),
+				"Generated specialization must belong to its profession."
+			)
+			assert(
+				not candidate.get_specialization_title().is_empty(),
+				"Generated specialization must have a localized title."
+			)
+			var specialization_skill_id: String = (
+				PROFESSION_CATALOG_SCRIPT.get_specialization_skill_id(
+					profession_id,
+					candidate.specialization_id
+				)
+			)
+			assert(
+				candidate.skills.has(specialization_skill_id),
+				"Specializations must reuse an existing character skill."
+			)
+			var restored_specialist: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+				candidate.to_dict()
+			)
+			assert(
+				restored_specialist.specialization_id == candidate.specialization_id,
+				"Specialization must survive CharacterData serialization."
+			)
+
+	var expected_department_counts: Dictionary = {
+		"creative": 6,
+		"production": 3,
+		"facility": 3,
+		"catering": 3,
+		"administration": 2,
+		"marketing": 2,
+	}
 	var market_departments: Dictionary = {}
 	for department_id in PROFESSION_CATALOG_SCRIPT.get_department_ids():
 		market_departments[str(department_id)] = false
+		var department_professions: Array[String] = (
+			PROFESSION_CATALOG_SCRIPT.get_profession_ids_for_department(
+				str(department_id)
+			)
+		)
+		assert(
+			department_professions.size() == int(expected_department_counts.get(
+				str(department_id), -1
+			)),
+			"Each department must contain only its agreed number of professions."
+		)
 
 	var market_system: Variant = load(
 		"res://scripts/domain/staff/employee_market_system.gd"
@@ -139,6 +193,49 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 			== "Готовит операторское оборудование",
 		"Existing Character System v2 work-task labels must remain unchanged."
 	)
+
+	var legacy_aliases: Dictionary = {
+		"assistant_camera_operator": ["camera_operator", "assistant"],
+		"gaffer": ["technician", "lighting"],
+		"lighting_technician": ["technician", "lighting"],
+		"sound_engineer": ["technician", "sound"],
+		"boom_operator": ["technician", "sound"],
+		"film_editor": ["technician", "editing"],
+		"set_builder": ["production_designer", "sets"],
+		"costume_designer": ["production_designer", "costumes"],
+		"makeup_artist": ["production_designer", "makeup"],
+		"props_master": ["production_designer", "props"],
+		"electrician": ["maintenance_worker", "electrical"],
+		"sous_chef": ["chef", "assistant"],
+		"cafeteria_worker": ["waiter", "canteen"],
+		"receptionist": ["secretary", "reception"],
+		"hr_manager": ["secretary", "personnel"],
+		"accountant": ["secretary", "accounting"],
+		"office_manager": ["secretary", "office"],
+		"advertising_manager": ["marketing_manager", "advertising"],
+		"social_media_manager": ["marketing_manager", "social_media"],
+		"graphic_designer": ["marketing_manager", "design"],
+		"press_officer": ["pr_specialist", "press"],
+	}
+	for legacy_id in legacy_aliases:
+		var expected_alias: Array = legacy_aliases[legacy_id]
+		var restored_legacy: Variant = CHARACTER_DATA_SCRIPT.from_dict({
+			"id": "EMP-LEGACY-%s" % str(legacy_id).to_upper(),
+			"profession_id": str(legacy_id),
+		})
+		assert(
+			restored_legacy.profession_id == str(expected_alias[0])
+			and restored_legacy.specialization_id == str(expected_alias[1]),
+			"Older profession IDs must migrate to a supported profession and specialization."
+		)
+		var generated_legacy: Variant = generator.call(
+			"generate", rng, "PROF-LEGACY-%s" % str(legacy_id), str(legacy_id)
+		)
+		assert(
+			generated_legacy.profession_id == str(expected_alias[0])
+			and generated_legacy.specialization_id == str(expected_alias[1]),
+			"Legacy profession IDs passed to CharacterGenerator must be normalized."
+		)
 
 	var legacy_technician: Variant = generator.call(
 		"generate", rng, "PROF-TEST-LEGACY-TECH", "technician"
