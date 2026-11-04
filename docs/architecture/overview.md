@@ -210,7 +210,8 @@ MovieStudio/
 │   ├── application/
 │   ├── domain/
 │   │   ├── studio/
-│   │   └── script_department/
+│   │   ├── script_department/
+│   │   └── film_production/
 │   ├── presentation/
 │   │   └── studio/
 │   └── persistence/
