@@ -2,21 +2,15 @@
 
 **Engine:** Godot 4.7.2  
 **Module:** `scripts/domain/staff/profession_catalog.gd`  
-**Status:** focused 19-profession catalogue integrated with Employee Management v1.
+**Status:** 19 active professions with profession-specific skill profiles.
 
 ## Design
 
-The catalogue deliberately limits the studio workforce to **19 professions across six departments**. The creative department receives the greatest role depth because actors, directors, screenwriters and producers directly affect the player's film-making decisions. Other departments use broad professions rather than a separate job for every production task.
+The catalogue is the single source of truth for department membership, localized profession titles, salary expectations, biographies, career goals, default work tasks, schedules, specializations and skill profiles.
 
-A profession defines:
-- stable profession ID;
-- localized title and department;
-- primary skill;
-- base daily salary expectation;
-- default work-task description;
-- career goal and biography pool.
+The studio has **19 professions across six departments**. The creative department has deeper role differentiation; operational departments use broad professions to avoid RTS-style micromanagement.
 
-Specialization is a lightweight profile attribute, not a separate profession or candidate-market category. It reuses the existing skill model and is deliberately limited to three professions where it adds meaningful production variety.
+Every profession receives **4–8 relevant skills**, not the entire studio-wide skill catalogue. Reliability is broadly useful across the workforce; communication appears only where the role actually requires it. A profession's primary skill is always included. A supported specialization adds its own skill where it is distinct from the base profile.
 
 ## Departments and professions
 
@@ -30,30 +24,52 @@ Specialization is a lightweight profile attribute, not a separate profession or 
 | Marketing | 2 | `marketing_manager`, `pr_specialist` |
 | **Total** | **19** | |
 
+## Profession skill profiles
+
+| Profession | Skills |
+|---|---|
+| Actor | Acting, improvisation, diction, movement, screen presence, communication, creativity, reliability |
+| Extra | Acting, movement, camera work, communication, reliability |
+| Director | Directing, visual storytelling, actor direction, camera work, creativity, management, communication, reliability |
+| Screenwriter | Writing, story structure, dialogue, character development, research, creativity, reliability |
+| Producer | Management, budgeting, negotiation, planning, communication, reliability |
+| Casting director | Casting, observation, acting, communication, negotiation, management, reliability |
+| Camera operator | Camera work, composition, lighting, technical, visual storytelling, reliability |
+| Technician | Technical, maintenance, reliability, communication, plus one specialization skill |
+| Production designer | Set design, creativity, technical, communication, reliability, plus one specialization skill |
+| Cleaner | Maintenance, organization, hygiene, reliability |
+| Maintenance worker | Maintenance, technical, safety compliance, reliability |
+| Security guard | Security, observation, communication, safety compliance, reliability |
+| Chef | Culinary, menu planning, hygiene, organization, creativity, reliability |
+| Bartender | Hospitality, beverage service, communication, organization, reliability |
+| Waiter | Hospitality, service speed, communication, organization, reliability |
+| Secretary | Administration, communication, organization, planning, reliability |
+| Personal assistant | Communication, administration, organization, planning, discretion, reliability |
+| Marketing manager | Marketing, market research, creativity, communication, management, planning, reliability, plus one specialization skill |
+| PR specialist | Communication, marketing, writing, press relations, negotiation, crisis management, reliability |
+
 ## Specializations
 
-Only three professions have specializations:
+Specializations are profile attributes, not additional professions or market categories:
 
 - Technician: lighting, sound, equipment, editing.
 - Production designer: sets, costumes, makeup, props.
 - Marketing manager: advertising, social media, advertising design.
 
-All other professions remain broad, without additional specialization layers. This keeps the non-creative workforce easy to understand and avoids turning staff management into RTS-style micromanagement.
-
-## Compatibility
-
-The six Character System v2 profession IDs remain stable: `actor`, `director`, `screenwriter`, `camera_operator`, `producer` and `technician`. Their verified 08:00–17:00 schedule and 12:00–13:00 break are preserved, along with the existing camera-operator title and task label.
-
-The previous 40-role draft is not allowed to leak into the active market. Its 21 additional role IDs are retained as migration aliases and resolve to one of the 19 supported professions. Where a former role maps naturally to one of the three supported specialization groups, that specialization is retained. Old character payloads without `specialization_id` remain loadable.
+The specialization skill is included in the employee's skill dictionary and receives a higher generation range. Duplicate base/specialization skills are shown only once.
 
 ## Integration
 
-- CharacterData stores and serializes the specialization ID.
-- CharacterGenerator selects a valid specialization for the three supported professions and gives its mapped existing skill a profession-appropriate value.
-- EmployeeMarketSystem samples only the 19 active profession IDs and continues to represent all six departments in the initial eight-candidate market.
-- CharacterManager displays a specialization next to the profession when one exists.
-- CharacterNeedsSystem continues to use the profession's default work-task description; specializations do not create separate task loops.
+- `CharacterGenerator` creates only the skill IDs allowed by the selected profession and specialization.
+- `CharacterData` stores only that profile's skills and filters out unrelated IDs when deserializing.
+- `CharacterManager` renders only the selected employee's skill profile.
+- The primary profession skill is generated at a higher range than secondary skills.
+- The existing six Character System v2 profession IDs keep their verified work schedules and task labels.
+
+## Save data
+
+This is a new development-only data shape; no released save-game compatibility or migration path is maintained. CharacterData schema version is 5.
 
 ## Boundaries
 
-The catalogue does not create department buildings, staffing quotas, dedicated workstations, uniforms, animations or specialized autonomous behaviors. Those belong to later Studio Operations / Employee AI systems.
+Skill values are currently generated profile attributes. Skill-based production outcomes, learning, training, career progression and skill decay are future systems; this change does not invent new simulation loops for them.
