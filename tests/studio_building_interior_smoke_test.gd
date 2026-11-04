@@ -73,8 +73,29 @@ func _test_sound_stage_interior() -> void:
 		"Sound Stage must contain a film set."
 	)
 	assert(
-		actor.get_node_or_null("Interior/CinemaCameraBody") != null,
+		actor.get_node_or_null("Interior/CameraRig_0/CinemaCameraBody") != null,
 		"Sound Stage must contain camera equipment."
+	)
+	var camera_rig: Node3D = actor.get_node(
+		"Interior/CameraRig_0"
+	) as Node3D
+	actor.call(
+		"set_camera_target",
+		Vector3(0.0, 1.0, -4.0),
+		true
+	)
+	assert(
+		not camera_rig.rotation.is_equal_approx(Vector3.ZERO),
+		"Camera rigs must turn toward the active scene during filming."
+	)
+	actor.call(
+		"set_camera_target",
+		Vector3.ZERO,
+		false
+	)
+	assert(
+		camera_rig.rotation.is_equal_approx(Vector3.ZERO),
+		"Camera rigs must return to their idle position when filming stops."
 	)
 	assert(
 		actor.get_node_or_null("Interior/TechnicalEquipmentRack") != null,
