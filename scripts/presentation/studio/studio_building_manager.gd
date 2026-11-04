@@ -1139,6 +1139,10 @@ func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 		if selected_index < 0:
 			selected_index = posmod(role_index, actor_candidates.size())
 		role_option.select(selected_index)
+		role_option.disabled = (
+			_active_film_project != null
+			and str(_active_film_project.status) == "in_production"
+		)
 		_film_cast_assignments[role_id] = str(
 			role_option.get_item_metadata(selected_index)
 		)
@@ -1180,7 +1184,7 @@ func _are_production_assignments_ready(
 	cast_assignments: Dictionary
 ) -> bool:
 	var employee_ids: Array[String] = []
-	for profession_id in ["director", "camera_operator", "technician", "producer"]:
+	for profession_id in ["director", "camera_operator", "technician"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
@@ -1304,7 +1308,7 @@ func _advance_film_production() -> void:
 
 func _are_film_crew_ready() -> bool:
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in ["director", "camera_operator", "technician", "producer"]:
+	for profession_id in ["director", "camera_operator", "technician"]:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
