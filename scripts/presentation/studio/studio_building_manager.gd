@@ -92,37 +92,25 @@ func get_buildings() -> Array:
 	return _buildings.duplicate()
 
 
+func get_workplace_path(
+	building_id: String,
+	slot_index: int
+) -> Array[Vector3]:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return []
+	var path: Array[Vector3] = actor.call(
+		"get_workplace_path",
+		slot_index
+	)
+	return path
+
+
 func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
-	var building: Variant = _find_building(building_id)
-	if building == null:
+	var path: Array[Vector3] = get_workplace_path(building_id, slot_index)
+	if path.is_empty():
 		return Vector3.ZERO
-
-	var building_type_id: String = str(building.building_type_id)
-	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		building_type_id
-	)
-	var footprint: Vector2 = definition.get(
-		"footprint",
-		Vector2(8.0, 6.0)
-	)
-	var capacity: int = maxi(
-		BUILDING_CATALOG_SCRIPT.get_workplace_capacity(building_type_id),
-		1
-	)
-	var normalized_slot: int = clampi(slot_index, 0, capacity - 1)
-	var lateral_offset: float = (
-		float(normalized_slot) - float(capacity - 1) * 0.5
-	) * 1.25
-	var local_position: Vector3 = Vector3(
-		lateral_offset,
-		0.0,
-		footprint.y * 0.5 + 1.8
-	)
-	return building.position + local_position.rotated(
-		Vector3.UP,
-		deg_to_rad(float(building.rotation_degrees))
-	)
-
+	return path[path.size() - 1]
 
 func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
