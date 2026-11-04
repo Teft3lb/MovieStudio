@@ -14,6 +14,8 @@ var _is_selected: bool = false
 var _roof_assembly: Node3D
 var _wall_groups: Dictionary = {}
 var _interior_root: Node3D
+var _production_slate_label: Label3D
+var _production_phase_label: Label3D
 var _workplace_points: Array[Vector3] = []
 var _entrance_inside: Vector3 = Vector3.ZERO
 var _entrance_outside: Vector3 = Vector3.ZERO
@@ -116,6 +118,22 @@ func get_scene_mark(
 
 func get_scene_focus_point() -> Vector3:
 	return to_global(Vector3(0.0, 1.45, -4.35))
+
+
+func set_production_scene(
+	scene_number: int,
+	scene_title: String,
+	phase_title: String
+) -> void:
+	if is_instance_valid(_production_slate_label):
+		if scene_number > 0:
+			_production_slate_label.text = (
+				"СЦЕНА %02d · %s" % [scene_number, scene_title]
+			)
+		else:
+			_production_slate_label.text = scene_title
+	if is_instance_valid(_production_phase_label):
+		_production_phase_label.text = phase_title
 
 
 func _build_visual() -> void:
@@ -294,6 +312,7 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Color(0.10, 0.25, 0.30),
 		Vector3(-width * 0.5 + 1.1, 1.18, depth * 0.5 - 1.0)
 	)
+	_create_film_slate()
 
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -565,6 +584,45 @@ func _create_floor(
 	instance.position.y = 0.02
 	instance.material_override = _make_material(color)
 	_interior_root.add_child(instance)
+
+
+func _create_film_slate() -> void:
+	_create_box(
+		_interior_root,
+		"FilmSlateBody",
+		Vector3(2.0, 1.05, 0.16),
+		Color(0.075, 0.085, 0.095),
+		Vector3(0.0, 1.15, 2.55)
+	)
+	_create_box(
+		_interior_root,
+		"FilmSlateClapper",
+		Vector3(2.08, 0.14, 0.2),
+		Color(0.72, 0.70, 0.62),
+		Vector3(0.0, 1.75, 2.55)
+	)
+
+	_production_slate_label = Label3D.new()
+	_production_slate_label.name = "ProductionSceneSlate"
+	_production_slate_label.position = Vector3(0.0, 1.28, 2.43)
+	_production_slate_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_production_slate_label.font_size = 15
+	_production_slate_label.outline_size = 5
+	_production_slate_label.modulate = Color(0.97, 0.95, 0.88)
+	_production_slate_label.no_depth_test = true
+	_production_slate_label.text = "СЪЁМКИ НЕ ИДУТ"
+	_interior_root.add_child(_production_slate_label)
+
+	_production_phase_label = Label3D.new()
+	_production_phase_label.name = "ProductionPhaseSlate"
+	_production_phase_label.position = Vector3(0.0, 0.91, 2.43)
+	_production_phase_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_production_phase_label.font_size = 11
+	_production_phase_label.outline_size = 4
+	_production_phase_label.modulate = Color(0.82, 0.86, 0.88)
+	_production_phase_label.no_depth_test = true
+	_production_phase_label.text = "ПАВИЛЬОН ГОТОВ"
+	_interior_root.add_child(_production_phase_label)
 
 
 func _create_camera_rig(
