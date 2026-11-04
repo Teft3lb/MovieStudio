@@ -340,7 +340,7 @@ func _build_roster_panel() -> void:
 	layout.add_child(_market_toggle_button)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(310.0, 390.0)
+	scroll.custom_minimum_size = Vector2(310.0, 600.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
@@ -408,7 +408,7 @@ func _build_market_panel() -> void:
 	layout.add_child(_market_status_label)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(350.0, 420.0)
+	scroll.custom_minimum_size = Vector2(350.0, 600.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
