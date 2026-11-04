@@ -70,7 +70,7 @@ func set_working(value: bool, work_style: String = "") -> void:
 	_performance_action = ""
 	if value:
 		_walking = false
-		_reset_upper_body_pose()
+	_reset_upper_body_pose()
 
 
 func _reset_upper_body_pose() -> void:
