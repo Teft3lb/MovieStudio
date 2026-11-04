@@ -18,7 +18,7 @@ The creative department retains the greatest role depth. Other departments use b
 
 The eight-candidate market is seeded and initially distributes candidates across all six departments. CharacterGenerator creates only the selected profession's skills, and CharacterData stores only those relevant values. The six Character System v2 profession IDs and verified schedules remain supported.
 
-The catalogue provides profession-level profile data, focused specializations for three professions, profession-specific skill profiles, schedules and task descriptions. Dedicated workplace assignments, department buildings, uniforms, animations and autonomous task execution are later Employee AI / Studio Operations work.
+The catalogue provides profession-level profile data, focused specializations for three professions, profession-specific skill profiles, schedules and task descriptions. Studio Buildings v1 now provides the Script Department and Sound Stage, their workplace capacity and accepted-profession definitions, and a building selection / placement workflow. Persistent workplace assignments, employee routing, uniforms, work animations and autonomous task execution remain later Employee AI / Studio Operations work.
 
 ## Domain modules
 
