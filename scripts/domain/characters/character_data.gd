@@ -155,9 +155,10 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		raw_profession_id
 	)
 	result.specialization_id = str(payload.get("specialization_id", ""))
-	if not PROFESSION_CATALOG_SCRIPT.get_specialization_ids(
-		result.profession_id
-	).has(result.specialization_id):
+	var available_specializations: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_specialization_ids(result.profession_id)
+	)
+	if not available_specializations.has(result.specialization_id):
 		result.specialization_id = ""
 	result.age = maxi(int(payload.get("age", 30)), 18)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
