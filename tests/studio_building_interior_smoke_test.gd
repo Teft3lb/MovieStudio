@@ -138,18 +138,17 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 		"screenwriter"
 	)
 
+	var building: Node3D = _create_building("script_department", 0.0)
+	var route: Array[Vector3] = building.call(
+		"get_workplace_path",
+		0
+	)
+
 	var clock: Node = GAME_CLOCK_SCRIPT.new()
 	root.add_child(clock)
 	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(actor)
 	actor.call("setup", employee, [], clock, 5.0)
-
-	var route: Array[Vector3] = [
-		Vector3(12.0, 0.0, -3.6),
-		Vector3(12.0, 0.0, -5.8),
-		Vector3(12.0, 0.0, -6.8),
-		Vector3(9.65, 0.0, -7.75),
-	]
 	actor.call(
 		"assign_workplace_route",
 		"BLD-INTERIOR-ROUTE",
