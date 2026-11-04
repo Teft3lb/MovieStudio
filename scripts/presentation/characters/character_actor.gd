@@ -14,6 +14,7 @@ var _game_clock: Node
 var _selection_ring: MeshInstance3D
 var _workplace_building_id: String = ""
 var _workplace_path: Array[Vector3] = []
+var _workplace_commute_path: Array[Vector3] = []
 var _workplace_path_index: int = 0
 var _workplace_work_style: String = ""
 var _has_workplace_destination: bool = false
@@ -125,6 +126,7 @@ func _finish_workplace_arrival() -> void:
 func _finish_leaving_workplace() -> void:
 	_workplace_building_id = ""
 	_workplace_path.clear()
+	_workplace_commute_path.clear()
 	_workplace_path_index = 0
 	_has_workplace_destination = false
 	_is_at_workplace = false
@@ -150,13 +152,14 @@ func assign_workplace_route(
 
 	if (
 		_workplace_building_id == building_id
-		and _workplace_path == route
+		and _workplace_commute_path == route
 		and _has_workplace_destination
 		and not _is_leaving_workplace
 	):
 		return
 
 	_workplace_building_id = building_id
+	_workplace_commute_path = route.duplicate()
 	_workplace_path = route.duplicate()
 	_workplace_path_index = 0
 	_workplace_work_style = work_style
@@ -205,9 +208,12 @@ func clear_workplace() -> void:
 
 
 func snap_to_workplace() -> void:
-	if not _has_workplace_destination or _workplace_path.is_empty():
+	if not _has_workplace_destination or _workplace_commute_path.is_empty():
 		return
-	global_position = _workplace_path[_workplace_path.size() - 1]
+	_workplace_path = _workplace_commute_path.duplicate()
+	global_position = _workplace_commute_path[
+		_workplace_commute_path.size() - 1
+	]
 	_workplace_path_index = _workplace_path.size() - 1
 	_is_at_workplace = true
 	_is_leaving_workplace = false
@@ -216,8 +222,8 @@ func snap_to_workplace() -> void:
 
 
 func snap_outside_workplace() -> void:
-	if _has_workplace_destination and not _workplace_path.is_empty():
-		global_position = _workplace_path[0]
+	if _has_workplace_destination and not _workplace_commute_path.is_empty():
+		global_position = _workplace_commute_path[0]
 	_finish_leaving_workplace()
 
 
