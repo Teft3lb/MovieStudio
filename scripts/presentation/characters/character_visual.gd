@@ -36,6 +36,7 @@ const EYE_COLOR: Color = Color(0.94, 0.91, 0.84)
 const PUPIL_COLOR: Color = Color(0.10, 0.085, 0.075)
 
 var _body_root: Node3D
+var _head_root: Node3D
 var _left_arm_pivot: Node3D
 var _right_arm_pivot: Node3D
 var _left_leg_pivot: Node3D
@@ -44,6 +45,8 @@ var _right_leg_pivot: Node3D
 var _walking: bool = false
 var _working: bool = false
 var _work_style: String = ""
+var _performing: bool = false
+var _performance_action: String = ""
 var _animation_phase: float = 0.0
 
 
@@ -62,6 +65,20 @@ func set_working(value: bool, work_style: String = "") -> void:
 	_work_style = work_style
 	if value:
 		_walking = false
+		_performing = false
+		_performance_action = ""
+
+
+func set_performance_action(action_id: String) -> void:
+	_performance_action = action_id
+	_performing = not action_id.is_empty()
+	if _performing:
+		_walking = false
+		_working = false
+
+
+func is_performing() -> bool:
+	return _performing
 
 
 func is_working() -> bool:
@@ -77,17 +94,73 @@ func advance_simulation(simulation_delta: float) -> void:
 		var swing: float = sin(_animation_phase) * 0.55
 		_set_arm_pose(swing, -swing)
 		_set_leg_pose(-swing, swing)
+	elif _performing:
+		_advance_performance_animation()
 	elif _working:
 		_advance_work_animation()
 	else:
 		_set_arm_pose(0.0, 0.0)
 		_set_leg_pose(0.0, 0.0)
+		if is_instance_valid(_body_root):
+			_body_root.rotation.z = 0.0
+		if is_instance_valid(_head_root):
+			_head_root.rotation = Vector3.ZERO
 
 	if is_instance_valid(_body_root):
 		var bob_amount: float = (
 			0.022 if _walking else 0.008 if _working else 0.006
 		)
 		_body_root.position.y = sin(_animation_phase * 2.0) * bob_amount
+
+
+func _advance_performance_animation() -> void:
+	var motion: float = sin(_animation_phase * 4.0) * 0.16
+	var left_arm: float = -0.18
+	var right_arm: float = -0.18
+	var body_lean: float = 0.0
+	var head_motion: float = sin(_animation_phase * 2.2) * 0.06
+
+	match _performance_action:
+		"speaking":
+			left_arm = -0.38 + motion
+			right_arm = -0.78 + sin(_animation_phase * 2.0) * 0.22
+			head_motion *= 1.6
+		"reacting":
+			left_arm = -0.88 + motion * 0.35
+			right_arm = -0.88 - motion * 0.35
+			body_lean = -0.035
+		"dramatic":
+			left_arm = -1.02 + sin(_animation_phase * 1.7) * 0.18
+			right_arm = -1.02 - sin(_animation_phase * 1.7) * 0.18
+			body_lean = sin(_animation_phase * 1.3) * 0.055
+		"rehearsing":
+			left_arm = -0.34 + motion * 0.45
+			right_arm = -0.42 - motion * 0.45
+		"directing":
+			left_arm = -0.24 + motion * 0.3
+			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
+		"operating_camera":
+			left_arm = -0.72 + motion * 0.25
+			right_arm = -0.72 - motion * 0.25
+		"checking_equipment":
+			left_arm = -0.78 + motion
+			right_arm = -0.82 - motion
+		"reviewing":
+			left_arm = -0.30 + motion * 0.2
+			right_arm = -0.30 - motion * 0.2
+		_:
+			left_arm = -0.22 + motion * 0.3
+			right_arm = -0.22 - motion * 0.3
+
+	_set_arm_pose(left_arm, right_arm)
+	_set_leg_pose(
+		sin(_animation_phase * 1.5) * 0.035,
+		-sin(_animation_phase * 1.5) * 0.035
+	)
+	if is_instance_valid(_body_root):
+		_body_root.rotation.z = body_lean
+	if is_instance_valid(_head_root):
+		_head_root.rotation.x = head_motion
 
 
 func _advance_work_animation() -> void:
@@ -164,8 +237,9 @@ func _build_model(character_payload: Dictionary) -> void:
 		_body_root, "Neck", 0.09, 0.20, skin_color, Vector3(0.0, 1.94, 0.0)
 	)
 
-	var head_root := Node3D.new()
-	head_root.name = "Head"
+	_head_root = Node3D.new()
+	_head_root.name = "Head"
+	var head_root: Node3D = _head_root
 	head_root.position = Vector3(0.0, 2.17, 0.0)
 	head_root.scale = Vector3.ONE * head_scale
 	_body_root.add_child(head_root)
