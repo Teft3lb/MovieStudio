@@ -139,9 +139,12 @@ func is_employee_assigned_to_building(
 
 func set_employee_task(employee_id: String, task_title: String) -> void:
 	var employee: Variant = _find_employee(employee_id)
-	if employee == null:
+	if employee == null or str(employee.current_task) == task_title:
 		return
 	employee.current_task = task_title
+	if not _game_clock.is_manual_fast_forward:
+		_refresh_roster()
+		_refresh_detail_panel()
 
 
 func set_employee_production_action(
