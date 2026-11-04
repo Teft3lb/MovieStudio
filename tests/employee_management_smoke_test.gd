@@ -197,6 +197,17 @@ func _test_profession_catalog(generator: Variant, rng: RandomNumberGenerator) ->
 		"Existing Character System v2 work-task labels must remain unchanged."
 	)
 
+	var editor_schedule: Dictionary = PROFESSION_CATALOG_SCRIPT.get_schedule(
+		"film_editor"
+	)
+	_expect(
+		int(editor_schedule.get("shift_start_hour", -1)) == 7
+		and int(editor_schedule.get("shift_end_hour", -1)) == 16
+		and int(editor_schedule.get("break_start_hour", -1)) == 11
+		and int(editor_schedule.get("break_end_hour", -1)) == 12,
+		"Film editors must use the production department's verified 07:00–16:00 shift."
+	)
+
 	var technician_candidate: Variant = generator.call(
 		"generate", rng, "PROF-TEST-TECHNICIAN", "technician"
 	)

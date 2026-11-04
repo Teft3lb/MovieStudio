@@ -932,6 +932,8 @@ func _get_workplace_title(employee_id: String) -> String:
 			return "Сценарный отдел"
 		"sound_stage":
 			return "Съёмочный павильон"
+		"editing_suite":
+			return "Монтажный отдел"
 		_:
 			return "Не назначено"
 

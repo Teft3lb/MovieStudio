@@ -72,6 +72,8 @@ func get_preferred_building_types(profession_id: String) -> Array[String]:
 			return ["script_department"]
 		"producer":
 			return ["sound_stage", "script_department"]
+		"film_editor":
+			return ["editing_suite"]
 		"actor", "extra", "director", "camera_operator", "technician", "production_designer":
 			return ["sound_stage"]
 		_:

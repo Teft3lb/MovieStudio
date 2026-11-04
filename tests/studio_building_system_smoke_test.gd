@@ -28,10 +28,11 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 2
-		and building_ids[0] == "script_department"
-		and building_ids[1] == "sound_stage",
-		"The first building slice must expose the script department and sound stage."
+		building_ids.size() == 3
+		and building_ids[0] == "editing_suite"
+		and building_ids[1] == "script_department"
+		and building_ids[2] == "sound_stage",
+		"The building catalogue must expose the Editing Suite, Script Department and Sound Stage."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("script_department") == 3,
@@ -40,6 +41,10 @@ func _test_catalogue() -> void:
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("sound_stage") == 8,
 		"The sound stage must expose eight workplace slots."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("editing_suite") == 3,
+		"The Editing Suite must expose three editor workstations."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
@@ -61,6 +66,20 @@ func _test_catalogue() -> void:
 			"camera_operator"
 		),
 		"The sound stage must accept camera operators."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.accepts_profession(
+			"editing_suite",
+			"film_editor"
+		),
+		"The Editing Suite must accept film editors."
+	)
+	_expect(
+		not BUILDING_CATALOG_SCRIPT.accepts_profession(
+			"editing_suite",
+			"technician"
+		),
+		"The Editing Suite must reject unrelated production roles."
 	)
 
 
@@ -146,4 +165,12 @@ func _test_placement_validation() -> void:
 	_expect(
 		rotated_footprint == Vector2(6.0, 8.0),
 		"Rotating a building by 90 degrees must swap its placement footprint."
+	)
+	var rotated_editing_footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
+		"editing_suite",
+		90.0
+	)
+	_expect(
+		rotated_editing_footprint == Vector2(8.0, 10.0),
+		"The Editing Suite must use its own rotated placement footprint."
 	)

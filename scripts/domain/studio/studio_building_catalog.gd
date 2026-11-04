@@ -14,6 +14,16 @@ const BUILDINGS: Dictionary = {
 		"primary_profession": "screenwriter",
 		"accent_color": Color(0.43, 0.48, 0.54),
 	},
+	"editing_suite": {
+		"title": "Монтажный отдел",
+		"description": "Рабочее пространство монтажёров для сборки фильма, сведения звука и цветокоррекции.",
+		"footprint": Vector2(10.0, 8.0),
+		"building_height": 6.2,
+		"workplace_capacity": 3,
+		"accepted_professions": ["film_editor"],
+		"primary_profession": "film_editor",
+		"accent_color": Color(0.34, 0.48, 0.52),
+	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",
 		"description": "Закрытая площадка для съёмки сцен с актёрами и съёмочной группой.",

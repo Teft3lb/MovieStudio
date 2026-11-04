@@ -145,6 +145,9 @@ func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> vo
 	var screenwriter: Variant = generator.call(
 		"generate", rng, "SKILL-WRITER", "screenwriter"
 	)
+	var editor: Variant = generator.call(
+		"generate", rng, "SKILL-EDITOR", "film_editor"
+	)
 
 	_expect(
 		actor.skills.has("acting")
@@ -179,6 +182,13 @@ func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> vo
 		and screenwriter.skills.has("dialogue")
 		and screenwriter.skills.has("character_development"),
 		"Screenwriters must have a detailed writing skill profile."
+	)
+	_expect(
+		editor.skills.has("editing")
+		and editor.skills.has("visual_storytelling")
+		and editor.skills.has("sound")
+		and not editor.skills.has("acting"),
+		"Film editors must have a focused post-production skill profile."
 	)
 	_expect(
 		actor.skills.size() > cleaner.skills.size(),

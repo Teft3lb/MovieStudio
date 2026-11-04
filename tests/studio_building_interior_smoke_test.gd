@@ -27,6 +27,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
+	_test_editing_suite_interior()
 	_test_profession_work_animation()
 	_test_employee_enters_and_leaves_workplace()
 
@@ -63,6 +64,43 @@ func _test_script_department_interior() -> void:
 	)
 	_assert_workplace_route(actor, 0, 3, 8.0, 6.0)
 	_assert_workplace_route(actor, 2, 3, 8.0, 6.0)
+
+
+func _test_editing_suite_interior() -> void:
+	var actor: Node3D = _create_building("editing_suite", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/EditingFloor") != null,
+		"Editing Suite must contain an interior floor."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/EditingDesk_0") != null,
+		"Editing Suite must contain editing workstations."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/EditingMonitor_0") != null
+		and actor.get_node_or_null("Interior/EditingPreviewMonitor_0") != null,
+		"Editing workstations must contain timeline and preview monitors."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/AudioMixer_0") != null
+		and actor.get_node_or_null("Interior/AudioEquipmentRack") != null,
+		"Editing Suite must contain audio mixing equipment."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/EditingReferenceDisplay") != null,
+		"Editing Suite must contain a shared reference display."
+	)
+	var interior: Node3D = actor.get_node("Interior") as Node3D
+	var desk_count: int = 0
+	for child in interior.get_children():
+		if str(child.name).begins_with("EditingDesk_"):
+			desk_count += 1
+	_expect(
+		desk_count == 3,
+		"Editing Suite must expose exactly three physical editor workstations."
+	)
+	_assert_workplace_route(actor, 0, 3, 10.0, 8.0)
+	_assert_workplace_route(actor, 2, 3, 10.0, 8.0)
 
 
 func _test_sound_stage_interior() -> void:
@@ -256,6 +294,13 @@ func _test_profession_work_animation() -> void:
 	_expect(
 		bool(visual.call("is_working")),
 		"CharacterVisual must expose an active working animation state."
+	)
+	visual.call("set_working", true, "film_editor")
+	visual.call("advance_simulation", 0.5)
+	var left_arm: Node3D = visual.get_node("BodyRoot/LeftArmPivot") as Node3D
+	_expect(
+		left_arm.rotation.x < -0.3,
+		"Film editors must use a forward typing pose at their editing workstation."
 	)
 	visual.call("set_walking", true)
 	_expect(

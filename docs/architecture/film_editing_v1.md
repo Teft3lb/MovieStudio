@@ -73,6 +73,8 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/employee_market_critical_roles_test.gd
+& $godot --headless --path . --script res://tests/employee_management_smoke_test.gd
+& $godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
 & $godot --headless --path . --script res://tests/employee_work_system_smoke_test.gd
 ~~~
 

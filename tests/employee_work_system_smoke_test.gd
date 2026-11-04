@@ -35,6 +35,9 @@ func _run_tests() -> void:
 	var technician: Variant = generator.call(
 		"generate", rng, "EMP-WORK-TECHNICIAN", "technician"
 	)
+	var editor: Variant = generator.call(
+		"generate", rng, "EMP-WORK-EDITOR", "film_editor"
+	)
 	var cleaner: Variant = generator.call(
 		"generate", rng, "EMP-WORK-CLEANER", "cleaner"
 	)
@@ -49,6 +52,11 @@ func _run_tests() -> void:
 	sound_stage.building_type_id = "sound_stage"
 	sound_stage.is_operational = true
 
+	var editing_suite: Variant = BUILDING_DATA_SCRIPT.new()
+	editing_suite.id = "BLD-EDITING"
+	editing_suite.building_type_id = "editing_suite"
+	editing_suite.is_operational = true
+
 	var system: RefCounted = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
 	var employees: Array = [
 		writer,
@@ -56,16 +64,18 @@ func _run_tests() -> void:
 		director,
 		operator,
 		technician,
+		editor,
 		cleaner,
 	]
 	var assignments: Dictionary = system.call(
 		"build_assignments",
 		employees,
-		[script_department, sound_stage]
+		[script_department, sound_stage, editing_suite]
 	)
 
 	_test_profession_assignments(assignments)
 	_test_skill_progression(system, actor, assignments)
+	_test_editor_skill_progression(system, editor, assignments)
 	_test_non_working_employees_do_not_gain_skills(system, actor, assignments)
 
 	_finish_test("EmployeeWorkSystemSmokeTest")
@@ -88,6 +98,15 @@ func _test_profession_assignments(assignments: Dictionary) -> void:
 			== "sound_stage",
 			"Creative production staff must be assigned to the Sound Stage."
 		)
+	_expect(
+		str(assignments["EMP-WORK-EDITOR"].get("building_type_id", ""))
+		== "editing_suite",
+		"Film editors must be assigned to the Editing Suite."
+	)
+	_expect(
+		str(assignments["EMP-WORK-EDITOR"].get("primary_skill_id", "")) == "editing",
+		"Film editors must progress their editing skill at work."
+	)
 	_expect(
 		not assignments.has("EMP-WORK-CLEANER"),
 		"Facility staff must not be assigned to a building that does not accept their profession."
@@ -119,6 +138,26 @@ func _test_skill_progression(
 	_expect(
 		after <= 100.0,
 		"Professional skill growth must respect the 100-point cap."
+	)
+
+
+func _test_editor_skill_progression(
+	system: RefCounted,
+	editor: Variant,
+	assignments: Dictionary
+) -> void:
+	editor.work_state = "working"
+	var before: float = float(editor.skills.get("editing", 0.0))
+	var changed: bool = system.call(
+		"advance_work_minute",
+		editor,
+		assignments["EMP-WORK-EDITOR"]
+	)
+	var after: float = float(editor.skills.get("editing", 0.0))
+	_expect(changed, "A working film editor must gain editing experience.")
+	_expect(
+		after > before,
+		"Editing Suite work must improve the editor's editing skill."
 	)
 
 

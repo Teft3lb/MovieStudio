@@ -114,6 +114,9 @@ const PROFESSION_SKILL_PROFILES: Dictionary = {
 	"technician": [
 		"technical", "maintenance", "reliability", "communication",
 	],
+	"film_editor": [
+		"editing", "visual_storytelling", "sound", "creativity", "reliability",
+	],
 	"production_designer": [
 		"set_design", "creativity", "technical", "communication", "reliability",
 	],
@@ -239,6 +242,15 @@ const PROFESSIONS: Dictionary = {
 		"biographies": [
 			"Продумывает пространство кадра и следит за визуальной целостностью фильма.",
 			"Умеет превращать эскизы в выразительные съёмочные декорации.",
+		],
+	},
+	"film_editor": {
+		"title": "Монтажёр", "department": "production", "primary_skill": "editing",
+		"base_salary": 98, "task": "Монтирует отснятые сцены",
+		"goal": "Собрать фильм, который станет классикой",
+		"biographies": [
+			"Внимательно выстраивает ритм истории и ищет точный монтажный переход.",
+			"Считает, что хороший монтаж раскрывает сильные стороны актёрской игры.",
 		],
 	},
 	"cleaner": {

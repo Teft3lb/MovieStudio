@@ -75,7 +75,7 @@ func set_working(value: bool, work_style: String = "") -> void:
 
 func _reset_upper_body_pose() -> void:
 	if is_instance_valid(_body_root):
-		_body_root.rotation.z = 0.0
+		_body_root.rotation = Vector3.ZERO
 	if is_instance_valid(_head_root):
 		_head_root.rotation = Vector3.ZERO
 
@@ -113,7 +113,7 @@ func advance_simulation(simulation_delta: float) -> void:
 		_set_arm_pose(0.0, 0.0)
 		_set_leg_pose(0.0, 0.0)
 		if is_instance_valid(_body_root):
-			_body_root.rotation.z = 0.0
+			_body_root.rotation = Vector3.ZERO
 		if is_instance_valid(_head_root):
 			_head_root.rotation = Vector3.ZERO
 
@@ -183,7 +183,7 @@ func _advance_performance_animation() -> void:
 		-sin(_animation_phase * 1.5) * 0.035
 	)
 	if is_instance_valid(_body_root):
-		_body_root.rotation.z = body_lean
+		_body_root.rotation = Vector3(0.0, 0.0, body_lean)
 	if is_instance_valid(_head_root):
 		_head_root.rotation.x = head_motion
 
@@ -209,6 +209,13 @@ func _advance_work_animation() -> void:
 		"technician":
 			left_arm = -0.68 + motion
 			right_arm = -0.72 - motion
+		"film_editor":
+			left_arm = -0.46 + sin(_animation_phase * 4.4) * 0.07
+			right_arm = -0.46 - sin(_animation_phase * 4.4) * 0.07
+			if is_instance_valid(_head_root):
+				_head_root.rotation.x = 0.06 + sin(_animation_phase * 2.2) * 0.025
+			if is_instance_valid(_body_root):
+				_body_root.rotation.x = -0.025
 		_:
 			left_arm = -0.18 + motion * 0.25
 			right_arm = -0.18 - motion * 0.25

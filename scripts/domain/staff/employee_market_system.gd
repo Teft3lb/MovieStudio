@@ -36,9 +36,11 @@ func generate_candidates(count: int, current_day: int) -> Array:
 			)
 		var profession_id: String
 		if index == department_ids.size():
-			# A technician is a core production role. Keep one available in
-			# every standard market cycle so the first sound stage cannot stall.
+			# Keep a technician available so the first Sound Stage can operate.
 			profession_id = "technician"
+		elif index == department_ids.size() + 1:
+			# A standard eight-candidate market also guarantees a film editor.
+			profession_id = "film_editor"
 		else:
 			profession_id = profession_pool[
 				_rng.randi_range(0, profession_pool.size() - 1)
