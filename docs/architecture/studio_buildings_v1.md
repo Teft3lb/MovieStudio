@@ -78,14 +78,14 @@ The stage is a production-readiness interface only. It does not yet shoot scenes
 The current implementation does **not** yet:
 - charge construction or maintenance costs;
 - simulate construction time;
-- assign staff to persistent workplace slots;
-- route employees into buildings or use NavMesh pathfinding;
-- simulate indoor rooms or building interiors;
-- run autonomous workplace tasks;
+- persist workplace assignments in a campaign save;
+- use NavMesh pathfinding or dynamic obstacle avoidance;
+- provide full skeletal work animations or interactive interior equipment;
+- assign dedicated buildings to facility, catering, administration and marketing staff;
 - produce scenes or films;
 - persist building state in a campaign save.
 
-Studio Operations v1 consumes the catalogue's accepted-profession lists and workplace capacities to assign staff and route them to exterior work points. Film Production v1 will add casting, scene scheduling and shooting.
+Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 will add casting, scene scheduling and shooting.
 
 ## Smoke tests
 
