@@ -9,7 +9,7 @@ const SECTION_ORDER: Array[String] = [
 
 var _game_clock: Node
 var _root: Control
-var _navigation_list: VBoxContainer
+var _navigation_list: HBoxContainer
 var _workspace_heading: Label
 var _workspace_content: VBoxContainer
 var _inspector_frame: PanelContainer
@@ -22,6 +22,7 @@ var _fast_forward_status_label: Label
 var _workspace_panels: Dictionary = {}
 var _workspace_titles: Dictionary = {}
 var _navigation_buttons: Dictionary = {}
+var _speed_buttons: Dictionary = {}
 var _inspector_panels: Dictionary = {}
 var _inspector_titles: Dictionary = {}
 var _active_workspace_id: String = ""
@@ -70,6 +71,7 @@ func _build_shell() -> void:
 	_root.name = "StudioHUDRoot"
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.theme = _build_ui_theme()
 	add_child(_root)
 
 	var margin := MarginContainer.new()
@@ -82,6 +84,7 @@ func _build_shell() -> void:
 	_root.add_child(margin)
 
 	var shell := VBoxContainer.new()
+	shell.name = "StudioShell"
 	shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shell.add_theme_constant_override("separation", 8)
 	margin.add_child(shell)
@@ -100,6 +103,7 @@ func _build_shell() -> void:
 	var brand := Label.new()
 	brand.text = "MOVIESTUDIO"
 	brand.add_theme_font_size_override("font_size", 19)
+	brand.add_theme_color_override("font_color", Color(0.94, 0.88, 0.74, 1.0))
 	top_row.add_child(brand)
 
 	var edition := Label.new()
@@ -134,41 +138,8 @@ func _build_shell() -> void:
 	body.name = "MainLayout"
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 8)
+	body.add_theme_constant_override("separation", 10)
 	shell.add_child(body)
-
-	var navigation_panel := PanelContainer.new()
-	navigation_panel.name = "NavigationPanel"
-	navigation_panel.custom_minimum_size = Vector2(154.0, 0.0)
-	_apply_panel_style(navigation_panel, 0.93)
-	body.add_child(navigation_panel)
-
-	var navigation_layout := VBoxContainer.new()
-	navigation_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	navigation_layout.add_theme_constant_override("separation", 8)
-	navigation_panel.add_child(navigation_layout)
-
-	var navigation_heading := Label.new()
-	navigation_heading.text = "РАЗДЕЛЫ"
-	navigation_heading.add_theme_font_size_override("font_size", 11)
-	navigation_heading.modulate = Color(0.68, 0.72, 0.76, 1.0)
-	navigation_layout.add_child(navigation_heading)
-
-	_navigation_list = VBoxContainer.new()
-	_navigation_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_navigation_list.add_theme_constant_override("separation", 5)
-	navigation_layout.add_child(_navigation_list)
-
-	var navigation_spacer := Control.new()
-	navigation_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	navigation_layout.add_child(navigation_spacer)
-
-	var navigation_hint := Label.new()
-	navigation_hint.text = "Выбери раздел, чтобы открыть рабочую панель."
-	navigation_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	navigation_hint.add_theme_font_size_override("font_size", 10)
-	navigation_hint.modulate = Color(0.62, 0.66, 0.7, 1.0)
-	navigation_layout.add_child(navigation_hint)
 
 	var workspace_frame := PanelContainer.new()
 	workspace_frame.name = "WorkspacePanel"
@@ -184,6 +155,7 @@ func _build_shell() -> void:
 
 	_workspace_heading = Label.new()
 	_workspace_heading.add_theme_font_size_override("font_size", 17)
+	_workspace_heading.add_theme_color_override("font_color", Color(0.94, 0.90, 0.82, 1.0))
 	workspace_layout.add_child(_workspace_heading)
 
 	var workspace_separator := HSeparator.new()
@@ -220,6 +192,7 @@ func _build_shell() -> void:
 	_inspector_heading = Label.new()
 	_inspector_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspector_heading.add_theme_font_size_override("font_size", 17)
+	_inspector_heading.add_theme_color_override("font_color", Color(0.94, 0.90, 0.82, 1.0))
 	inspector_header_row.add_child(_inspector_heading)
 
 	var close_inspector_button := Button.new()
@@ -236,6 +209,58 @@ func _build_shell() -> void:
 	_inspector_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspector_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inspector_layout.add_child(_inspector_content)
+
+	_build_bottom_navigation(shell)
+
+
+func _build_bottom_navigation(shell: VBoxContainer) -> void:
+	var navigation_panel := PanelContainer.new()
+	navigation_panel.name = "BottomNavigationPanel"
+	navigation_panel.custom_minimum_size = Vector2(0.0, 52.0)
+	_apply_panel_style(navigation_panel, 0.98)
+	var navigation_style := navigation_panel.get_theme_stylebox(
+		"panel"
+	) as StyleBoxFlat
+	navigation_style.content_margin_top = 4.0
+	navigation_style.content_margin_bottom = 4.0
+	shell.add_child(navigation_panel)
+
+	var navigation_layout := HBoxContainer.new()
+	navigation_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	navigation_layout.add_theme_constant_override("separation", 12)
+	navigation_panel.add_child(navigation_layout)
+
+	var navigation_heading := Label.new()
+	navigation_heading.text = "РАЗДЕЛЫ"
+	navigation_heading.add_theme_font_size_override("font_size", 10)
+	navigation_heading.add_theme_color_override(
+		"font_color",
+		Color(0.66, 0.70, 0.73, 1.0)
+	)
+	navigation_layout.add_child(navigation_heading)
+
+	var divider := VSeparator.new()
+	navigation_layout.add_child(divider)
+
+	_navigation_list = HBoxContainer.new()
+	_navigation_list.name = "NavigationButtons"
+	_navigation_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_navigation_list.add_theme_constant_override("separation", 6)
+	_navigation_layout.add_child(_navigation_list)
+
+	var navigation_spacer := Control.new()
+	navigation_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	navigation_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation_layout.add_child(navigation_spacer)
+
+	var footer_label := Label.new()
+	footer_label.text = "MOVIESTUDIO  /  MANAGEMENT"
+	footer_label.add_theme_font_size_override("font_size", 9)
+	footer_label.add_theme_color_override(
+		"font_color",
+		Color(0.46, 0.51, 0.55, 1.0)
+	)
+	navigation_layout.add_child(footer_label)
 
 
 func _build_developer_panel() -> void:
@@ -304,10 +329,12 @@ func register_workspace_panel(
 
 	var navigation_button := Button.new()
 	navigation_button.name = "Navigation_%s" % section_id
-	navigation_button.text = "DEV" if section_id == "developer" else title
+	navigation_button.text = _get_navigation_label(section_id, title)
 	navigation_button.tooltip_text = title
-	navigation_button.custom_minimum_size = Vector2(0.0, 42.0)
-	navigation_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation_button.custom_minimum_size = Vector2(
+		64.0 if section_id == "developer" else 112.0,
+		34.0
+	)
 	navigation_button.toggle_mode = true
 	navigation_button.pressed.connect(
 		_on_navigation_button_pressed.bind(section_id)
@@ -382,6 +409,20 @@ func get_overlay_root() -> Node:
 	return self
 
 
+func _get_navigation_label(section_id: String, fallback_title: String) -> String:
+	match section_id:
+		"studio":
+			return "СТУДИЯ"
+		"employees":
+			return "ПЕРСОНАЛ"
+		"market":
+			return "РЫНОК"
+		"developer":
+			return "DEV"
+		_:
+			return fallback_title.to_upper()
+
+
 func _sort_navigation_buttons() -> void:
 	var ordered_ids: Array[String] = []
 	for section_id in SECTION_ORDER:
@@ -412,10 +453,13 @@ func _add_speed_button(
 ) -> void:
 	var button := Button.new()
 	button.text = button_text
-	button.custom_minimum_size = Vector2(38.0, 34.0)
+	button.custom_minimum_size = Vector2(40.0, 34.0)
 	button.tooltip_text = "Скорость симуляции: %s" % button_text
+	button.toggle_mode = true
+	button.add_theme_font_size_override("font_size", 11)
 	button.pressed.connect(_on_speed_button_pressed.bind(mode))
 	parent.add_child(button)
+	_speed_buttons[mode] = button
 
 
 func _on_speed_button_pressed(mode: int) -> void:
@@ -465,16 +509,153 @@ func _refresh_clock() -> void:
 		_clock_label.text = str(_game_clock.call("get_clock_text"))
 	if is_instance_valid(_speed_label):
 		_speed_label.text = str(_game_clock.call("get_speed_text"))
+	var active_speed_mode: int = int(_game_clock.get("speed_mode"))
+	for mode in _speed_buttons:
+		var speed_button: Button = _speed_buttons[mode]
+		speed_button.button_pressed = int(mode) == active_speed_mode
+
+
+func _build_ui_theme() -> Theme:
+	var ui_theme := Theme.new()
+	ui_theme.default_font_size = 14
+
+	ui_theme.set_color(
+		"font_color",
+		"Label",
+		Color(0.90, 0.91, 0.90, 1.0)
+	)
+	ui_theme.set_color(
+		"font_color",
+		"Button",
+		Color(0.88, 0.89, 0.88, 1.0)
+	)
+	ui_theme.set_color(
+		"font_hover_color",
+		"Button",
+		Color(0.98, 0.95, 0.87, 1.0)
+	)
+	ui_theme.set_color(
+		"font_pressed_color",
+		"Button",
+		Color(0.98, 0.94, 0.82, 1.0)
+	)
+	ui_theme.set_color(
+		"font_disabled_color",
+		"Button",
+		Color(0.48, 0.51, 0.52, 1.0)
+	)
+	ui_theme.set_font_size("font_size", "Button", 12)
+
+	ui_theme.set_stylebox(
+		"normal",
+		"Button",
+		_make_button_style(
+			Color(0.085, 0.099, 0.112, 1.0),
+			Color(0.19, 0.23, 0.26, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"hover",
+		"Button",
+		_make_button_style(
+			Color(0.13, 0.15, 0.16, 1.0),
+			Color(0.48, 0.43, 0.32, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"pressed",
+		"Button",
+		_make_button_style(
+			Color(0.18, 0.20, 0.19, 1.0),
+			Color(0.72, 0.61, 0.39, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"hover_pressed",
+		"Button",
+		_make_button_style(
+			Color(0.20, 0.22, 0.20, 1.0),
+			Color(0.78, 0.67, 0.44, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"disabled",
+		"Button",
+		_make_button_style(
+			Color(0.065, 0.073, 0.081, 1.0),
+			Color(0.14, 0.16, 0.18, 1.0)
+		)
+	)
+	var focus_style := StyleBoxFlat.new()
+	focus_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	focus_style.border_color = Color(0.78, 0.67, 0.44, 0.9)
+	focus_style.set_border_width_all(1)
+	focus_style.set_corner_radius_all(7)
+	ui_theme.set_stylebox("focus", "Button", focus_style)
+
+	ui_theme.set_stylebox(
+		"background",
+		"ProgressBar",
+		_make_flat_style(
+			Color(0.10, 0.12, 0.13, 1.0),
+			Color(0.20, 0.23, 0.24, 1.0),
+			5,
+			0
+		)
+	)
+	ui_theme.set_stylebox(
+		"fill",
+		"ProgressBar",
+		_make_flat_style(
+			Color(0.69, 0.59, 0.39, 1.0),
+			Color(0.69, 0.59, 0.39, 1.0),
+			5,
+			0
+		)
+	)
+	return ui_theme
+
+
+func _make_button_style(background: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(7)
+	style.content_margin_left = 11.0
+	style.content_margin_top = 7.0
+	style.content_margin_right = 11.0
+	style.content_margin_bottom = 7.0
+	return style
+
+
+func _make_flat_style(
+	background: Color,
+	border: Color,
+	radius: int,
+	shadow_size: int
+) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(radius)
+	if shadow_size > 0:
+		style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
+		style.shadow_size = shadow_size
+		style.shadow_offset = Vector2(0.0, 3.0)
+	return style
 
 
 func _apply_panel_style(panel: PanelContainer, alpha: float) -> void:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.055, 0.065, 0.075, alpha)
-	style.border_color = Color(0.24, 0.27, 0.29, 0.92)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(7)
-	style.content_margin_left = 10.0
-	style.content_margin_top = 9.0
-	style.content_margin_right = 10.0
-	style.content_margin_bottom = 9.0
+	var style := _make_flat_style(
+		Color(0.047, 0.057, 0.068, alpha),
+		Color(0.23, 0.28, 0.32, 0.96),
+		9,
+		7
+	)
+	style.content_margin_left = 12.0
+	style.content_margin_top = 10.0
+	style.content_margin_right = 12.0
+	style.content_margin_bottom = 10.0
 	panel.add_theme_stylebox_override("panel", style)

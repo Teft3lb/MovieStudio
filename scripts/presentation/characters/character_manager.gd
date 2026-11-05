@@ -468,16 +468,27 @@ func _build_roster_panel() -> void:
 	)
 
 	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 8)
 	panel.add_child(layout)
 
+	var roster_header_row := HBoxContainer.new()
+	roster_header_row.add_theme_constant_override("separation", 8)
+	layout.add_child(roster_header_row)
+
 	_roster_header = Label.new()
-	_roster_header.add_theme_font_size_override("font_size", 16)
-	layout.add_child(_roster_header)
+	_roster_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_roster_header.add_theme_font_size_override("font_size", 12)
+	_roster_header.add_theme_color_override(
+		"font_color",
+		Color(0.77, 0.70, 0.53, 1.0)
+	)
+	roster_header_row.add_child(_roster_header)
 
 	_market_toggle_button = Button.new()
-	_market_toggle_button.text = "КАДРОВЫЙ РЫНОК"
+	_market_toggle_button.text = "РЫНОК"
+	_market_toggle_button.custom_minimum_size = Vector2(94.0, 32.0)
 	_market_toggle_button.pressed.connect(_toggle_market_panel)
-	layout.add_child(_market_toggle_button)
+	roster_header_row.add_child(_market_toggle_button)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, 0.0)
@@ -486,6 +497,7 @@ func _build_roster_panel() -> void:
 
 	_employee_list = VBoxContainer.new()
 	_employee_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_employee_list.add_theme_constant_override("separation", 6)
 	scroll.add_child(_employee_list)
 
 	for employee in employees:
@@ -505,9 +517,11 @@ func _add_roster_button(employee: Variant) -> void:
 
 	var button := Button.new()
 	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(0.0, 68.0)
+	button.custom_minimum_size = Vector2(0.0, 60.0)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
+	button.add_theme_constant_override("h_separation", 8)
 	button.add_theme_font_size_override("font_size", 12)
 	button.pressed.connect(_on_roster_employee_pressed.bind(employee_id))
 	_employee_list.add_child(button)
@@ -530,6 +544,7 @@ func _build_market_panel() -> void:
 	)
 
 	var layout := VBoxContainer.new()
+	layout.add_theme_constant_override("separation", 8)
 	_market_panel.add_child(layout)
 
 	var top_row := HBoxContainer.new()
@@ -537,7 +552,11 @@ func _build_market_panel() -> void:
 
 	_market_header = Label.new()
 	_market_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_market_header.add_theme_font_size_override("font_size", 16)
+	_market_header.add_theme_font_size_override("font_size", 13)
+	_market_header.add_theme_color_override(
+		"font_color",
+		Color(0.77, 0.70, 0.53, 1.0)
+	)
 	top_row.add_child(_market_header)
 
 	var close_button := Button.new()
@@ -548,6 +567,10 @@ func _build_market_panel() -> void:
 	_market_status_label = Label.new()
 	_market_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_market_status_label.add_theme_font_size_override("font_size", 11)
+	_market_status_label.add_theme_color_override(
+		"font_color",
+		Color(0.66, 0.71, 0.73, 1.0)
+	)
 	layout.add_child(_market_status_label)
 
 	var scroll := ScrollContainer.new()
@@ -557,6 +580,7 @@ func _build_market_panel() -> void:
 
 	_market_list = VBoxContainer.new()
 	_market_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_market_list.add_theme_constant_override("separation", 6)
 	scroll.add_child(_market_list)
 
 	_refresh_market_panel()
@@ -597,8 +621,9 @@ func _refresh_market_panel() -> void:
 		var candidate_id: String = str(candidate.id)
 		var button := Button.new()
 		button.name = "Candidate_%s" % candidate_id
-		button.custom_minimum_size = Vector2(0.0, 64.0)
+		button.custom_minimum_size = Vector2(0.0, 60.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.add_theme_font_size_override("font_size", 12)
 		var candidate_role_title: String = candidate.get_profession_title()
 		var candidate_specialization: String = candidate.get_specialization_title()
@@ -622,7 +647,7 @@ func _refresh_market_panel() -> void:
 		)
 		_market_list.add_child(button)
 
-	_market_toggle_button.text = "КАДРОВЫЙ РЫНОК  ·  %d" % market_candidates.size()
+	_market_toggle_button.text = "РЫНОК · %d" % market_candidates.size()
 
 func _build_detail_panel() -> void:
 	var panel := PanelContainer.new()
@@ -645,18 +670,31 @@ func _build_detail_panel() -> void:
 
 	var layout := VBoxContainer.new()
 	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("separation", 9)
 	scroll.add_child(layout)
 
 	_detail_name_label = Label.new()
 	_detail_name_label.add_theme_font_size_override("font_size", 20)
+	_detail_name_label.add_theme_color_override(
+		"font_color",
+		Color(0.94, 0.88, 0.74, 1.0)
+	)
 	layout.add_child(_detail_name_label)
 
 	_detail_profession_label = Label.new()
-	_detail_profession_label.add_theme_font_size_override("font_size", 14)
+	_detail_profession_label.add_theme_font_size_override("font_size", 13)
+	_detail_profession_label.add_theme_color_override(
+		"font_color",
+		Color(0.68, 0.73, 0.75, 1.0)
+	)
 	layout.add_child(_detail_profession_label)
 
 	_detail_biography_label = Label.new()
 	_detail_biography_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_detail_biography_label.add_theme_color_override(
+		"font_color",
+		Color(0.74, 0.77, 0.76, 1.0)
+	)
 	layout.add_child(_detail_biography_label)
 
 	layout.add_child(HSeparator.new())
@@ -711,26 +749,43 @@ func _build_detail_panel() -> void:
 
 	var needs_heading := Label.new()
 	needs_heading.text = "СОСТОЯНИЕ"
-	needs_heading.add_theme_font_size_override("font_size", 14)
+	needs_heading.add_theme_font_size_override("font_size", 12)
+	needs_heading.add_theme_color_override(
+		"font_color",
+		Color(0.77, 0.70, 0.53, 1.0)
+	)
 	layout.add_child(needs_heading)
 
 	_energy_label = Label.new()
 	layout.add_child(_energy_label)
-	_energy_bar = _create_progress_bar(layout)
+	_energy_bar = _create_progress_bar(
+		layout,
+		Color(0.39, 0.68, 0.60, 1.0)
+	)
 
 	_morale_label = Label.new()
 	layout.add_child(_morale_label)
-	_morale_bar = _create_progress_bar(layout)
+	_morale_bar = _create_progress_bar(
+		layout,
+		Color(0.72, 0.64, 0.42, 1.0)
+	)
 
 	_stress_label = Label.new()
 	layout.add_child(_stress_label)
-	_stress_bar = _create_progress_bar(layout)
+	_stress_bar = _create_progress_bar(
+		layout,
+		Color(0.72, 0.39, 0.34, 1.0)
+	)
 
 	layout.add_child(HSeparator.new())
 
 	var skills_heading := Label.new()
 	skills_heading.text = "ПРОФЕССИОНАЛЬНЫЕ НАВЫКИ"
-	skills_heading.add_theme_font_size_override("font_size", 14)
+	skills_heading.add_theme_font_size_override("font_size", 12)
+	skills_heading.add_theme_color_override(
+		"font_color",
+		Color(0.77, 0.70, 0.53, 1.0)
+	)
 	layout.add_child(skills_heading)
 
 	_detail_skills_label = Label.new()
@@ -741,7 +796,11 @@ func _build_detail_panel() -> void:
 
 	var personality_heading := Label.new()
 	personality_heading.text = "ЛИЧНОСТЬ"
-	personality_heading.add_theme_font_size_override("font_size", 14)
+	personality_heading.add_theme_font_size_override("font_size", 12)
+	personality_heading.add_theme_color_override(
+		"font_color",
+		Color(0.77, 0.70, 0.53, 1.0)
+	)
 	layout.add_child(personality_heading)
 
 	_detail_personality_label = Label.new()
@@ -749,12 +808,19 @@ func _build_detail_panel() -> void:
 	layout.add_child(_detail_personality_label)
 
 
-func _create_progress_bar(parent: VBoxContainer) -> ProgressBar:
+func _create_progress_bar(
+	parent: VBoxContainer,
+	fill_color: Color
+) -> ProgressBar:
 	var progress := ProgressBar.new()
 	progress.min_value = 0.0
 	progress.max_value = 100.0
 	progress.show_percentage = false
-	progress.custom_minimum_size = Vector2(0.0, 14.0)
+	progress.custom_minimum_size = Vector2(0.0, 10.0)
+	var fill_style := StyleBoxFlat.new()
+	fill_style.bg_color = fill_color
+	fill_style.set_corner_radius_all(5)
+	progress.add_theme_stylebox_override("fill", fill_style)
 	parent.add_child(progress)
 	return progress
 
@@ -1021,7 +1087,7 @@ func _get_workplace_title(employee_id: String) -> String:
 
 func _refresh_roster() -> void:
 	if is_instance_valid(_roster_header):
-		_roster_header.text = "ПЕРСОНАЛ СТУДИИ  ·  %d" % employees.size()
+		_roster_header.text = "СОСТАВ СТУДИИ  ·  %d" % employees.size()
 
 	for employee in employees:
 		var employee_id: String = str(employee.id)

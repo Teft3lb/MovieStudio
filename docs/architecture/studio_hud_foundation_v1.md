@@ -42,3 +42,12 @@ Both managers continue to own their data, commands, and refresh logic. They only
 - Existing game-clock speed and manual fast-forward actions remain unchanged.
 - Existing employee, building, production, and editing commands remain unchanged.
 - The HUD is a Presentation-layer dependency of the existing presentation managers only.
+
+
+## Visual language and navigation update
+
+The management navigation is presented as a compact horizontal strip at the bottom of the HUD. The left vertical navigation rail is removed so the workspace and 3D viewport receive more width.
+
+The HUD owns a shared Theme for labels, buttons, and progress bars. Panels use a consistent graphite surface, subtle borders, rounded corners, and restrained shadows. Warm brass is used for active navigation and section hierarchy; energy, morale, and stress use separate semantic progress colors.
+
+The employee roster uses compact selectable cards. Employee details remain in the inspector, with status indicators differentiated by color. Simulation speed buttons reflect the currently active speed.

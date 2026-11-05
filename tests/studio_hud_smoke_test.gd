@@ -72,5 +72,26 @@ func _run_tests() -> void:
 		"Inspector close action must hide the selected context panel."
 	)
 
+	var navigation_list: Control = hud.get("_navigation_list")
+	_expect(
+		navigation_list is HBoxContainer,
+		"Navigation must use a compact horizontal strip."
+	)
+	_expect(
+		hud.get_node_or_null(
+			"StudioHUDRoot/MarginContainer/StudioShell/BottomNavigationPanel"
+		) != null,
+		"Bottom navigation panel must exist in the HUD shell."
+	)
+	_expect(
+		hud.get("_root").theme != null,
+		"StudioHUD must provide a unified visual theme."
+	)
+	var speed_buttons: Dictionary = hud.get("_speed_buttons")
+	_expect(
+		speed_buttons.size() == 4,
+		"All four simulation speed controls must remain available."
+	)
+
 	hud.free()
 	_finish_test("StudioHUDSmokeTest")
