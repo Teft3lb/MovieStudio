@@ -123,7 +123,7 @@ func get_scene_path(
 				continue
 			obstacles.append({
 				"center": Vector2(prop.position.x, prop.position.z),
-				"half_extents": Vector2(0.98, 0.65),
+				"half_extents": Vector2(0.98, 0.55),
 				"clearance": 0.18,
 			})
 
@@ -150,9 +150,9 @@ func get_set_dressing_prop_count() -> int:
 
 func get_set_dressing_mark(prop_index: int) -> Vector3:
 	var positions: Array[Vector3] = [
-		Vector3(-3.6, 0.0, -3.0),
+		Vector3(-3.2, 0.0, -3.0),
 		Vector3(0.0, 0.0, -3.0),
-		Vector3(3.6, 0.0, -3.0),
+		Vector3(3.2, 0.0, -3.0),
 		Vector3(0.0, 0.0, -1.0),
 	]
 	var index: int = clampi(prop_index, 0, positions.size() - 1)
@@ -317,10 +317,10 @@ func get_scene_mark(
 		Vector3(-1.0, 0.0, -2.3),
 		Vector3(1.0, 0.0, -2.3),
 		Vector3(3.0, 0.0, -2.3),
-		Vector3(-2.2, 0.0, -1.55),
-		Vector3(0.0, 0.0, -1.55),
-		Vector3(2.2, 0.0, -1.55),
-		Vector3(3.4, 0.0, -1.55),
+		Vector3(-2.2, 0.0, -1.65),
+		Vector3(0.0, 0.0, -1.65),
+		Vector3(2.2, 0.0, -1.65),
+		Vector3(3.4, 0.0, -1.65),
 	]
 	var normalized_index: int = clampi(
 		slot_index,
