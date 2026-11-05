@@ -9,15 +9,127 @@ const GAME_CLOCK_SCRIPT = preload(
 const CHARACTER_ACTOR_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_actor.gd"
 )
+const CHARACTER_MANAGER_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_manager.gd"
+)
 
 
 func _initialize() -> void:
 	call_deferred("_run_tests")
 
 
+class FakeWorkplaceManager extends Node:
+	var workplace_position: Vector3 = Vector3(0.0, 0.0, -3.0)
+
+	func get_workplace_path_from(
+		_building_id: String,
+		_slot_index: int,
+		start_position: Vector3
+	) -> Array[Vector3]:
+		var route: Array[Vector3] = [start_position, workplace_position]
+		return route
+
+	func get_workplace_position(
+		_building_id: String,
+		_slot_index: int
+	) -> Vector3:
+		return workplace_position
+
+	func get_scene_path(
+		_building_id: String,
+		start_position: Vector3,
+		target_position: Vector3
+	) -> Array[Vector3]:
+		var route: Array[Vector3] = [start_position, target_position]
+		return route
+
+
 func _run_tests() -> void:
 	_test_character_moves_and_performs_scene()
+	_test_off_shift_crew_returns_to_stage()
 	_finish_test("FilmScenePerformanceSmokeTest")
+
+
+func _test_off_shift_crew_returns_to_stage() -> void:
+	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 778899
+	var employee: Variant = generator.call(
+		"generate",
+		rng,
+		"EMP-OFF-SHIFT-DIRECTOR",
+		"director"
+	)
+	employee.work_state = "off_shift"
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+	clock.call("set_speed_mode", 1)
+
+	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(actor)
+	var initial_position: Vector3 = Vector3(6.0, 0.0, 5.0)
+	actor.call(
+		"setup",
+		employee,
+		[initial_position, initial_position + Vector3.RIGHT],
+		clock,
+		2.0
+	)
+	actor.global_position = initial_position
+
+	var fake_building_manager := FakeWorkplaceManager.new()
+	var character_manager: Node = CHARACTER_MANAGER_SCRIPT.new()
+	character_manager.set("employees", [employee])
+	character_manager.set("_employee_actors", {
+		"EMP-OFF-SHIFT-DIRECTOR": actor,
+	})
+	character_manager.set("_workplace_assignments", {
+		"EMP-OFF-SHIFT-DIRECTOR": {
+			"building_id": "BLD-TEST-STAGE",
+			"building_type_id": "sound_stage",
+			"slot_index": 0,
+		},
+	})
+	character_manager.set("_studio_building_manager", fake_building_manager)
+
+	_expect(
+		str(character_manager.call(
+			"_get_production_participant_status",
+			"EMP-OFF-SHIFT-DIRECTOR"
+		)) == "Направляется на площадку",
+		"An off-shift production participant must be shown as travelling, not already on set."
+	)
+	var ready_before_dispatch: bool = character_manager.call(
+		"dispatch_employee_to_workplace",
+		"EMP-OFF-SHIFT-DIRECTOR"
+	)
+	_expect(
+		not ready_before_dispatch
+		and str(actor.call("get_workplace_building_id")) == "BLD-TEST-STAGE",
+		"An off-shift production crew member must receive a route back to the Sound Stage."
+	)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		bool(character_manager.call(
+			"dispatch_employee_to_workplace",
+			"EMP-OFF-SHIFT-DIRECTOR"
+		)),
+		"Production crew readiness must become true after the employee reaches the stage workstation."
+	)
+	_expect(
+		bool(actor.call("is_at_workplace")),
+		"The dispatched employee must physically arrive at the assigned stage workstation."
+	)
+	_expect(
+		str(character_manager.call(
+			"_get_production_participant_status",
+			"EMP-OFF-SHIFT-DIRECTOR"
+		)) == "На площадке",
+		"An arrived production participant must be shown as present on the Sound Stage."
+	)
+	character_manager.free()
+	fake_building_manager.free()
 
 
 func _test_character_moves_and_performs_scene() -> void:

@@ -52,7 +52,7 @@ Each scripted scene passes through these states:
 
 If a take scores below 58/100, the director requests a retake. A scene can have at most two retakes. A retake uses 16 + 5 minutes per performer, followed by another review.
 
-The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the cast and crew gather at the Sound Stage automatically. Once production starts, assigned participants remain on the shoot through lunch and normal shift boundaries; the film is a compact gameplay event rather than a second employee-scheduling puzzle. Production pauses only while a required participant is travelling to the stage or has lost their stage assignment. Manual debug fast-forward processes production minutes deterministically and snaps active performers to their current blocking marks at the end of the skip.
+The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the cast and crew are routed back to their Sound Stage workstations automatically, even if they were off shift when filming began. Once production starts, assigned participants remain on the shoot through lunch and normal shift boundaries; the film is a compact gameplay event rather than a second employee-scheduling puzzle. Production pauses only while a required participant is travelling to the stage or has lost their stage assignment. Manual debug fast-forward processes production minutes deterministically and snaps active performers to their current blocking marks at the end of the skip.
 
 ## In-world performance
 
@@ -87,7 +87,7 @@ Each scene's take quality is based on:
 - a small retake improvement modifier;
 - a scene-specific set-dressing modifier derived from owned and missing required props. Missing set pieces lower scene quality but do not prevent production from starting.
 
-The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, set ID/title, installed prop IDs, set-dressing quality, final quality, retake count and elapsed production minutes. Scene setup plans are serialized with the production project so the chosen props do not change if the inventory changes later.
+The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, set ID/title, installed prop IDs, set-dressing quality, final quality, retake count and elapsed production minutes. Scene setup plans are serialized with the production project. A scene's plan can be refreshed during Preparation and until the first Set Dressing minute is processed, including when the player buys props after production starts. The zero-progress Set Dressing window also accepts purchases and adjusts the current phase duration before installation begins. Purchases made before installation progress begins update the current scene; later purchases affect the next scene when its Preparation phase starts, but never rewrite an already dressed or completed scene.
 
 Final film quality is 75% average scene quality and 25% script potential. It is bounded from 0 to 100.
 

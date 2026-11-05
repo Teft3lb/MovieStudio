@@ -4,6 +4,9 @@ class_name FilmProductionSystem
 const PROJECT_DATA_SCRIPT = preload(
 	"res://scripts/domain/film_production/film_production_project.gd"
 )
+const SET_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_set_catalog.gd"
+)
 
 const PREPARATION_MINUTES: int = 2
 const SET_DRESSING_BASE_MINUTES: int = 2
@@ -89,6 +92,75 @@ func start_project(
 	_rng.seed = seed
 	project.rng_state = _rng.state
 	return project
+
+
+func refresh_current_scene_setup(
+	project: Variant,
+	script: Variant,
+	owned_prop_ids: Array[String]
+) -> Dictionary:
+	if (
+		project == null
+		or script == null
+		or str(project.status) != "in_production"
+	):
+		return {}
+	var current_phase: String = str(project.current_phase)
+	if (
+		current_phase != "preparation"
+		and not (
+			current_phase == "set_dressing"
+			and int(project.phase_minutes_elapsed) == 0
+		)
+	):
+		return {}
+	var scene_index: int = int(project.current_scene_index)
+	if (
+		scene_index < 0
+		or scene_index >= script.scenes.size()
+		or scene_index >= project.scene_setups.size()
+	):
+		return {}
+
+	var scene: Dictionary = script.scenes[scene_index]
+	var fresh_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		[scene],
+		owned_prop_ids,
+		str(script.genre_id)
+	)
+	if fresh_setups.is_empty():
+		return {}
+	var normalized_setups: Array = _normalize_scene_setups(
+		[scene],
+		fresh_setups
+	)
+	if normalized_setups.is_empty() or not (normalized_setups[0] is Dictionary):
+		return {}
+	var refreshed_setup: Dictionary = normalized_setups[0]
+	var previous_setup: Dictionary = project.get_current_scene_setup()
+	var previous_duration: int = clampi(
+		int(previous_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+		SET_DRESSING_BASE_MINUTES,
+		10
+	)
+	var refreshed_duration: int = clampi(
+		int(refreshed_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+		SET_DRESSING_BASE_MINUTES,
+		10
+	)
+	project.scene_setups[scene_index] = refreshed_setup.duplicate(true)
+	if current_phase == "set_dressing":
+		project.phase_duration_minutes = refreshed_duration
+	project.last_activity_message = (
+		"Комплект декораций обновлён по текущему инвентарю."
+	)
+	project.estimated_total_minutes = maxi(
+		int(project.estimated_total_minutes)
+		+ refreshed_duration
+		- previous_duration,
+		int(project.total_elapsed_minutes) + 1
+	)
+	return refreshed_setup.duplicate(true)
 
 
 func advance_minute(

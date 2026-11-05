@@ -54,6 +54,12 @@ func _run_tests() -> void:
 		crew_assignments,
 		cast_assignments
 	)
+	_test_late_prop_purchases_update_unprepared_scenes(
+		system,
+		script,
+		crew_assignments,
+		cast_assignments
+	)
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
 	_test_mid_phase_progress(system, script, project)
@@ -163,6 +169,140 @@ func _test_missing_props_do_not_block_production(
 		and project.scene_setups[0].get("missing_prop_ids", []).size() == 3
 		and float(project.scene_setups[0].get("set_dressing_quality", 100.0)) < 45.0,
 		"Missing set pieces must be recorded and lower scene set-dressing quality."
+	)
+
+
+func _test_late_prop_purchases_update_unprepared_scenes(
+	system: RefCounted,
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var no_owned_props: Array[String] = []
+	var initial_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		no_owned_props,
+		str(script.genre_id)
+	)
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-LATE-PROP-PURCHASE",
+		771122,
+		1,
+		8,
+		0,
+		initial_setups
+	)
+	var initial_estimate: int = int(project.estimated_total_minutes)
+	var first_purchase: Array[String] = ["lighthouse_console"]
+	var refreshed: Dictionary = system.call(
+		"refresh_current_scene_setup",
+		project,
+		script,
+		first_purchase
+	)
+	_expect(
+		refreshed.get("prop_ids", []).size() == 1
+		and refreshed.get("missing_prop_ids", []).size() == 2
+		and int(refreshed.get("setup_minutes", 0)) == 3
+		and int(refreshed.get("set_dressing_quality", 0)) == 32,
+		"A prop purchased after production starts must update the current scene while it is still in preparation."
+	)
+	_expect(
+		int(project.estimated_total_minutes) == initial_estimate + 1,
+		"Refreshing an unprepared scene must update the remaining production estimate by the setup-time difference."
+	)
+
+	var snapshot: Dictionary = {
+		"acting_average": 90.0,
+		"directing": 90.0,
+		"camera_work": 90.0,
+		"technical": 90.0,
+		"energy": 0.95,
+		"morale": 0.95,
+		"stress": 0.05,
+	}
+	for _minute in range(2):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "set_dressing"
+		and int(project.phase_duration_minutes) == 3,
+		"The current scene must use the newly purchased prop when its set-dressing phase begins."
+	)
+
+	var two_props: Array[String] = [
+		"lighthouse_console",
+		"lighthouse_beacon",
+	]
+	var zero_progress_refresh: Dictionary = system.call(
+		"refresh_current_scene_setup",
+		project,
+		script,
+		two_props
+	)
+	_expect(
+		zero_progress_refresh.get("prop_ids", []).size() == 2
+		and int(zero_progress_refresh.get("setup_minutes", 0)) == 4
+		and int(zero_progress_refresh.get("set_dressing_quality", 0)) == 48
+		and int(project.phase_duration_minutes) == 4,
+		"A purchase made before the first set-dressing minute must still update the current scene."
+	)
+	system.call("advance_minute", project, script, true, true, snapshot)
+	var complete_inventory: Array[String] = [
+		"lighthouse_console",
+		"lighthouse_beacon",
+		"lighthouse_rail",
+	]
+	var late_refresh: Dictionary = system.call(
+		"refresh_current_scene_setup",
+		project,
+		script,
+		complete_inventory
+	)
+	_expect(
+		late_refresh.is_empty()
+		and project.scene_setups[0].get("prop_ids", []).size() == 2,
+		"Purchases after the first set-dressing minute must not change the active scene's locked setup."
+	)
+
+	for _minute in range(3):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	for _minute in range(4):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	for _minute in range(10):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	system.call("advance_minute", project, script, true, true, snapshot)
+
+	_expect(
+		int(project.current_scene_index) == 1
+		and str(project.current_phase) == "preparation"
+		and project.scene_results.size() == 1,
+		"The next scene must become editable after the previous scene is completed."
+	)
+	var next_scene_setup: Dictionary = system.call(
+		"refresh_current_scene_setup",
+		project,
+		script,
+		complete_inventory
+	)
+	_expect(
+		next_scene_setup.get("prop_ids", []).size() == 3
+		and next_scene_setup.get("missing_prop_ids", []).is_empty()
+		and int(next_scene_setup.get("setup_minutes", 0)) == 5
+		and int(next_scene_setup.get("set_dressing_quality", 0)) == 62,
+		"A later scene must automatically use every matching prop purchased before its own set-dressing phase."
+	)
+	_expect(
+		project.scene_results[0].get("set_dressing_props", []).size() == 2
+		and project.scene_results[0].get("missing_prop_ids", []).size() == 1,
+		"Later purchases must not retroactively rewrite the completed scene's recorded set."
+	)
+	_expect(
+		int(project.estimated_total_minutes) == initial_estimate + 5,
+		"Newly purchased props must update only the remaining scene setup estimate."
 	)
 
 

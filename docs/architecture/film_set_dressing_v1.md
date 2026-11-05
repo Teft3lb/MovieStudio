@@ -15,7 +15,7 @@ The player does not manually place every object in this slice. The focus is a vi
 - **StudioSetCatalog** defines thematic prop groups, item prices, quality bonuses and scene-to-set matching.
 - **StudioSetInventory** owns the prototype prop budget and purchased prop IDs. Purchased props are reusable and are not consumed by production.
 - **FilmProductionSystem** normalizes one setup plan per scripted scene, includes setup time in the production estimate, advances the set-dressing phase and records the used set and props in the completed scene result.
-- **FilmProductionProject** serializes the scene setup plans so a running film keeps the same art direction if inventory changes later.
+- **FilmProductionProject** serializes each scene setup plan. A plan can be refreshed during Preparation and until the first Set Dressing minute is processed.
 - **StudioBuildingManager** provides the Set Dressing Workshop UI, builds scene plans from the current inventory and coordinates technician movement.
 - **StudioBuildingActor** owns the physical set-dressing root, creates prop meshes, progressively reveals installed pieces and provides navigation marks.
 - **StudioNavigationSystem** builds obstacle-aware paths for outdoor workplace travel and movement inside the Sound Stage.
@@ -47,7 +47,7 @@ Every catalog item in the matched group is a required scene prop. Owned items ar
 
 A scene setup contains its scene ID, matched source group, visible set ID/title, installed prop IDs, required and missing prop IDs, setup duration and set-dressing quality.
 
-The current duration rule is two base minutes plus one minute per installed prop, capped at ten minutes. A neutral scene therefore still has a short two-minute equipment/setup phase. The plan is stored on FilmProductionProject and is not recalculated every minute.
+The current duration rule is two base minutes plus one minute per installed prop, capped at ten minutes. A neutral scene therefore still has a short two-minute equipment/setup phase. The plan is stored on FilmProductionProject and is not recalculated every game minute. While the scene is in Preparation or Set Dressing has zero elapsed minutes, a successful prop purchase refreshes its installed/missing prop list, setup duration and quality. The plan remains refreshable until the first Set Dressing minute is processed. Props bought after installation progress begins remain reusable and are evaluated for the next scene when its Preparation phase begins.
 
 ## Production phase integration
 
@@ -59,7 +59,7 @@ Each scene follows:
 4. **Shooting** — actors perform their generated action/dialogue; camera rigs track the blocking.
 5. **Review** — the director reviews the take and production quality is calculated.
 
-The technician remains a required crew member. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. Manual debug fast-forward snaps the active technician to the current installation mark at the end of each skipped minute, preserving deterministic phase progress.
+The technician remains a required crew member. Production routes the director, camera operator and technician back to their Sound Stage workstations regardless of shift state; cast members are routed to the stage before moving to their blocking marks. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. Manual debug fast-forward snaps the active technician to the current installation mark at the end of each skipped minute, preserving deterministic phase progress.
 
 If a scene has no owned props for its location, the technician performs a short equipment/neutral-stage setup. Missing props never block production start: the player may proceed with a neutral or incomplete set, while the scene quality score is reduced for every missing required item. The pre-production panel previews missing catalog items, and the active production panel shows scene coverage and the current set-dressing quality. There is no indefinite rehearsal or setup loop: every phase has a bounded duration and production transitions automatically.
 

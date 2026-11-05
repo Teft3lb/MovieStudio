@@ -267,6 +267,90 @@ func is_employee_at_workplace(
 	return bool(actor.call("is_at_workplace"))
 
 
+func dispatch_employee_to_workplace(employee_id: String) -> bool:
+	if not is_instance_valid(_studio_building_manager):
+		return false
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	if assignment.is_empty():
+		return false
+	var actor: Node3D = get_employee_actor(employee_id) as Node3D
+	if actor == null:
+		return false
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return false
+
+	var building_id: String = str(assignment.get("building_id", ""))
+	if building_id.is_empty():
+		return false
+	var slot_index: int = int(assignment.get("slot_index", 0))
+	var profession_id: String = str(employee.profession_id)
+	var manual_fast_forward: bool = (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+	)
+	var current_building_id: String = str(
+		actor.call("get_workplace_building_id")
+	)
+	if current_building_id == building_id:
+		if bool(actor.call("is_at_workplace")):
+			return true
+		if bool(actor.call("is_leaving_workplace")):
+			var workplace_position: Vector3 = _studio_building_manager.call(
+				"get_workplace_position",
+				building_id,
+				slot_index
+			)
+			var return_route: Array[Vector3] = _studio_building_manager.call(
+				"get_scene_path",
+				building_id,
+				actor.global_position,
+				workplace_position
+			)
+			if return_route.is_empty():
+				return false
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				return_route,
+				profession_id
+			)
+		if manual_fast_forward:
+			actor.call("snap_to_workplace")
+			return true
+		return false
+
+	if not current_building_id.is_empty():
+		if manual_fast_forward:
+			actor.call("snap_outside_workplace")
+		else:
+			if not bool(actor.call("is_leaving_workplace")):
+				actor.call("leave_workplace")
+			return false
+
+	var route: Array[Vector3] = _studio_building_manager.call(
+		"get_workplace_path_from",
+		building_id,
+		slot_index,
+		actor.global_position
+	)
+	if route.is_empty():
+		return false
+	actor.call(
+		"assign_workplace_route",
+		building_id,
+		route,
+		profession_id
+	)
+	if manual_fast_forward:
+		actor.call("snap_to_workplace")
+		return true
+	return false
+
+
 func _refresh_workplace_assignments() -> void:
 	if (
 		_workplace_system == null
@@ -1092,6 +1176,21 @@ func _get_workplace_title(employee_id: String) -> String:
 			return "Не назначено"
 
 
+func _get_production_participant_status(employee_id: String) -> String:
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return "Съёмочная смена"
+	if bool(actor.call("is_in_scene_performance")):
+		if bool(actor.call("is_at_scene_mark")):
+			return "На съёмочной позиции"
+		return "Занимает позицию"
+	if bool(actor.call("is_returning_to_workplace")):
+		return "Возвращается на площадку"
+	if bool(actor.call("is_at_workplace")):
+		return "На площадке"
+	return "Направляется на площадку"
+
+
 func _refresh_roster() -> void:
 	if is_instance_valid(_roster_header):
 		_roster_header.text = "СОСТАВ СТУДИИ  ·  %d" % employees.size()
@@ -1103,11 +1202,11 @@ func _refresh_roster() -> void:
 			continue
 
 		var needs: Dictionary = employee.needs
-		var work_state_title: String = (
-			"На съёмках"
-			if _is_active_production_participant(employee_id)
-			else employee.get_work_state_title()
-		)
+		var work_state_title: String = employee.get_work_state_title()
+		if _is_active_production_participant(employee_id):
+			work_state_title = _get_production_participant_status(
+				employee_id
+			)
 		var energy: int = roundi(float(needs.get("energy", 1.0)) * 100.0)
 		var morale: int = roundi(float(needs.get("morale", 0.75)) * 100.0)
 		button.text = "%s\n%s · %s" % [

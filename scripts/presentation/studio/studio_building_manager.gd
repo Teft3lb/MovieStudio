@@ -1415,9 +1415,9 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	var production_note := Label.new()
 	production_note.text = (
 		"Каждая сцена проходит подготовку, монтаж декораций, репетицию, "
-		+ "съёмку и просмотр. Техник устанавливает купленный реквизит, "
-		+ "который можно переиспользовать в следующих сценах и фильмах. "
-		+ "Недостающий реквизит не блокирует съёмки, но снижает качество сцены."
+		+ "съёмку и просмотр. Покупки до начала установки учитываются в "
+		+ "текущей сцене; позднее — в следующих. Реквизит переиспользуется "
+		+ "в фильмах. Недостающие декорации не блокируют съёмки, но снижают качество."
 	)
 	production_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	production_note.add_theme_font_size_override("font_size", 10)
@@ -1486,7 +1486,37 @@ func _on_buy_set_prop_pressed(prop_id: String) -> void:
 		int(definition.get("price", 0))
 	))
 	if purchased:
+		_refresh_active_scene_set_dressing_if_unstarted()
 		_refresh_building_detail()
+
+
+func _refresh_active_scene_set_dressing_if_unstarted() -> void:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or _active_film_script == null
+	):
+		return
+	var current_phase: String = str(_active_film_project.current_phase)
+	if (
+		current_phase != "preparation"
+		and not (
+			current_phase == "set_dressing"
+			and int(_active_film_project.phase_minutes_elapsed) == 0
+		)
+	):
+		return
+	var refreshed_setup: Dictionary = _film_production_system.call(
+		"refresh_current_scene_setup",
+		_active_film_project,
+		_active_film_script,
+		_set_inventory.get_owned_prop_ids()
+	)
+	if refreshed_setup.is_empty():
+		return
+	_sync_film_set_dressing()
+	_update_film_stage_slate()
+	_update_film_production_ui()
 
 
 func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
@@ -1696,6 +1726,7 @@ func _on_start_film_production_pressed() -> void:
 	_active_film_script = _latest_script
 	_active_scene_performer_ids.clear()
 	_active_set_dressing_technician_id = ""
+	_dispatch_film_crew_to_stage()
 	_apply_film_crew_actions()
 	_sync_film_scene_performance()
 	_sync_film_set_dressing()
@@ -1710,12 +1741,38 @@ func _get_sound_stage_building_id() -> String:
 	return ""
 
 
+func _dispatch_film_crew_to_stage() -> void:
+	if (
+		_active_film_project == null
+		or not is_instance_valid(_character_manager)
+	):
+		return
+	var crew_assignments: Dictionary = _active_film_project.crew_assignments
+	for profession_id in [
+		"director",
+		"camera_operator",
+		"technician",
+		"producer",
+	]:
+		var employee_id: String = str(
+			crew_assignments.get(profession_id, "")
+		)
+		if not employee_id.is_empty():
+			_character_manager.call(
+				"dispatch_employee_to_workplace",
+				employee_id
+			)
+
+
 func _advance_film_production() -> void:
 	if (
 		_active_film_project == null
 		or str(_active_film_project.status) != "in_production"
 	):
 		return
+
+	if str(_active_film_project.current_phase) == "preparation":
+		_dispatch_film_crew_to_stage()
 
 	var cast_ready: bool = _sync_film_scene_performance()
 	_sync_film_set_dressing()
@@ -1732,6 +1789,8 @@ func _advance_film_production() -> void:
 
 	if bool(result.get("phase_changed", false)):
 		_apply_film_crew_actions()
+		if str(_active_film_project.current_phase) == "preparation":
+			_refresh_active_scene_set_dressing_if_unstarted()
 		_sync_film_set_dressing()
 		_sync_film_scene_performance()
 	if bool(result.get("completed", false)):
@@ -1792,16 +1851,11 @@ func _are_film_crew_ready() -> bool:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			return false
-		var at_workplace: bool = bool(
-			_character_manager.call(
-				"is_employee_at_workplace",
-				employee_id,
-				"sound_stage"
-			)
-		)
-		if at_workplace:
-			continue
-		if profession_id == "technician" and employee_id == _active_set_dressing_technician_id:
+		if (
+			profession_id == "technician"
+			and employee_id == _active_set_dressing_technician_id
+			and str(_active_film_project.current_phase) == "set_dressing"
+		):
 			var technician_actor: Variant = _character_manager.call(
 				"get_employee_actor",
 				employee_id
@@ -1811,12 +1865,17 @@ func _are_film_crew_ready() -> bool:
 				and is_instance_valid(technician_actor)
 				and bool(technician_actor.call("is_in_scene_performance"))
 			):
-				if (
-					str(_active_film_project.current_phase) != "set_dressing"
-					or bool(technician_actor.call("is_at_scene_mark"))
-				):
+				if bool(technician_actor.call("is_at_scene_mark")):
 					continue
-		return false
+				return false
+		var at_workplace: bool = bool(
+			_character_manager.call(
+				"dispatch_employee_to_workplace",
+				employee_id
+			)
+		)
+		if not at_workplace:
+			return false
 	return true
 
 
@@ -1931,13 +1990,14 @@ func _sync_film_scene_performance() -> bool:
 		var already_performing: bool = bool(
 			actor.call("is_in_scene_performance")
 		)
-		var at_workplace: bool = bool(
-			_character_manager.call(
-				"is_employee_at_workplace",
-				employee_id,
-				"sound_stage"
+		var at_workplace: bool = false
+		if not already_performing:
+			at_workplace = bool(
+				_character_manager.call(
+					"dispatch_employee_to_workplace",
+					employee_id
+				)
 			)
-		)
 		if not already_performing and not at_workplace:
 			all_at_marks = false
 			continue
@@ -2945,6 +3005,13 @@ func _update_film_production_ui() -> void:
 			prop_quality_text += "\nНе хватает: %s" % _format_set_prop_titles(
 				missing_props
 			)
+			if (
+				phase == "set_dressing"
+				and int(project.phase_minutes_elapsed) > 0
+			) or phase in ["rehearsal", "shooting", "review"]:
+				prop_quality_text += (
+					"\nНовые покупки будут доступны со следующей сцены."
+				)
 		_film_production_detail_label.text = (
 			"Фильм: %s\nСцена %d: %s · %s\n"
 			+ "Декорации: %s · реквизит %s\n%s\n"
