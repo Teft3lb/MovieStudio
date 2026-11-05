@@ -45,6 +45,7 @@ Each scripted scene passes through these states:
 | Phase | Base duration | Visible activity |
 |---|---:|---|
 | Preparation | 2 min | Cast gathers on the set; director stages the scene; technician checks equipment |
+| Set Dressing | 2 min + 1 min per purchased prop | Technician walks the set and installs reusable props; an empty set uses the neutral setup |
 | Rehearsal | 2 + 1 min per performer | Actors rehearse with visible gestures and partner reactions |
 | Shooting | 8 + 1 min per performer | Actors perform dialogue/actions; camera rigs track the cast |
 | Review | 1 min | Director reviews the take; crew changes to review poses |
@@ -59,12 +60,12 @@ The Sound Stage has eight reusable scene marks on its set platform. The marks ch
 
 During production:
 - actors move from their workstations to scene marks and face their scene partners;
-- the speaking actor plays a speaking gesture and displays the current line above the character;
+- the speaking actor plays a speaking gesture, animates a simple mouth shape and displays the current line above the character;
 - other performers play reaction or dramatic poses;
 - actors reposition between rehearsal, shooting and review blocking;
 - the director gestures while staging and switches to a review pose when inspecting a take;
 - the camera operator performs a camera-operation pose;
-- the technician performs equipment checks;
+- during set dressing, the technician walks to each planned prop mark and installs the reusable set pieces; during later phases the technician performs equipment checks;
 - an optional producer performs a coordination pose;
 - the two in-world camera rigs turn toward the current cast blocking;
 - a physical slate displays the active scene and phase.
@@ -83,9 +84,10 @@ Each scene's take quality is based on:
 - script potential score (22%);
 - team energy, morale and stress;
 - seeded take variance;
-- a small retake improvement modifier.
+- a small retake improvement modifier;
+- a scene-specific set-dressing modifier derived from the purchased props.
 
-The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, final quality, retake count and elapsed production minutes.
+The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, set ID/title, installed prop IDs, set-dressing quality, final quality, retake count and elapsed production minutes. Scene setup plans are serialized with the production project so the chosen props do not change if the inventory changes later.
 
 Final film quality is 75% average scene quality and 25% script potential. It is bounded from 0 to 100.
 
@@ -99,6 +101,8 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/film_editing_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_navigation_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_set_inventory_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_session_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
@@ -119,19 +123,21 @@ The production domain test covers role resolution, unavailable-crew pauses, proj
 
 ## Manual verification
 
-1. Complete a script and select the Sound Stage.
-2. Assign each scripted role to an actor/extra. Confirm the producer is optional.
-3. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The production can begin regardless of the current shift clock.
-4. Observe actors move from workstations to the set marks.
-5. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
-6. Confirm the dialogue bubble appears only for the speaking character.
-7. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
-8. Confirm the director, camera operator, technician and producer display their production poses/tasks.
-9. Confirm the cast and crew remain on the set through lunch and normal shift boundaries until the film is complete.
-10. Confirm low-quality takes request no more than two retakes.
-11. Confirm each completed scene advances to the next scene and updates the scene counter.
-12. Confirm final completion shows the film quality and all scene results, returns actors to workstations and changes the slate to \`ФИЛЬМ ГОТОВ\`.
-13. Recheck normal workplace routing, employee needs, script writing, manual fast-forward, building selection and camera controls.
+1. Complete a script and select the Sound Stage inspector.
+2. Buy one or more set pieces in the Set Dressing Workshop; confirm the budget decreases and an owned item cannot be bought twice.
+3. Use a lighthouse script scene; confirm the lighthouse props are selected automatically and reused in every matching scene.
+4. Assign each scripted role to an actor/extra. Confirm the producer is optional.
+5. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The production can begin regardless of the current shift clock.
+6. Observe actors move from workstations to the set marks and the technician move between prop marks during Set Dressing.
+7. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
+8. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
+9. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
+10. Confirm the director, camera operator, technician and producer display their production poses/tasks.
+11. Confirm the cast and crew remain on the set through lunch and normal shift boundaries until the film is complete.
+12. Confirm low-quality takes request no more than two retakes.
+13. Confirm each completed scene advances to the next scene and updates the scene counter.
+14. Confirm final completion shows the film quality and all scene results, returns actors to workstations and changes the slate to ФИЛЬМ ГОТОВ.
+15. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
 
 ## Explicit limitations
 
@@ -141,6 +147,9 @@ The production domain test covers role resolution, unavailable-crew pauses, proj
 - Camera rigs rotate to follow the cast; the player cannot yet operate camera tracks, lenses or shot framing.
 - No retake-specific dialogue variation or actor memory of previous takes.
 - No editing, montage, export, release, marketing, distribution, audience reception or box-office results.
-- No production payroll, per-film budget or equipment rental cost integration.
+- Set Dressing Workshop currently uses its own prototype budget and is not connected to the future Studio Economy ledger.
+- Purchased props and inventory expose serialization methods, but campaign SaveSystem integration does not yet exist.
+- Set-piece positions are selected automatically from a small fixed layout; there is no manual set editor or imported production-ready asset library yet.
+- Navigation uses grid-based obstacle avoidance for the current studio scale; it is not a full NavMesh or dynamic crowd-avoidance system.
 - Film projects and completed results are serializable domain objects but are not yet connected to campaign save/load.
 - Only one film production project is active at a time.

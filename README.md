@@ -28,6 +28,8 @@
 - [Character System v2](docs/architecture/character_system_v2.md)
 - [Employee Management v1](docs/architecture/employee_management_v1.md)
 - [Profession Catalogue](docs/architecture/profession_catalog.md)
+- [Film Production v1](docs/architecture/film_production_v1.md)
+- [Film Set Dressing v1](docs/architecture/film_set_dressing_v1.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии

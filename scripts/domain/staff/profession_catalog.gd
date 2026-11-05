@@ -112,7 +112,8 @@ const PROFESSION_SKILL_PROFILES: Dictionary = {
 		"visual_storytelling", "reliability",
 	],
 	"technician": [
-		"technical", "maintenance", "reliability", "communication",
+		"technical", "maintenance", "set_design", "prop_design",
+		"reliability", "communication",
 	],
 	"film_editor": [
 		"editing", "visual_storytelling", "sound", "creativity", "reliability",

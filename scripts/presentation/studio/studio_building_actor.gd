@@ -4,6 +4,9 @@ class_name StudioBuildingActor
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
 )
+const NAVIGATION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_navigation_system.gd"
+)
 
 const CUTAWAY_DISTANCE: float = 36.0
 const WALL_THICKNESS: float = 0.28
@@ -20,10 +23,14 @@ var _camera_rigs: Array[Node3D] = []
 var _workplace_points: Array[Vector3] = []
 var _entrance_inside: Vector3 = Vector3.ZERO
 var _entrance_outside: Vector3 = Vector3.ZERO
+var _set_dressing_root: Node3D
+var _active_set_scene_key: String = ""
+var _navigation_system: RefCounted
 
 
 func setup(data: Variant) -> void:
 	building_data = data
+	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
 	name = "Building_%s" % str(data.id).replace("-", "_")
 	position = data.position
 	rotation_degrees.y = float(data.rotation_degrees)
@@ -80,6 +87,227 @@ func get_workplace_position(slot_index: int) -> Vector3:
 	if path.is_empty():
 		return global_position
 	return path[path.size() - 1]
+
+
+func get_scene_path(
+	start_world_position: Vector3,
+	target_world_position: Vector3
+) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	if str(building_data.building_type_id) != "sound_stage":
+		result.append(start_world_position)
+		result.append(target_world_position)
+		return result
+
+	var obstacles: Array[Dictionary] = [
+		{
+			"center": Vector2(-3.9, -2.3),
+			"half_extents": Vector2(0.14, 1.4),
+			"clearance": 0.22,
+		},
+		{
+			"center": Vector2(3.9, -2.3),
+			"half_extents": Vector2(0.14, 1.4),
+			"clearance": 0.22,
+		},
+		{
+			"center": Vector2(0.0, -5.0),
+			"half_extents": Vector2(4.1, 0.12),
+			"clearance": 0.22,
+		},
+	]
+	if is_instance_valid(_set_dressing_root):
+		for prop_node in _set_dressing_root.get_children():
+			var prop: Node3D = prop_node as Node3D
+			if not is_instance_valid(prop) or not prop.visible:
+				continue
+			obstacles.append({
+				"center": Vector2(prop.position.x, prop.position.z),
+				"half_extents": Vector2(0.55, 0.55),
+				"clearance": 0.25,
+			})
+
+	var local_start: Vector3 = to_local(start_world_position)
+	var local_target: Vector3 = to_local(target_world_position)
+	var local_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		local_start,
+		local_target,
+		obstacles,
+		0.5,
+		Rect2(Vector2(-6.4, -5.4), Vector2(12.8, 10.8))
+	)
+	for local_point in local_path:
+		result.append(to_global(local_point))
+	return result
+
+
+func get_set_dressing_prop_count() -> int:
+	if not is_instance_valid(_set_dressing_root):
+		return 0
+	return _set_dressing_root.get_child_count()
+
+
+func get_set_dressing_mark(prop_index: int) -> Vector3:
+	var positions: Array[Vector3] = [
+		Vector3(-5.2, 0.0, -2.6),
+		Vector3(5.2, 0.0, -2.6),
+		Vector3(-5.2, 0.0, 2.0),
+		Vector3(5.2, 0.0, 2.0),
+	]
+	var index: int = clampi(prop_index, 0, positions.size() - 1)
+	var spot: Vector3 = positions[index]
+	spot.x += 0.9 if spot.x < 0.0 else -0.9
+	spot.z += 0.9 if spot.z < 0.0 else -0.9
+	return to_global(spot)
+
+
+func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
+	if not is_instance_valid(_set_dressing_root):
+		return
+	var raw_prop_ids: Variant = setup.get("prop_ids", [])
+	var prop_ids: Array = []
+	if raw_prop_ids is Array:
+		prop_ids = raw_prop_ids
+	var prop_signature: String = ""
+	for prop_id_value in prop_ids:
+		if not prop_signature.is_empty():
+			prop_signature += ","
+		prop_signature += str(prop_id_value)
+	var scene_key: String = "%s:%s:%s" % [
+		str(setup.get("scene_id", "")),
+		str(setup.get("set_id", "neutral")),
+		prop_signature,
+	]
+	if scene_key != _active_set_scene_key:
+		for child in _set_dressing_root.get_children():
+			_set_dressing_root.remove_child(child)
+			child.queue_free()
+		_active_set_scene_key = scene_key
+		var positions: Array[Vector3] = [
+			Vector3(-5.2, 0.0, -2.6),
+			Vector3(5.2, 0.0, -2.6),
+			Vector3(-5.2, 0.0, 2.0),
+			Vector3(5.2, 0.0, 2.0),
+		]
+		for prop_index in range(mini(prop_ids.size(), positions.size())):
+			var prop_id: String = str(prop_ids[prop_index])
+			var prop_root := Node3D.new()
+			prop_root.name = "SetProp_%s" % prop_id
+			prop_root.position = positions[prop_index]
+			_build_set_prop_visual(prop_root, prop_id)
+			_set_dressing_root.add_child(prop_root)
+			prop_root.visible = false
+
+	var visible_count: int = clampi(
+		floori(clampf(progress, 0.0, 1.0) * float(prop_ids.size()) + 0.0001),
+		0,
+		_set_dressing_root.get_child_count()
+	)
+	for prop_index in range(_set_dressing_root.get_child_count()):
+		var prop_node: Node3D = _set_dressing_root.get_child(
+			prop_index
+		) as Node3D
+		prop_node.visible = prop_index < visible_count
+
+
+func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
+	var wood: Color = Color(0.38, 0.25, 0.16)
+	var dark_wood: Color = Color(0.20, 0.13, 0.09)
+	var metal: Color = Color(0.27, 0.31, 0.34)
+	var accent: Color = Color(0.63, 0.48, 0.27)
+	var glass: Color = Color(0.10, 0.29, 0.36)
+	match prop_id:
+		"street_storefront":
+			_create_box(parent, "Facade", Vector3(1.8, 2.6, 0.34), Color(0.53, 0.43, 0.32), Vector3(0.0, 1.3, 0.0))
+			_create_box(parent, "Awning", Vector3(1.95, 0.25, 0.72), Color(0.64, 0.25, 0.18), Vector3(0.0, 2.0, -0.22))
+			_create_box(parent, "ShopWindow", Vector3(0.9, 0.95, 0.06), glass, Vector3(-0.35, 1.15, -0.2))
+			_create_box(parent, "Door", Vector3(0.42, 1.75, 0.08), dark_wood, Vector3(0.68, 0.88, -0.2))
+		"street_lamp":
+			_create_cylinder(parent, "LampPost", 0.07, 2.9, metal, Vector3(0.0, 1.45, 0.0))
+			_create_box(parent, "LampHead", Vector3(0.55, 0.34, 0.48), Color(0.86, 0.77, 0.53), Vector3(0.0, 2.95, -0.12))
+		"street_bench":
+			_create_box(parent, "BenchSeat", Vector3(1.55, 0.16, 0.48), wood, Vector3(0.0, 0.55, 0.0))
+			_create_box(parent, "BenchBack", Vector3(1.55, 0.72, 0.14), wood, Vector3(0.0, 0.95, 0.18))
+			for leg_x in [-0.58, 0.58]:
+				_create_box(parent, "BenchLeg", Vector3(0.12, 0.52, 0.12), metal, Vector3(leg_x, 0.27, 0.0))
+		"home_sofa":
+			_create_box(parent, "SofaBase", Vector3(1.65, 0.52, 0.78), Color(0.35, 0.22, 0.25), Vector3(0.0, 0.48, 0.0))
+			_create_box(parent, "SofaBack", Vector3(1.65, 0.82, 0.22), Color(0.42, 0.27, 0.30), Vector3(0.0, 1.0, 0.28))
+			for arm_x in [-0.82, 0.82]:
+				_create_box(parent, "SofaArm", Vector3(0.22, 0.62, 0.78), Color(0.39, 0.24, 0.27), Vector3(arm_x, 0.63, 0.0))
+		"home_coffee_table":
+			_create_box(parent, "TableTop", Vector3(1.25, 0.12, 0.72), wood, Vector3(0.0, 0.62, 0.0))
+			for leg_x in [-0.48, 0.48]:
+				for leg_z in [-0.24, 0.24]:
+					_create_box(parent, "TableLeg", Vector3(0.08, 0.58, 0.08), dark_wood, Vector3(leg_x, 0.29, leg_z))
+		"home_floor_lamp":
+			_create_cylinder(parent, "LampStand", 0.045, 1.8, metal, Vector3(0.0, 0.9, 0.0))
+			_create_cylinder(parent, "LampShade", 0.34, 0.38, accent, Vector3(0.0, 1.75, 0.0))
+		"forest_trees":
+			_create_cylinder(parent, "TreeTrunk", 0.18, 2.0, dark_wood, Vector3(0.0, 1.0, 0.0))
+			var canopy := _create_sphere(parent, "TreeCanopy", 0.9, Color(0.16, 0.32, 0.19), Vector3(0.0, 2.2, 0.0))
+			canopy.scale = Vector3(1.0, 1.2, 1.0)
+			_create_cylinder(parent, "TreeTrunkSmall", 0.13, 1.5, dark_wood, Vector3(0.8, 0.75, -0.15))
+			_create_sphere(parent, "TreeCanopySmall", 0.65, Color(0.21, 0.39, 0.22), Vector3(0.8, 1.65, -0.15))
+		"forest_rocks":
+			var rock_a := _create_sphere(parent, "RockA", 0.55, Color(0.38, 0.40, 0.39), Vector3(-0.35, 0.35, 0.0))
+			rock_a.scale = Vector3(1.4, 0.8, 1.0)
+			var rock_b := _create_sphere(parent, "RockB", 0.42, Color(0.45, 0.46, 0.43), Vector3(0.38, 0.25, -0.1))
+			rock_b.scale = Vector3(1.0, 0.65, 1.0)
+		"forest_trail_sign":
+			_create_cylinder(parent, "SignPost", 0.07, 1.8, dark_wood, Vector3(0.0, 0.9, 0.0))
+			_create_box(parent, "TrailSign", Vector3(1.15, 0.48, 0.12), wood, Vector3(0.0, 1.45, -0.05))
+		"lighthouse_console":
+			_create_box(parent, "ConsoleDesk", Vector3(1.55, 0.9, 0.75), dark_wood, Vector3(0.0, 0.48, 0.0))
+			_create_box(parent, "ConsolePanel", Vector3(1.35, 0.52, 0.12), metal, Vector3(0.0, 1.15, -0.22))
+			_create_box(parent, "ConsoleScreen", Vector3(0.72, 0.34, 0.05), glass, Vector3(-0.22, 1.18, -0.30))
+		"lighthouse_beacon":
+			_create_cylinder(parent, "BeaconTower", 0.42, 2.6, Color(0.72, 0.68, 0.55), Vector3(0.0, 1.3, 0.0))
+			_create_cylinder(parent, "BeaconLens", 0.48, 0.58, Color(0.83, 0.69, 0.34), Vector3(0.0, 2.35, 0.0))
+			_create_cylinder(parent, "BeaconCap", 0.55, 0.16, metal, Vector3(0.0, 2.72, 0.0))
+		"lighthouse_rail":
+			for rail_x in [-0.75, 0.0, 0.75]:
+				_create_cylinder(parent, "RailPost", 0.055, 1.1, metal, Vector3(rail_x, 0.55, 0.0))
+			_create_box(parent, "RailTop", Vector3(1.65, 0.08, 0.08), metal, Vector3(0.0, 1.0, 0.0))
+			_create_box(parent, "RailBottom", Vector3(1.65, 0.08, 0.08), metal, Vector3(0.0, 0.42, 0.0))
+		"industrial_crates":
+			_create_box(parent, "CrateA", Vector3(0.85, 0.85, 0.85), wood, Vector3(-0.38, 0.43, 0.0))
+			_create_box(parent, "CrateB", Vector3(0.75, 0.75, 0.75), accent, Vector3(0.42, 0.38, -0.12))
+			_create_box(parent, "CrateC", Vector3(0.62, 0.62, 0.62), dark_wood, Vector3(0.0, 1.13, 0.0))
+		"industrial_pipes":
+			for pipe_x in [-0.48, 0.0, 0.48]:
+				_create_cylinder(parent, "PipeStack", 0.13, 2.2, metal, Vector3(pipe_x, 1.1, 0.0))
+			_create_box(parent, "PipeRack", Vector3(1.25, 0.12, 0.72), dark_wood, Vector3(0.0, 0.18, 0.0))
+		"industrial_work_light":
+			_create_cylinder(parent, "WorkLightStand", 0.06, 2.0, metal, Vector3(0.0, 1.0, 0.0))
+			_create_box(parent, "WorkLightHead", Vector3(0.85, 0.58, 0.28), Color(0.82, 0.73, 0.48), Vector3(0.0, 2.05, -0.12))
+		"office_desk":
+			_create_box(parent, "OfficeDeskTop", Vector3(1.5, 0.14, 0.78), dark_wood, Vector3(0.0, 0.82, 0.0))
+			for leg_x in [-0.62, 0.62]:
+				for leg_z in [-0.28, 0.28]:
+					_create_box(parent, "OfficeDeskLeg", Vector3(0.08, 0.78, 0.08), metal, Vector3(leg_x, 0.39, leg_z))
+		"office_bookshelf":
+			_create_box(parent, "ShelfBack", Vector3(1.35, 2.25, 0.12), dark_wood, Vector3(0.0, 1.12, 0.0))
+			for shelf_y in [0.35, 0.95, 1.55, 2.15]:
+				_create_box(parent, "Shelf", Vector3(1.4, 0.08, 0.42), wood, Vector3(0.0, shelf_y, -0.16))
+		"office_evidence_board":
+			_create_box(parent, "EvidenceBoard", Vector3(1.55, 1.45, 0.12), Color(0.39, 0.34, 0.25), Vector3(0.0, 1.55, 0.0))
+			for note_x in [-0.42, 0.0, 0.42]:
+				_create_box(parent, "EvidenceNote", Vector3(0.22, 0.28, 0.035), Color(0.82, 0.78, 0.61), Vector3(note_x, 1.65, -0.09))
+		"scifi_lab_console":
+			_create_box(parent, "LabConsoleBase", Vector3(1.55, 0.85, 0.72), metal, Vector3(0.0, 0.44, 0.0))
+			_create_box(parent, "LabConsoleScreen", Vector3(1.2, 0.65, 0.1), Color(0.10, 0.54, 0.66), Vector3(0.0, 1.15, -0.22))
+		"scifi_reactor":
+			_create_cylinder(parent, "ReactorCore", 0.42, 2.5, Color(0.16, 0.42, 0.50), Vector3(0.0, 1.25, 0.0))
+			_create_cylinder(parent, "ReactorRingTop", 0.68, 0.14, accent, Vector3(0.0, 2.0, 0.0))
+			_create_cylinder(parent, "ReactorRingBottom", 0.68, 0.14, accent, Vector3(0.0, 0.55, 0.0))
+		"scifi_holo_display":
+			_create_box(parent, "HoloBase", Vector3(1.2, 0.22, 0.7), metal, Vector3(0.0, 0.12, 0.0))
+			_create_cylinder(parent, "HoloProjector", 0.08, 1.15, Color(0.13, 0.65, 0.75), Vector3(0.0, 0.72, 0.0))
+			_create_box(parent, "HoloImage", Vector3(0.9, 0.75, 0.08), Color(0.15, 0.63, 0.75), Vector3(0.0, 1.48, 0.0))
+		_:
+			_create_box(parent, "NeutralProp", Vector3(0.8, 0.8, 0.8), wood, Vector3(0.0, 0.4, 0.0))
 
 
 func get_scene_mark(
@@ -277,6 +505,10 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Color(0.34, 0.32, 0.29),
 		Vector3(3.9, 1.6, -2.3)
 	)
+
+	_set_dressing_root = Node3D.new()
+	_set_dressing_root.name = "SetDressing"
+	_interior_root.add_child(_set_dressing_root)
 
 	for mark_x in [-4.5, -1.5, 1.5, 4.5]:
 		_create_box(
@@ -1029,6 +1261,25 @@ func _create_cylinder(
 	mesh.top_radius = radius
 	mesh.bottom_radius = radius
 	mesh.height = height
+	var instance := MeshInstance3D.new()
+	instance.name = node_name
+	instance.mesh = mesh
+	instance.position = local_position
+	instance.material_override = _make_material(color)
+	parent.add_child(instance)
+	return instance
+
+
+func _create_sphere(
+	parent: Node3D,
+	node_name: String,
+	radius: float,
+	color: Color,
+	local_position: Vector3
+) -> MeshInstance3D:
+	var mesh := SphereMesh.new()
+	mesh.radius = radius
+	mesh.height = radius * 2.0
 	var instance := MeshInstance3D.new()
 	instance.name = node_name
 	instance.mesh = mesh

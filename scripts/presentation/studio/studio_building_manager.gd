@@ -30,6 +30,15 @@ const FILM_EDITING_SYSTEM_SCRIPT = preload(
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
+const NAVIGATION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_navigation_system.gd"
+)
+const SET_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_set_catalog.gd"
+)
+const SET_INVENTORY_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_set_inventory.gd"
+)
 
 const GRID_SIZE: float = 2.0
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
@@ -46,6 +55,9 @@ var _character_manager: Node
 var _script_writing_system: RefCounted
 var _film_production_system: RefCounted
 var _film_editing_system: RefCounted
+var _navigation_system: RefCounted
+var _set_inventory: Variant
+var _active_set_dressing_technician_id: String = ""
 var _active_writing_project: Variant
 var _active_film_project: Variant
 var _active_film_script: Variant
@@ -110,6 +122,8 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
 	_film_production_system = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
 	_film_editing_system = FILM_EDITING_SYSTEM_SCRIPT.new()
+	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
+	_set_inventory = SET_INVENTORY_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	if _character_manager.has_signal("employees_changed"):
 		var roster_callback: Callable = Callable(
@@ -162,6 +176,55 @@ func get_workplace_path(
 	return path
 
 
+func get_workplace_path_from(
+	building_id: String,
+	slot_index: int,
+	start_position: Vector3
+) -> Array[Vector3]:
+	var workplace_path: Array[Vector3] = get_workplace_path(
+		building_id,
+		slot_index
+	)
+	if workplace_path.is_empty():
+		return []
+	var travel_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		start_position,
+		workplace_path[0],
+		_get_building_navigation_obstacles(),
+		0.75,
+		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+	)
+	if travel_path.is_empty():
+		return []
+	var result: Array[Vector3] = []
+	for point in travel_path:
+		if result.is_empty() or result.back().distance_to(point) > 0.2:
+			result.append(point)
+	for index in range(1, workplace_path.size()):
+		if result.is_empty() or result.back().distance_to(workplace_path[index]) > 0.2:
+			result.append(workplace_path[index])
+	return result
+
+
+func _get_building_navigation_obstacles() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for building in _buildings:
+		var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
+			str(building.building_type_id),
+			float(building.rotation_degrees)
+		)
+		result.append({
+			"center": Vector2(building.position.x, building.position.z),
+			"half_extents": Vector2(
+				footprint.x * 0.5,
+				footprint.y * 0.5
+			),
+			"clearance": 0.62,
+		})
+	return result
+
+
 func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
 	var path: Array[Vector3] = get_workplace_path(building_id, slot_index)
 	if path.is_empty():
@@ -183,6 +246,46 @@ func get_scene_mark(
 		phase_id,
 		scene_index
 	)
+
+
+func get_scene_path(
+	building_id: String,
+	start_position: Vector3,
+	target_position: Vector3
+) -> Array[Vector3]:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return []
+	return actor.call(
+		"get_scene_path",
+		start_position,
+		target_position
+	)
+
+
+func set_scene_set_dressing(
+	building_id: String,
+	setup: Dictionary,
+	progress: float
+) -> void:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return
+	actor.call("set_scene_set_dressing", setup, progress)
+
+
+func get_set_dressing_prop_count(building_id: String) -> int:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return 0
+	return int(actor.call("get_set_dressing_prop_count"))
+
+
+func get_set_dressing_mark(building_id: String, prop_index: int) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	return actor.call("get_set_dressing_mark", prop_index)
 
 
 func get_scene_focus_point(building_id: String) -> Vector3:
@@ -1129,6 +1232,8 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 		no_script_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_building_detail_layout.add_child(no_script_label)
 
+	_build_set_dressing_shop()
+
 	_film_production_status_label = Label.new()
 	_film_production_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_film_production_status_label.add_theme_font_size_override("font_size", 14)
@@ -1154,15 +1259,78 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 
 	var production_note := Label.new()
 	production_note.text = (
-		"Каждая сцена проходит подготовку, репетицию, съёмку и просмотр. "
-		+ "Качество зависит от сценария, актёров и съёмочной группы. "
-		+ "При необходимости режиссёр назначает пересъёмку."
+		"Каждая сцена проходит подготовку, монтаж декораций, репетицию, "
+		+ "съёмку и просмотр. Техник устанавливает купленный реквизит, "
+		+ "который можно переиспользовать в следующих сценах и фильмах."
 	)
 	production_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	production_note.add_theme_font_size_override("font_size", 10)
 	_building_detail_layout.add_child(production_note)
 
 	_update_film_production_ui()
+
+
+func _build_set_dressing_shop() -> void:
+	var separator := HSeparator.new()
+	_building_detail_layout.add_child(separator)
+
+	var heading := Label.new()
+	heading.text = "МАСТЕРСКАЯ ДЕКОРАЦИЙ"
+	heading.add_theme_font_size_override("font_size", 14)
+	_building_detail_layout.add_child(heading)
+
+	var budget_label := Label.new()
+	budget_label.text = "Бюджет реквизита: %d усл. ед.\nКупленные элементы можно использовать в любом количестве фильмов." % int(_set_inventory.budget)
+	budget_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_building_detail_layout.add_child(budget_label)
+
+	for group_id in SET_CATALOG_SCRIPT.get_group_ids():
+		var group_heading := Label.new()
+		group_heading.text = SET_CATALOG_SCRIPT.get_group_title(group_id)
+		group_heading.add_theme_font_size_override("font_size", 12)
+		_building_detail_layout.add_child(group_heading)
+
+		for prop_id in SET_CATALOG_SCRIPT.get_prop_ids_for_group(group_id):
+			var definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(prop_id)
+			var row := HBoxContainer.new()
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+			var prop_label := Label.new()
+			prop_label.text = "%s · %d" % [
+				str(definition.get("title", prop_id)),
+				int(definition.get("price", 0)),
+			]
+			prop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			prop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			row.add_child(prop_label)
+
+			var purchase_button := Button.new()
+			if _set_inventory.is_owned(prop_id):
+				purchase_button.text = "КУПЛЕНО"
+				purchase_button.disabled = true
+			else:
+				purchase_button.text = "КУПИТЬ"
+				purchase_button.disabled = (
+					int(_set_inventory.budget) < int(definition.get("price", 0))
+				)
+				purchase_button.pressed.connect(
+					_on_buy_set_prop_pressed.bind(prop_id)
+				)
+			row.add_child(purchase_button)
+			_building_detail_layout.add_child(row)
+
+
+func _on_buy_set_prop_pressed(prop_id: String) -> void:
+	var definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(prop_id)
+	if definition.is_empty():
+		return
+	var purchased: bool = bool(_set_inventory.call(
+		"purchase",
+		prop_id,
+		int(definition.get("price", 0))
+	))
+	if purchased:
+		_refresh_building_detail()
 
 
 func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
@@ -1333,6 +1501,10 @@ func _on_start_film_production_pressed() -> void:
 		+ int(_game_clock.current_minute) * 10
 		+ _next_script_sequence
 	)
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		_latest_script.scenes,
+		_set_inventory.get_owned_prop_ids()
+	)
 	var project: Variant = _film_production_system.call(
 		"start_project",
 		_latest_script,
@@ -1342,7 +1514,8 @@ func _on_start_film_production_pressed() -> void:
 		seed,
 		int(_game_clock.current_day),
 		int(_game_clock.current_hour),
-		int(_game_clock.current_minute)
+		int(_game_clock.current_minute),
+		scene_setups
 	)
 	if project == null:
 		_film_production_status_label.text = (
@@ -1366,8 +1539,10 @@ func _on_start_film_production_pressed() -> void:
 	_active_film_project = project
 	_active_film_script = _latest_script
 	_active_scene_performer_ids.clear()
+	_active_set_dressing_technician_id = ""
 	_apply_film_crew_actions()
 	_sync_film_scene_performance()
+	_sync_film_set_dressing()
 	_update_film_stage_slate()
 	_update_film_production_ui()
 
@@ -1387,6 +1562,7 @@ func _advance_film_production() -> void:
 		return
 
 	var cast_ready: bool = _sync_film_scene_performance()
+	_sync_film_set_dressing()
 	var crew_ready: bool = _are_film_crew_ready()
 	var snapshot: Dictionary = _build_film_performance_snapshot()
 	var result: Dictionary = _film_production_system.call(
@@ -1400,6 +1576,7 @@ func _advance_film_production() -> void:
 
 	if bool(result.get("phase_changed", false)):
 		_apply_film_crew_actions()
+		_sync_film_set_dressing()
 		_sync_film_scene_performance()
 	if bool(result.get("completed", false)):
 		_sync_film_scene_performance()
@@ -1459,14 +1636,31 @@ func _are_film_crew_ready() -> bool:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			return false
-		if not bool(
+		var at_workplace: bool = bool(
 			_character_manager.call(
 				"is_employee_at_workplace",
 				employee_id,
 				"sound_stage"
 			)
-		):
-			return false
+		)
+		if at_workplace:
+			continue
+		if profession_id == "technician" and employee_id == _active_set_dressing_technician_id:
+			var technician_actor: Variant = _character_manager.call(
+				"get_employee_actor",
+				employee_id
+			)
+			if (
+				technician_actor != null
+				and is_instance_valid(technician_actor)
+				and bool(technician_actor.call("is_in_scene_performance"))
+			):
+				if (
+					str(_active_film_project.current_phase) != "set_dressing"
+					or bool(technician_actor.call("is_at_scene_mark"))
+				):
+					continue
+		return false
 	return true
 
 
@@ -1485,8 +1679,35 @@ func _sync_film_scene_performance() -> bool:
 				employee_id
 			)
 			if actor != null and is_instance_valid(actor):
-				actor.call("return_to_workplace")
+				var return_path: Array[Vector3] = []
+				if not idle_stage_id.is_empty():
+					return_path = get_scene_path(
+						idle_stage_id,
+						actor.global_position,
+						actor.call("get_workplace_position")
+					)
+				if not return_path.is_empty():
+					actor.call("return_to_workplace", return_path)
 		_active_scene_performer_ids.clear()
+		if not _active_set_dressing_technician_id.is_empty():
+			var technician_actor: Variant = _character_manager.call(
+				"get_employee_actor",
+				_active_set_dressing_technician_id
+			)
+			if technician_actor != null and is_instance_valid(technician_actor):
+				var technician_return_path: Array[Vector3] = []
+				if not idle_stage_id.is_empty():
+					technician_return_path = get_scene_path(
+						idle_stage_id,
+						technician_actor.global_position,
+						technician_actor.call("get_workplace_position")
+					)
+				if not technician_return_path.is_empty():
+					technician_actor.call(
+						"return_to_workplace",
+						technician_return_path
+					)
+			_active_set_dressing_technician_id = ""
 		return false
 
 	var stage_id: String = _get_sound_stage_building_id()
@@ -1592,12 +1813,21 @@ func _sync_film_scene_performance() -> bool:
 			scene,
 			not dialogue_text.is_empty()
 		)
+		var movement_path: Array[Vector3] = get_scene_path(
+			stage_id,
+			actor.global_position,
+			marks[performer_index]
+		)
+		if movement_path.is_empty():
+			all_at_marks = false
+			continue
 		actor.call(
 			"start_scene_performance",
 			marks[performer_index],
 			actor_focus,
 			action_id,
-			dialogue_text
+			dialogue_text,
+			movement_path
 		)
 		_character_manager.call(
 			"set_employee_task",
@@ -1631,16 +1861,115 @@ func _sync_film_scene_performance() -> bool:
 				previous_id,
 				"Участвует в съёмках фильма"
 			)
-			previous_actor.call("return_to_workplace")
+			var previous_return_path: Array[Vector3] = get_scene_path(
+				stage_id,
+				previous_actor.global_position,
+				previous_actor.call("get_workplace_position")
+			)
+			if not previous_return_path.is_empty():
+				previous_actor.call("return_to_workplace", previous_return_path)
 
 	_active_scene_performer_ids = new_active_ids
 	return all_at_marks
+
+
+func _sync_film_set_dressing() -> void:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+	):
+		return
+	var stage_id: String = _get_sound_stage_building_id()
+	if stage_id.is_empty():
+		return
+
+	var setup: Dictionary = _active_film_project.get_current_scene_setup()
+	var phase: String = str(_active_film_project.current_phase)
+	var progress: float = -1.0
+	if phase == "preparation":
+		progress = 0.0
+	elif phase == "set_dressing":
+		progress = float(_active_film_project.get_phase_progress_percent()) / 100.0
+	elif phase in ["rehearsal", "shooting", "review"]:
+		progress = 1.0
+	if progress >= 0.0:
+		set_scene_set_dressing(stage_id, setup, progress)
+
+	var technician_id: String = str(
+		_active_film_project.crew_assignments.get("technician", "")
+	)
+	var technician_actor: Variant = _character_manager.call(
+		"get_employee_actor",
+		technician_id
+	)
+	if technician_actor == null or not is_instance_valid(technician_actor):
+		return
+	if phase != "set_dressing":
+		if (
+			technician_id == _active_set_dressing_technician_id
+			and bool(technician_actor.call("is_in_scene_performance"))
+		):
+			technician_actor.call(
+				"set_scene_performance_action",
+				"checking_equipment"
+			)
+		return
+
+	var prop_count: int = get_set_dressing_prop_count(stage_id)
+	if prop_count <= 0:
+		if (
+			technician_id == _active_set_dressing_technician_id
+			and bool(technician_actor.call("is_in_scene_performance"))
+		):
+			technician_actor.call(
+				"set_scene_performance_action",
+				"checking_equipment"
+			)
+		return
+
+	var prop_index: int = clampi(
+		floori(progress * float(prop_count)),
+		0,
+		prop_count - 1
+	)
+	var target_position: Vector3 = get_set_dressing_mark(
+		stage_id,
+		prop_index
+	)
+	var focus_position: Vector3 = get_scene_focus_point(stage_id)
+	var movement_path: Array[Vector3] = get_scene_path(
+		stage_id,
+		technician_actor.global_position,
+		target_position
+	)
+	if movement_path.is_empty():
+		return
+	technician_actor.call(
+		"start_scene_performance",
+		target_position,
+		focus_position,
+		"placing_set_piece",
+		"",
+		movement_path
+	)
+	_active_set_dressing_technician_id = technician_id
+	_character_manager.call(
+		"set_employee_task",
+		technician_id,
+		"Устанавливает декорации сцены %d" % (
+			int(_active_film_project.current_scene_index) + 1
+		)
+	)
+	if _game_clock.is_manual_fast_forward:
+		technician_actor.call("snap_to_scene_mark")
 
 
 func _get_cast_production_task(phase: String, scene_number: int) -> String:
 	match phase:
 		"preparation":
 			return "Готовится к сцене %d" % scene_number
+		"set_dressing":
+			return "Ждёт установки декораций сцены %d" % scene_number
 		"rehearsal":
 			return "Репетирует сцену %d" % scene_number
 		"shooting":
@@ -1659,6 +1988,8 @@ func _get_scene_actor_action(
 	match phase:
 		"preparation":
 			return "rehearsing"
+		"set_dressing":
+			return "waiting"
 		"rehearsal":
 			return "rehearsing"
 		"review":
@@ -1790,7 +2121,19 @@ func _apply_film_crew_actions() -> void:
 		"technician": "checking_equipment",
 		"producer": "coordinating",
 	}
-	if phase == "review":
+	if phase == "set_dressing":
+		var setup: Dictionary = _active_film_project.get_current_scene_setup()
+		var raw_props: Variant = setup.get("prop_ids", [])
+		var has_props: bool = raw_props is Array and not raw_props.is_empty()
+		task_by_profession["technician"] = (
+			"Расставляет декорации сцены %d" % scene_number
+			if has_props
+			else "Готовит нейтральную площадку сцены %d" % scene_number
+		)
+		action_by_profession["technician"] = (
+			"placing_set_piece" if has_props else "checking_equipment"
+		)
+	elif phase == "review":
 		task_by_profession["director"] = "Просматривает дубль сцены %d" % scene_number
 		task_by_profession["camera_operator"] = "Проверяет снятый материал"
 		action_by_profession["director"] = "reviewing"
@@ -2365,8 +2708,21 @@ func _update_film_production_ui() -> void:
 			]
 		)
 		var dialogue: String = str(scene.get("dialogue", ""))
+		var setup: Dictionary = project.get_current_scene_setup()
+		var setup_props: Array = setup.get("prop_ids", [])
+		var installed_prop_count: int = setup_props.size()
+		var phase: String = str(project.current_phase)
+		if phase == "preparation":
+			installed_prop_count = 0
+		elif phase == "set_dressing":
+			installed_prop_count = floori(
+				float(project.get_phase_progress_percent()) / 100.0
+				* float(setup_props.size())
+			)
 		_film_production_detail_label.text = (
-			"Фильм: %s\nСцена %d: %s · %s\n%s\n%s\n"
+			"Фильм: %s\nСцена %d: %s · %s\n"
+			+ "Декорации: %s · реквизит %d/%d\n"
+			+ "%s\n%s\n"
 			+ "Событие: %s\n"
 			+ "Этап: %d / %d мин · Всего прошло: %d мин · Осталось примерно: %d мин\n"
 			+ "Пересъёмок текущей сцены: %d"
@@ -2375,6 +2731,9 @@ func _update_film_production_ui() -> void:
 			int(scene.get("scene_number", project.current_scene_index + 1)),
 			str(scene.get("beat", "")),
 			str(scene.get("location", "")),
+			str(setup.get("set_title", "Нейтральная площадка")),
+			installed_prop_count,
+			setup_props.size(),
 			str(scene.get("action", "")),
 			dialogue,
 			str(project.last_activity_message),

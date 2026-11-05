@@ -110,6 +110,21 @@ func _test_character_moves_and_performs_scene() -> void:
 		and dialogue_label.text.contains("Ты тоже это слышал"),
 		"The speaking character must display its assigned dialogue."
 	)
+	var mouth: MeshInstance3D = actor.get_node(
+		"CharacterVisual/BodyRoot/Head/Mouth"
+	) as MeshInstance3D
+	_expect(mouth != null, "Character model must expose a mouth mesh.")
+	if is_instance_valid(mouth):
+		var minimum_mouth_scale: float = mouth.scale.y
+		var maximum_mouth_scale: float = mouth.scale.y
+		for _step in range(20):
+			actor.call("_process", 0.05)
+			minimum_mouth_scale = minf(minimum_mouth_scale, mouth.scale.y)
+			maximum_mouth_scale = maxf(maximum_mouth_scale, mouth.scale.y)
+		_expect(
+			maximum_mouth_scale - minimum_mouth_scale > 0.2,
+			"Speaking actors must animate their mouth in addition to gestures and subtitles."
+		)
 
 	var next_scene_mark: Vector3 = Vector3(2.0, 0.0, -2.0)
 	actor.call(

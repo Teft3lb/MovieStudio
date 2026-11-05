@@ -9,6 +9,9 @@ const FILM_PRODUCTION_SYSTEM_SCRIPT = preload(
 const FILM_PRODUCTION_PROJECT_SCRIPT = preload(
 	"res://scripts/domain/film_production/film_production_project.gd"
 )
+const SET_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_set_catalog.gd"
+)
 
 
 func _initialize() -> void:
@@ -208,7 +211,7 @@ func _test_mid_phase_progress(
 		"morale": 0.9,
 		"stress": 0.1,
 	}
-	for _minute_index in range(4):
+	for _minute_index in range(6):
 		system.call(
 			"advance_minute",
 			project,
@@ -220,10 +223,10 @@ func _test_mid_phase_progress(
 	_expect(
 		str(project.current_phase) == "rehearsal"
 		and int(project.phase_minutes_elapsed) == 2,
-		"Two preparation minutes must advance directly into a short rehearsal."
+		"Preparation and neutral set dressing must lead into a short rehearsal."
 	)
 	_expect(
-		int(project.current_scene_elapsed_minutes) == 4,
+		int(project.current_scene_elapsed_minutes) == 6,
 		"Active production minutes must accumulate across phase transitions."
 	)
 	_expect(
@@ -238,6 +241,15 @@ func _test_quick_production_pacing(
 	cast_assignments: Dictionary
 ) -> void:
 	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	var owned_props: Array[String] = [
+		"lighthouse_console",
+		"lighthouse_beacon",
+		"lighthouse_rail",
+	]
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		owned_props
+	)
 	var project: Variant = system.call(
 		"start_project",
 		script,
@@ -247,7 +259,8 @@ func _test_quick_production_pacing(
 		445566,
 		1,
 		8,
-		0
+		0,
+		scene_setups
 	)
 	var snapshot: Dictionary = {
 		"acting_average": 90.0,
@@ -260,14 +273,22 @@ func _test_quick_production_pacing(
 	}
 	_expect(
 		int(project.phase_duration_minutes) == 2,
-		"Scene preparation must be a short two-minute gameplay phase."
+		"Scene preparation must remain a short two-minute gameplay phase."
 	)
 	for _minute in range(2):
 		system.call("advance_minute", project, script, true, true, snapshot)
 	_expect(
+		str(project.current_phase) == "set_dressing"
+		and int(project.phase_duration_minutes) == 5
+		and str(project.get_phase_title()) == "Монтаж декораций",
+		"Three reusable lighthouse props must create a five-minute set-dressing phase."
+	)
+	for _minute in range(5):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
 		str(project.current_phase) == "rehearsal"
 		and int(project.phase_duration_minutes) == 4,
-		"Rehearsal must finish quickly and lead into shooting."
+		"Actors must begin rehearsal as soon as the technician finishes the set."
 	)
 	for _minute in range(4):
 		system.call("advance_minute", project, script, true, true, snapshot)
@@ -291,8 +312,22 @@ func _test_quick_production_pacing(
 		"The next scene must begin automatically after the first scene's review."
 	)
 	_expect(
-		int(project.total_elapsed_minutes) == 17,
-		"A two-performer scene must complete in seventeen active game minutes."
+		int(project.total_elapsed_minutes) == 22,
+		"A two-performer scene with three installed props must take twenty-two minutes."
+	)
+	_expect(
+		int(project.estimated_total_minutes) == 44,
+		"Both scenes must include their five-minute reusable set-dressing phase."
+	)
+	_expect(
+		str(project.scene_setups[0].get("set_id", "")) == "lighthouse"
+		and project.scene_setups[0].get("prop_ids", []).size() == 3,
+		"Each scene must retain its reusable prop plan."
+	)
+	_expect(
+		str(project.scene_results[0].get("set_id", "")) == "lighthouse"
+		and project.scene_results[0].get("set_dressing_props", []).size() == 3,
+		"Completed scene results must record the installed set and props."
 	)
 
 
@@ -313,8 +348,9 @@ func _test_project_serialization(project: Variant) -> void:
 		"Older production data without scene elapsed time must default safely to zero."
 	)
 	_expect(
-		restored.to_dict() == payload,
-		"Production phase, assignments and timing must survive serialization."
+		restored.to_dict() == payload
+		and restored.scene_setups == project.scene_setups,
+		"Production phases, reusable set plans, assignments and timing must survive serialization."
 	)
 
 
@@ -432,10 +468,10 @@ func _test_full_film_completion(
 		"A completed film must have no remaining production time."
 	)
 	_expect(
-		int(project.total_elapsed_minutes) == 34,
-		"A two-scene film must complete in about half an in-game hour without retakes."
+		int(project.total_elapsed_minutes) == 38,
+		"A two-scene film must include both neutral two-minute set-dressing phases."
 	)
-	for phase in ["preparation", "rehearsal", "shooting", "review"]:
+	for phase in ["preparation", "set_dressing", "rehearsal", "shooting", "review"]:
 		_expect(
 			phases_seen.has(phase),
 			"Every scene must pass through the %s phase." % phase

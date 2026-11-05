@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmProductionProject
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 
 var id: String = ""
 var script_id: String = ""
@@ -27,6 +27,7 @@ var current_scene_quality: float = 0.0
 var crew_assignments: Dictionary = {}
 var cast_assignments: Dictionary = {}
 var scene_results: Array = []
+var scene_setups: Array = []
 
 var pause_reason: String = ""
 var last_activity_message: String = ""
@@ -68,6 +69,8 @@ func get_phase_title() -> String:
 	match current_phase:
 		"preparation":
 			return "Подготовка площадки"
+		"set_dressing":
+			return "Монтаж декораций"
 		"rehearsal":
 			return "Репетиция"
 		"shooting":
@@ -76,6 +79,15 @@ func get_phase_title() -> String:
 			return "Просмотр материала"
 		_:
 			return "Неизвестный этап"
+
+
+func get_current_scene_setup() -> Dictionary:
+	if current_scene_index < 0 or current_scene_index >= scene_setups.size():
+		return {}
+	var setup: Variant = scene_setups[current_scene_index]
+	if setup is Dictionary:
+		return setup.duplicate(true)
+	return {}
 
 
 func get_status_title() -> String:
@@ -117,6 +129,7 @@ func to_dict() -> Dictionary:
 		"crew_assignments": crew_assignments.duplicate(true),
 		"cast_assignments": cast_assignments.duplicate(true),
 		"scene_results": scene_results.duplicate(true),
+		"scene_setups": scene_setups.duplicate(true),
 		"pause_reason": pause_reason,
 		"last_activity_message": last_activity_message,
 		"final_quality": final_quality,
@@ -201,6 +214,9 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	var raw_results: Variant = payload.get("scene_results", [])
 	if raw_results is Array:
 		result.scene_results = raw_results.duplicate(true)
+	var raw_setups: Variant = payload.get("scene_setups", [])
+	if raw_setups is Array:
+		result.scene_setups = raw_setups.duplicate(true)
 	result.pause_reason = str(payload.get("pause_reason", ""))
 	result.last_activity_message = str(
 		payload.get("last_activity_message", "")

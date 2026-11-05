@@ -289,6 +289,8 @@ func _refresh_workplace_assignments() -> void:
 			employee_id,
 			{}
 		)
+		if _is_active_production_participant(employee_id):
+			continue
 		if _should_leave_workplace(
 			employee_id,
 			str(employee.work_state),
@@ -298,15 +300,24 @@ func _refresh_workplace_assignments() -> void:
 			continue
 
 		var building_id: String = str(assignment.get("building_id", ""))
-		if (
-			str(actor.call("get_workplace_building_id")) != building_id
-			and not bool(actor.call("is_leaving_workplace"))
-		):
+		var current_building_id: String = str(
+			actor.call("get_workplace_building_id")
+		)
+		if current_building_id != building_id:
+			if not current_building_id.is_empty():
+				if not bool(actor.call("is_leaving_workplace")):
+					actor.call("leave_workplace")
+				continue
+			if bool(actor.call("is_leaving_workplace")):
+				continue
 			var route: Array[Vector3] = _studio_building_manager.call(
-				"get_workplace_path",
+				"get_workplace_path_from",
 				building_id,
-				int(assignment.get("slot_index", 0))
+				int(assignment.get("slot_index", 0)),
+				actor.global_position
 			)
+			if route.is_empty():
+				continue
 			actor.call(
 				"assign_workplace_route",
 				building_id,
@@ -765,6 +776,8 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if actor == null or not is_instance_valid(actor):
 			continue
 
+		if _is_active_production_participant(employee_id):
+			continue
 		if _should_leave_workplace(
 			employee_id,
 			str(employee.work_state),
@@ -774,16 +787,27 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			continue
 
 		var building_id: String = str(assignment.get("building_id", ""))
+		var current_building_id: String = str(
+			actor.call("get_workplace_building_id")
+		)
 		if (
-			str(actor.call("get_workplace_building_id")) != building_id
-			and not bool(actor.call("is_leaving_workplace"))
+			current_building_id != building_id
 			and is_instance_valid(_studio_building_manager)
 		):
+			if not current_building_id.is_empty():
+				if not bool(actor.call("is_leaving_workplace")):
+					actor.call("leave_workplace")
+				continue
+			if bool(actor.call("is_leaving_workplace")):
+				continue
 			var route: Array[Vector3] = _studio_building_manager.call(
-				"get_workplace_path",
+				"get_workplace_path_from",
 				building_id,
-				int(assignment.get("slot_index", 0))
+				int(assignment.get("slot_index", 0)),
+				actor.global_position
 			)
+			if route.is_empty():
+				continue
 			actor.call(
 				"assign_workplace_route",
 				building_id,
@@ -862,6 +886,8 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 			continue
 		if bool(actor.call("is_in_scene_performance")):
 			actor.call("snap_to_scene_mark")
+		elif bool(actor.call("is_returning_to_workplace")):
+			actor.call("snap_to_workplace")
 		elif (
 			str(employee.work_state) == "working"
 			or _is_active_production_participant(str(employee.id))

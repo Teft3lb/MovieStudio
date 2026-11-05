@@ -181,6 +181,61 @@ func _test_sound_stage_interior() -> void:
 		"Production slate must display the active scene."
 	)
 
+	var set_dressing_root: Node3D = actor.get_node_or_null(
+		"Interior/SetDressing"
+	) as Node3D
+	_expect(
+		set_dressing_root != null,
+		"Sound Stage must own a dedicated reusable set-dressing area."
+	)
+	var setup: Dictionary = {
+		"scene_id": "SCN-SET-01",
+		"set_id": "lighthouse",
+		"prop_ids": [
+			"lighthouse_console",
+			"lighthouse_beacon",
+			"lighthouse_rail",
+		],
+	}
+	actor.call("set_scene_set_dressing", setup, 0.0)
+	_expect(
+		set_dressing_root.get_child_count() == 3,
+		"Each purchased set piece must create its own physical prop instance."
+	)
+	if set_dressing_root.get_child_count() > 0:
+		_expect(
+			not (set_dressing_root.get_child(0) as Node3D).visible,
+			"Purchased props must remain hidden until the technician installs them."
+		)
+	actor.call("set_scene_set_dressing", setup, 0.34)
+	var visible_prop_count: int = 0
+	for prop_node in set_dressing_root.get_children():
+		if (prop_node as Node3D).visible:
+			visible_prop_count += 1
+	_expect(
+		visible_prop_count == 1,
+		"Installed props must appear progressively during set dressing."
+	)
+	actor.call("set_scene_set_dressing", setup, 1.0)
+	visible_prop_count = 0
+	for prop_node in set_dressing_root.get_children():
+		if (prop_node as Node3D).visible:
+			visible_prop_count += 1
+	_expect(
+		visible_prop_count == 3,
+		"All planned props must be visible when technician setup completes."
+	)
+	var set_path: Array[Vector3] = actor.call(
+		"get_scene_path",
+		actor.to_global(Vector3(0.0, 0.0, 1.4)),
+		actor.call("get_set_dressing_mark", 0)
+	)
+	_expect(
+		set_path.size() >= 3,
+		"Technicians must route around the stage side walls when installing props."
+	)
+
+
 
 func _assert_workplace_route(
 	actor: Node3D,

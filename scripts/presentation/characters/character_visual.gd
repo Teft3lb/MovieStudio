@@ -41,6 +41,7 @@ var _left_arm_pivot: Node3D
 var _right_arm_pivot: Node3D
 var _left_leg_pivot: Node3D
 var _right_leg_pivot: Node3D
+var _mouth_node: MeshInstance3D
 
 var _walking: bool = false
 var _working: bool = false
@@ -78,6 +79,8 @@ func _reset_upper_body_pose() -> void:
 		_body_root.rotation = Vector3.ZERO
 	if is_instance_valid(_head_root):
 		_head_root.rotation = Vector3.ZERO
+	if is_instance_valid(_mouth_node):
+		_mouth_node.scale.y = 1.0
 
 
 func set_performance_action(action_id: String) -> void:
@@ -86,6 +89,8 @@ func set_performance_action(action_id: String) -> void:
 	if _performing:
 		_walking = false
 		_working = false
+	elif is_instance_valid(_mouth_node):
+		_mouth_node.scale.y = 1.0
 
 
 func is_performing() -> bool:
@@ -161,6 +166,14 @@ func _advance_performance_animation() -> void:
 			left_arm = -0.28 + motion * 0.75
 			right_arm = -0.48 - motion * 0.75
 			body_lean = sin(_animation_phase * 1.5) * 0.04
+		"waiting":
+			left_arm = -0.12 + motion * 0.12
+			right_arm = -0.12 - motion * 0.12
+			head_motion *= 0.5
+		"placing_set_piece":
+			left_arm = -1.05 + sin(_animation_phase * 2.1) * 0.32
+			right_arm = -1.10 - sin(_animation_phase * 2.1) * 0.32
+			body_lean = 0.075 + sin(_animation_phase * 1.4) * 0.035
 		"directing":
 			left_arm = -0.24 + motion * 0.3
 			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
@@ -181,6 +194,12 @@ func _advance_performance_animation() -> void:
 			right_arm = -0.22 - motion * 0.3
 
 	_set_arm_pose(left_arm, right_arm)
+	if is_instance_valid(_mouth_node):
+		_mouth_node.scale.y = (
+			1.0 + absf(sin(_animation_phase * 7.0)) * 3.2
+			if _performance_action == "speaking"
+			else 1.0
+		)
 	var leg_motion: float = sin(_animation_phase * 2.0) * 0.075
 	_set_leg_pose(leg_motion, -leg_motion)
 	if is_instance_valid(_body_root):
@@ -320,7 +339,7 @@ func _build_model(character_payload: Dictionary) -> void:
 	_create_sphere(
 		head_root, "Nose", 0.035, skin_color, Vector3(0.0, -0.045, -0.218)
 	)
-	_create_box(
+	_mouth_node = _create_box(
 		head_root, "Mouth", Vector3(0.072, 0.012, 0.012),
 		Color(0.32, 0.12, 0.12), Vector3(0.0, -0.112, -0.211)
 	)

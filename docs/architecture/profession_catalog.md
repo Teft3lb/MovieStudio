@@ -35,7 +35,7 @@ Every profession receives **4–8 relevant skills**, not the entire studio-wide 
 | Producer | Management, budgeting, negotiation, planning, communication, reliability |
 | Casting director | Casting, observation, acting, communication, negotiation, management, reliability |
 | Camera operator | Camera work, composition, lighting, technical, visual storytelling, reliability |
-| Technician | Technical, maintenance, reliability, communication, plus one specialization skill |
+| Technician | Technical, maintenance, set design, prop design, reliability, communication, plus one specialization skill |
 | Film editor | Editing, visual storytelling, sound, creativity, reliability |
 | Production designer | Set design, creativity, technical, communication, reliability, plus one specialization skill |
 | Cleaner | Maintenance, organization, hygiene, reliability |

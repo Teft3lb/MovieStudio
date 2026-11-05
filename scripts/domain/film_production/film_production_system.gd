@@ -6,6 +6,8 @@ const PROJECT_DATA_SCRIPT = preload(
 )
 
 const PREPARATION_MINUTES: int = 2
+const SET_DRESSING_BASE_MINUTES: int = 2
+const SET_DRESSING_MINUTES_PER_PROP: int = 1
 const REHEARSAL_BASE_MINUTES: int = 2
 const REHEARSAL_MINUTES_PER_ACTOR: int = 1
 const SHOOTING_BASE_MINUTES: int = 8
@@ -44,7 +46,8 @@ func start_project(
 	seed: int,
 	current_day: int,
 	current_hour: int,
-	current_minute: int
+	current_minute: int,
+	scene_setups: Array = []
 ) -> Variant:
 	if not can_start_project(script, crew_assignments, cast_assignments):
 		return null
@@ -68,6 +71,10 @@ func start_project(
 	project.total_scene_count = script.scenes.size()
 	project.crew_assignments = crew_assignments.duplicate(true)
 	project.cast_assignments = cast_assignments.duplicate(true)
+	project.scene_setups = _normalize_scene_setups(
+		script.scenes,
+		scene_setups
+	)
 	project.seed = seed
 	project.started_day = maxi(current_day, 1)
 	project.started_hour = clampi(current_hour, 0, 23)
@@ -75,7 +82,8 @@ func start_project(
 	project.phase_duration_minutes = PREPARATION_MINUTES
 	project.estimated_total_minutes = _estimate_total_minutes(
 		script,
-		cast_assignments
+		cast_assignments,
+		project.scene_setups
 	)
 	project.last_activity_message = "Съёмочная группа собирается на площадке."
 	_rng.seed = seed
@@ -128,12 +136,25 @@ func advance_minute(
 	).size()
 	match str(project.current_phase):
 		"preparation":
+			var setup: Dictionary = project.get_current_scene_setup()
+			var setup_duration: int = clampi(
+				int(setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+				SET_DRESSING_BASE_MINUTES,
+				10
+			)
+			_set_phase(project, "set_dressing", setup_duration)
+			project.last_activity_message = (
+				"Техник собирает декорации: %s."
+				% str(setup.get("set_title", "Нейтральная площадка"))
+			)
+			return _phase_change_result()
+		"set_dressing":
 			_set_phase(
 				project,
 				"rehearsal",
 				_get_phase_duration("rehearsal", active_actor_count)
 			)
-			project.last_activity_message = "Актёры репетируют сцену."
+			project.last_activity_message = "Декорации готовы. Актёры репетируют сцену."
 			return _phase_change_result()
 		"rehearsal":
 			_set_phase(
@@ -292,6 +313,54 @@ func get_scene_dialogue_for_employee(
 	return ""
 
 
+func _normalize_scene_setups(
+	scenes: Array,
+	raw_setups: Array
+) -> Array:
+	var result: Array = []
+	for scene_index in range(scenes.size()):
+		var scene: Dictionary = scenes[scene_index]
+		var setup: Dictionary = {}
+		if (
+			scene_index < raw_setups.size()
+			and raw_setups[scene_index] is Dictionary
+		):
+			setup = raw_setups[scene_index].duplicate(true)
+		var raw_prop_ids: Variant = setup.get("prop_ids", [])
+		var prop_ids: Array = []
+		if raw_prop_ids is Array:
+			prop_ids = raw_prop_ids
+		var normalized_props: Array[String] = []
+		for prop_id_value in prop_ids:
+			var prop_id: String = str(prop_id_value)
+			if not prop_id.is_empty() and not normalized_props.has(prop_id):
+				normalized_props.append(prop_id)
+		setup["scene_id"] = str(
+			setup.get("scene_id", scene.get("scene_id", ""))
+		)
+		setup["set_id"] = str(setup.get("set_id", "neutral"))
+		setup["set_title"] = str(
+			setup.get("set_title", "Нейтральная площадка")
+		)
+		setup["prop_ids"] = normalized_props
+		setup["setup_minutes"] = clampi(
+			int(setup.get(
+				"setup_minutes",
+				SET_DRESSING_BASE_MINUTES
+				+ normalized_props.size() * SET_DRESSING_MINUTES_PER_PROP
+			)),
+			SET_DRESSING_BASE_MINUTES,
+			10
+		)
+		setup["set_dressing_quality"] = clampf(
+			float(setup.get("set_dressing_quality", 45.0)),
+			0.0,
+			100.0
+		)
+		result.append(setup)
+	return result
+
+
 func _has_required_crew(crew_assignments: Dictionary) -> bool:
 	for profession_id in ["director", "camera_operator", "technician"]:
 		if str(crew_assignments.get(profession_id, "")).is_empty():
@@ -312,17 +381,24 @@ func _has_complete_cast(
 
 func _estimate_total_minutes(
 	script: Variant,
-	cast_assignments: Dictionary
+	cast_assignments: Dictionary,
+	scene_setups: Array
 ) -> int:
 	var total: int = 0
-	for scene in script.scenes:
-		var scene_data: Dictionary = scene
+	for scene_index in range(script.scenes.size()):
+		var scene_data: Dictionary = script.scenes[scene_index]
 		var performer_count: int = _get_scene_performer_count(
 			script,
 			scene_data,
 			cast_assignments
 		)
+		var setup: Dictionary = scene_setups[scene_index]
 		total += _get_phase_duration("preparation", performer_count)
+		total += clampi(
+			int(setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+			SET_DRESSING_BASE_MINUTES,
+			10
+		)
 		total += _get_phase_duration("rehearsal", performer_count)
 		total += _get_phase_duration("shooting", performer_count)
 		total += REVIEW_MINUTES
@@ -360,6 +436,8 @@ func _get_phase_duration(phase: String, actor_count: int) -> int:
 	match phase:
 		"preparation":
 			return PREPARATION_MINUTES
+		"set_dressing":
+			return SET_DRESSING_BASE_MINUTES
 		"rehearsal":
 			return REHEARSAL_BASE_MINUTES + (
 				normalized_actor_count * REHEARSAL_MINUTES_PER_ACTOR
@@ -426,6 +504,12 @@ func _calculate_scene_quality(
 		+ camera * 0.16
 		+ technical * 0.12
 		+ float(project.script_potential_score) * 0.22
+		+ (
+			float(project.get_current_scene_setup().get(
+				"set_dressing_quality",
+				45.0
+			)) - 45.0
+		) * 0.14
 		+ (energy - 0.5) * 10.0
 		+ (morale - 0.5) * 6.0
 		- stress * 4.0
@@ -437,6 +521,8 @@ func _calculate_scene_quality(
 
 func _complete_current_scene(project: Variant, script: Variant) -> void:
 	var scene: Dictionary = get_current_scene(script, project)
+	var setup: Dictionary = project.get_current_scene_setup()
+	var setup_props: Array = setup.get("prop_ids", [])
 	var scene_duration: int = int(project.current_scene_elapsed_minutes)
 	project.scene_results.append({
 		"scene_id": str(scene.get("scene_id", "")),
@@ -445,6 +531,12 @@ func _complete_current_scene(project: Variant, script: Variant) -> void:
 		"location": str(scene.get("location", "")),
 		"action": str(scene.get("action", "")),
 		"dialogue": str(scene.get("dialogue", "")),
+		"set_id": str(setup.get("set_id", "neutral")),
+		"set_title": str(setup.get("set_title", "Нейтральная площадка")),
+		"set_dressing_quality": float(
+			setup.get("set_dressing_quality", 45.0)
+		),
+		"set_dressing_props": setup_props.duplicate(),
 		"quality": roundi(project.current_scene_quality),
 		"retakes": project.current_scene_retakes,
 		"production_minutes": scene_duration,
