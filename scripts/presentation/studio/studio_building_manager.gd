@@ -78,7 +78,6 @@ var _next_building_sequence: int = 1
 var _next_script_sequence: int = 1
 var _latest_script: Variant
 
-var _build_canvas: CanvasLayer
 var _build_status_label: Label
 var _placement_hint_label: Label
 var _building_detail_panel: PanelContainer
@@ -397,30 +396,27 @@ func _create_building(
 
 
 func _build_ui() -> void:
-	_build_canvas = CanvasLayer.new()
-	_build_canvas.name = "StudioBuildingHUD"
-	_build_canvas.layer = 5
-	add_child(_build_canvas)
-
 	var build_panel := PanelContainer.new()
 	build_panel.name = "BuildingPalettePanel"
-	build_panel.position = Vector2(360.0, 16.0)
-	build_panel.custom_minimum_size = Vector2(300.0, 0.0)
-	_build_canvas.add_child(build_panel)
+	build_panel.custom_minimum_size = Vector2(0.0, 0.0)
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	if studio_hud == null:
+		push_error("StudioBuildingManager: StudioHUD node is missing.")
+		return
+	studio_hud.call(
+		"register_workspace_panel",
+		"studio",
+		"Студия",
+		build_panel
+	)
 
 	var build_layout := VBoxContainer.new()
 	build_panel.add_child(build_layout)
 
 	var heading := Label.new()
-	heading.text = "СТУДИЯ  |  СТРОИТЕЛЬСТВО"
+	heading.text = "СТРОИТЕЛЬСТВО"
 	heading.add_theme_font_size_override("font_size", 15)
 	build_layout.add_child(heading)
-
-	var economy_note := Label.new()
-	economy_note.text = "Тестовый этап: строительство пока бесплатно."
-	economy_note.add_theme_font_size_override("font_size", 10)
-	economy_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	build_layout.add_child(economy_note)
 
 	var script_button := Button.new()
 	script_button.text = "Построить сценарный отдел"
@@ -460,13 +456,22 @@ func _build_ui() -> void:
 func _build_building_detail_panel() -> void:
 	_building_detail_panel = PanelContainer.new()
 	_building_detail_panel.name = "BuildingDetailPanel"
-	_building_detail_panel.position = Vector2(760.0, 210.0)
-	_building_detail_panel.custom_minimum_size = Vector2(430.0, 0.0)
+	_building_detail_panel.custom_minimum_size = Vector2(0.0, 0.0)
 	_building_detail_panel.visible = false
-	_build_canvas.add_child(_building_detail_panel)
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	if studio_hud == null:
+		push_error("StudioBuildingManager: StudioHUD node is missing.")
+		return
+	studio_hud.call(
+		"register_inspector_panel",
+		"building",
+		"Выбранное здание",
+		_building_detail_panel
+	)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(410.0, 560.0)
+	scroll.custom_minimum_size = Vector2(0.0, 0.0)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_building_detail_panel.add_child(scroll)
 
@@ -488,6 +493,9 @@ func _begin_placement(building_type_id: String) -> void:
 	_placing_building_type_id = building_type_id
 	_placement_rotation_degrees = 0.0
 	_building_detail_panel.visible = false
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	if studio_hud != null:
+		studio_hud.call("show_inspector_panel", "building", false)
 	_create_placement_preview()
 	_placement_hint_label.visible = true
 	_placement_hint_label.text = (
@@ -689,14 +697,21 @@ func _select_building(building_id: String) -> void:
 
 	var building: Variant = _find_building(building_id)
 	_selected_building_id = str(building.id) if building != null else ""
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	if building == null:
 		_building_detail_panel.visible = false
+		if studio_hud != null:
+			studio_hud.call("show_inspector_panel", "building", false)
 		return
 
+	if studio_hud != null:
+		studio_hud.call("show_workspace_panel", "studio")
 	var actor: Variant = _building_actors.get(_selected_building_id)
 	if actor != null and is_instance_valid(actor):
 		actor.call("set_selected", true)
 	_refresh_building_detail()
+	if studio_hud != null:
+		studio_hud.call("show_inspector_panel", "building", true)
 
 
 func _find_building(building_id: String) -> Variant:
@@ -712,6 +727,9 @@ func _refresh_building_detail() -> void:
 	var building: Variant = _find_building(_selected_building_id)
 	if building == null:
 		_building_detail_panel.visible = false
+		var studio_hud: Node = get_node_or_null("../StudioHUD")
+		if studio_hud != null:
+			studio_hud.call("show_inspector_panel", "building", false)
 		return
 
 	for child in _building_detail_layout.get_children():

@@ -37,6 +37,7 @@ var _generator: RefCounted
 var _needs_system: RefCounted
 var _employment_system: Variant
 var _game_clock: Node
+var _studio_hud: Node
 var _workplace_system: RefCounted
 var _studio_building_manager: Node
 var _workplace_assignments: Dictionary = {}
@@ -80,6 +81,7 @@ var _stress_bar: ProgressBar
 
 func _ready() -> void:
 	_game_clock = get_node("../GameClock")
+	_studio_hud = get_node_or_null("../StudioHUD")
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	_game_clock.day_advanced.connect(_on_game_day_advanced)
@@ -452,16 +454,18 @@ func _route_for(index: int) -> Array[Vector3]:
 
 
 func _build_roster_panel() -> void:
-	var canvas := CanvasLayer.new()
-	canvas.name = "EmployeeManagementHUD"
-	canvas.layer = 6
-	add_child(canvas)
-
 	var panel := PanelContainer.new()
 	panel.name = "EmployeeRosterPanel"
-	panel.position = Vector2(16.0, 220.0)
-	panel.custom_minimum_size = Vector2(330.0, 0.0)
-	canvas.add_child(panel)
+	panel.custom_minimum_size = Vector2(0.0, 0.0)
+	if _studio_hud == null:
+		push_error("CharacterManager: StudioHUD node is missing.")
+		return
+	_studio_hud.call(
+		"register_workspace_panel",
+		"employees",
+		"Персонал студии",
+		panel
+	)
 
 	var layout := VBoxContainer.new()
 	panel.add_child(layout)
@@ -470,18 +474,13 @@ func _build_roster_panel() -> void:
 	_roster_header.add_theme_font_size_override("font_size", 16)
 	layout.add_child(_roster_header)
 
-	var hint := Label.new()
-	hint.text = "Выбери сотрудника для просмотра карточки"
-	hint.add_theme_font_size_override("font_size", 11)
-	layout.add_child(hint)
-
 	_market_toggle_button = Button.new()
 	_market_toggle_button.text = "КАДРОВЫЙ РЫНОК"
 	_market_toggle_button.pressed.connect(_toggle_market_panel)
 	layout.add_child(_market_toggle_button)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(310.0, 600.0)
+	scroll.custom_minimum_size = Vector2(0.0, 0.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
@@ -506,7 +505,7 @@ func _add_roster_button(employee: Variant) -> void:
 
 	var button := Button.new()
 	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(305.0, 72.0)
+	button.custom_minimum_size = Vector2(0.0, 68.0)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.toggle_mode = true
 	button.add_theme_font_size_override("font_size", 12)
@@ -516,16 +515,19 @@ func _add_roster_button(employee: Variant) -> void:
 
 
 func _build_market_panel() -> void:
-	var canvas := get_node_or_null("EmployeeManagementHUD") as CanvasLayer
-	if canvas == null:
+	if _studio_hud == null:
 		return
 
 	_market_panel = PanelContainer.new()
 	_market_panel.name = "EmployeeMarketPanel"
-	_market_panel.position = Vector2(360.0, 220.0)
-	_market_panel.custom_minimum_size = Vector2(370.0, 0.0)
+	_market_panel.custom_minimum_size = Vector2(0.0, 0.0)
 	_market_panel.visible = false
-	canvas.add_child(_market_panel)
+	_studio_hud.call(
+		"register_workspace_panel",
+		"market",
+		"Кадровый рынок",
+		_market_panel
+	)
 
 	var layout := VBoxContainer.new()
 	_market_panel.add_child(layout)
@@ -549,7 +551,7 @@ func _build_market_panel() -> void:
 	layout.add_child(_market_status_label)
 
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(350.0, 600.0)
+	scroll.custom_minimum_size = Vector2(0.0, 0.0)
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_child(scroll)
 
@@ -561,16 +563,15 @@ func _build_market_panel() -> void:
 
 
 func _toggle_market_panel() -> void:
-	if not is_instance_valid(_market_panel):
+	if not is_instance_valid(_market_panel) or _studio_hud == null:
 		return
-	_market_panel.visible = not _market_panel.visible
-	if _market_panel.visible:
-		_refresh_market_panel()
+	_refresh_market_panel()
+	_studio_hud.call("show_workspace_panel", "market")
 
 
 func _close_market_panel() -> void:
-	if is_instance_valid(_market_panel):
-		_market_panel.visible = false
+	if _studio_hud != null:
+		_studio_hud.call("show_workspace_panel", "employees")
 
 
 func _refresh_market_panel() -> void:
@@ -585,8 +586,7 @@ func _refresh_market_panel() -> void:
 		)
 	)
 	_market_status_label.text = (
-		"Новые специалисты появляются каждые 7 игровых дней. До обновления: %d дн."
-		% days_until_refresh
+		"Обновление рынка через %d дн." % days_until_refresh
 	)
 
 	for child in _market_list.get_children():
@@ -597,21 +597,26 @@ func _refresh_market_panel() -> void:
 		var candidate_id: String = str(candidate.id)
 		var button := Button.new()
 		button.name = "Candidate_%s" % candidate_id
-		button.custom_minimum_size = Vector2(345.0, 64.0)
+		button.custom_minimum_size = Vector2(0.0, 64.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.add_theme_font_size_override("font_size", 12)
 		var candidate_role_title: String = candidate.get_profession_title()
 		var candidate_specialization: String = candidate.get_specialization_title()
 		if not candidate_specialization.is_empty():
 			candidate_role_title += " · " + candidate_specialization
-		button.text = "%s — %s\n%s · %s: %d / 100  ·  Запрос: %d ед. / день" % [
+		button.text = "%s\n%s · %d ед. / день" % [
 			candidate.get_full_name(),
 			candidate_role_title,
-			candidate.get_department_title(),
-			candidate.get_primary_skill_title(),
-			roundi(candidate.get_primary_skill_value()),
 			candidate.daily_salary,
 		]
+		button.tooltip_text = (
+			"%s · %s: %d / 100"
+			% [
+				candidate.get_department_title(),
+				candidate.get_primary_skill_title(),
+				roundi(candidate.get_primary_skill_value()),
+			]
+		)
 		button.pressed.connect(
 			_on_market_candidate_pressed.bind(candidate_id)
 		)
@@ -620,25 +625,18 @@ func _refresh_market_panel() -> void:
 	_market_toggle_button.text = "КАДРОВЫЙ РЫНОК  ·  %d" % market_candidates.size()
 
 func _build_detail_panel() -> void:
-	var canvas := get_node_or_null("EmployeeManagementHUD") as CanvasLayer
-	if canvas == null:
-		canvas = CanvasLayer.new()
-		canvas.name = "EmployeeManagementHUD"
-		canvas.layer = 6
-		add_child(canvas)
-
 	var panel := PanelContainer.new()
 	panel.name = "EmployeeDetailPanel"
-	panel.anchor_left = 1.0
-	panel.anchor_right = 1.0
-	panel.anchor_top = 0.0
-	panel.anchor_bottom = 1.0
-	panel.offset_left = -370.0
-	panel.offset_right = -16.0
-	panel.offset_top = 16.0
-	panel.offset_bottom = -16.0
-	panel.custom_minimum_size = Vector2(350.0, 0.0)
-	canvas.add_child(panel)
+	panel.custom_minimum_size = Vector2(0.0, 0.0)
+	if _studio_hud == null:
+		push_error("CharacterManager: StudioHUD node is missing.")
+		return
+	_studio_hud.call(
+		"register_inspector_panel",
+		"employee",
+		"Карточка сотрудника",
+		panel
+	)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -672,6 +670,7 @@ func _build_detail_panel() -> void:
 	layout.add_child(_detail_task_label)
 
 	_detail_schedule_label = Label.new()
+	_detail_schedule_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_detail_schedule_label)
 
 	_detail_contract_label = Label.new()
@@ -705,7 +704,8 @@ func _build_detail_panel() -> void:
 	_dismiss_dialog = ConfirmationDialog.new()
 	_dismiss_dialog.title = "Подтверждение увольнения"
 	_dismiss_dialog.confirmed.connect(_confirm_dismiss_employee)
-	canvas.add_child(_dismiss_dialog)
+	var overlay_root: Node = _studio_hud.call("get_overlay_root")
+	overlay_root.add_child(_dismiss_dialog)
 
 	layout.add_child(HSeparator.new())
 
@@ -960,6 +960,12 @@ func _select_employee(employee_id: String) -> void:
 
 	_refresh_roster()
 	_refresh_detail_panel()
+	if _studio_hud != null:
+		if employee == null:
+			_studio_hud.call("show_inspector_panel", "employee", false)
+		else:
+			_studio_hud.call("show_workspace_panel", "employees")
+			_studio_hud.call("show_inspector_panel", "employee", true)
 
 
 func _select_market_candidate(candidate_id: String) -> void:
@@ -974,6 +980,9 @@ func _select_market_candidate(candidate_id: String) -> void:
 	)
 	_refresh_roster()
 	_refresh_detail_panel()
+	if _studio_hud != null and candidate != null:
+		_studio_hud.call("show_workspace_panel", "market")
+		_studio_hud.call("show_inspector_panel", "employee", true)
 
 
 func _on_market_candidate_pressed(candidate_id: String) -> void:
@@ -1026,14 +1035,17 @@ func _refresh_roster() -> void:
 			if _is_active_production_participant(employee_id)
 			else employee.get_work_state_title()
 		)
-		button.text = "%s — %s\n%s · Энергия %d%% · Настроение %d%%\n%s" % [
+		var energy: int = roundi(float(needs.get("energy", 1.0)) * 100.0)
+		var morale: int = roundi(float(needs.get("morale", 0.75)) * 100.0)
+		button.text = "%s\n%s · %s" % [
 			employee.get_full_name(),
 			employee.get_profession_title(),
 			work_state_title,
-			roundi(float(needs.get("energy", 1.0)) * 100.0),
-			roundi(float(needs.get("morale", 0.75)) * 100.0),
-			employee.current_task,
 		]
+		button.tooltip_text = (
+			"Энергия: %d%% · Настроение: %d%%\nЗадача: %s"
+			% [energy, morale, employee.current_task]
+		)
 		button.button_pressed = employee_id == _selected_employee_id
 
 

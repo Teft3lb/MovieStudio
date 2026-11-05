@@ -1,10 +1,11 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/presentation/orbit_camera_controller.gd" id="2_camera"]
 [ext_resource type="Script" path="res://scripts/core/game_clock.gd" id="3_clock"]
 [ext_resource type="Script" path="res://scripts/presentation/characters/character_manager.gd" id="4_characters"]
 [ext_resource type="Script" path="res://scripts/presentation/studio/studio_building_manager.gd" id="5_buildings"]
+[ext_resource type="Script" path="res://scripts/presentation/ui/studio_hud.gd" id="6_hud"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(100, 100)
@@ -25,6 +26,9 @@ script = ExtResource("1_main")
 
 [node name="GameClock" type="Node" parent="."]
 script = ExtResource("3_clock")
+
+[node name="StudioHUD" type="CanvasLayer" parent="."]
+script = ExtResource("6_hud")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 script = ExtResource("2_camera")
