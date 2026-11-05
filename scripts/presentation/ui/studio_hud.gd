@@ -246,7 +246,7 @@ func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	_navigation_list.name = "NavigationButtons"
 	_navigation_list.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_navigation_list.add_theme_constant_override("separation", 6)
-	_navigation_layout.add_child(_navigation_list)
+	navigation_layout.add_child(_navigation_list)
 
 	var navigation_spacer := Control.new()
 	navigation_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
