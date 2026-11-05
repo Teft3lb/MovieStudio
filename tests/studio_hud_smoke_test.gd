@@ -77,10 +77,13 @@ func _run_tests() -> void:
 		navigation_list is HBoxContainer,
 		"Navigation must use a compact horizontal strip."
 	)
+	var bottom_navigation: Node = hud.find_child(
+		"BottomNavigationPanel",
+		true,
+		false
+	)
 	_expect(
-		hud.get_node_or_null(
-			"StudioHUDRoot/MarginContainer/StudioShell/BottomNavigationPanel"
-		) != null,
+		bottom_navigation is PanelContainer,
 		"Bottom navigation panel must exist in the HUD shell."
 	)
 	_expect(
