@@ -51,3 +51,10 @@ The management navigation is presented as a compact horizontal strip at the bott
 The HUD owns a shared Theme for labels, buttons, and progress bars. Panels use a consistent graphite surface, subtle borders, rounded corners, and restrained shadows. Warm brass is used for active navigation and section hierarchy; energy, morale, and stress use separate semantic progress colors.
 
 The employee roster uses compact selectable cards. Employee details remain in the inspector, with status indicators differentiated by color. Simulation speed buttons reflect the currently active speed.
+
+
+## Stylized UI pass v2
+
+The shared HUD theme uses deep blue-green surfaces with mint and cyan accents, softer rounded controls, and a narrow vertical scrollbar treatment. A shared `configure_scroll_container()` policy disables horizontal scrolling and preserves vertical scrolling only where content requires it. All workspace and inspector content must expand to the available width and wrap labels rather than widen their parent.
+
+The building inspector presents workplace capacity, assigned staff, and footprint as separate compact metric cards. Team members and profession eligibility are shown in separate readable blocks. Long option lists no longer determine the width of their controls (`fit_to_longest_item = false`), and visible option labels are shortened where appropriate.

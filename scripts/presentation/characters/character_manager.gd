@@ -480,7 +480,7 @@ func _build_roster_panel() -> void:
 	_roster_header.add_theme_font_size_override("font_size", 12)
 	_roster_header.add_theme_color_override(
 		"font_color",
-		Color(0.77, 0.70, 0.53, 1.0)
+		Color(0.48, 0.82, 0.72, 1.0)
 	)
 	roster_header_row.add_child(_roster_header)
 
@@ -492,7 +492,9 @@ func _build_roster_panel() -> void:
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, 0.0)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_studio_hud.call("configure_scroll_container", scroll)
 	layout.add_child(scroll)
 
 	_employee_list = VBoxContainer.new()
@@ -555,7 +557,7 @@ func _build_market_panel() -> void:
 	_market_header.add_theme_font_size_override("font_size", 13)
 	_market_header.add_theme_color_override(
 		"font_color",
-		Color(0.77, 0.70, 0.53, 1.0)
+		Color(0.48, 0.82, 0.72, 1.0)
 	)
 	top_row.add_child(_market_header)
 
@@ -569,13 +571,15 @@ func _build_market_panel() -> void:
 	_market_status_label.add_theme_font_size_override("font_size", 11)
 	_market_status_label.add_theme_color_override(
 		"font_color",
-		Color(0.66, 0.71, 0.73, 1.0)
+		Color(0.58, 0.76, 0.79, 1.0)
 	)
 	layout.add_child(_market_status_label)
 
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0.0, 0.0)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_studio_hud.call("configure_scroll_container", scroll)
 	layout.add_child(scroll)
 
 	_market_list = VBoxContainer.new()
@@ -666,6 +670,7 @@ func _build_detail_panel() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_studio_hud.call("configure_scroll_container", scroll)
 	panel.add_child(scroll)
 
 	var layout := VBoxContainer.new()
@@ -677,7 +682,7 @@ func _build_detail_panel() -> void:
 	_detail_name_label.add_theme_font_size_override("font_size", 20)
 	_detail_name_label.add_theme_color_override(
 		"font_color",
-		Color(0.94, 0.88, 0.74, 1.0)
+		Color(0.80, 0.95, 0.91, 1.0)
 	)
 	layout.add_child(_detail_name_label)
 
@@ -685,7 +690,7 @@ func _build_detail_panel() -> void:
 	_detail_profession_label.add_theme_font_size_override("font_size", 13)
 	_detail_profession_label.add_theme_color_override(
 		"font_color",
-		Color(0.68, 0.73, 0.75, 1.0)
+		Color(0.62, 0.79, 0.82, 1.0)
 	)
 	layout.add_child(_detail_profession_label)
 
@@ -716,6 +721,8 @@ func _build_detail_panel() -> void:
 	layout.add_child(_detail_contract_label)
 
 	_contract_type_option = OptionButton.new()
+	_contract_type_option.fit_to_longest_item = false
+	_contract_type_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_contract_type_option.add_item("Бессрочный")
 	_contract_type_option.set_item_metadata(0, "permanent")
 	_contract_type_option.add_item("Срочный · 30 дней")
@@ -752,7 +759,7 @@ func _build_detail_panel() -> void:
 	needs_heading.add_theme_font_size_override("font_size", 12)
 	needs_heading.add_theme_color_override(
 		"font_color",
-		Color(0.77, 0.70, 0.53, 1.0)
+		Color(0.48, 0.82, 0.72, 1.0)
 	)
 	layout.add_child(needs_heading)
 
@@ -767,7 +774,7 @@ func _build_detail_panel() -> void:
 	layout.add_child(_morale_label)
 	_morale_bar = _create_progress_bar(
 		layout,
-		Color(0.72, 0.64, 0.42, 1.0)
+		Color(0.42, 0.69, 0.84, 1.0)
 	)
 
 	_stress_label = Label.new()
@@ -784,7 +791,7 @@ func _build_detail_panel() -> void:
 	skills_heading.add_theme_font_size_override("font_size", 12)
 	skills_heading.add_theme_color_override(
 		"font_color",
-		Color(0.77, 0.70, 0.53, 1.0)
+		Color(0.48, 0.82, 0.72, 1.0)
 	)
 	layout.add_child(skills_heading)
 
@@ -799,7 +806,7 @@ func _build_detail_panel() -> void:
 	personality_heading.add_theme_font_size_override("font_size", 12)
 	personality_heading.add_theme_color_override(
 		"font_color",
-		Color(0.77, 0.70, 0.53, 1.0)
+		Color(0.48, 0.82, 0.72, 1.0)
 	)
 	layout.add_child(personality_heading)
 

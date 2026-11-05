@@ -411,29 +411,43 @@ func _build_ui() -> void:
 	)
 
 	var build_layout := VBoxContainer.new()
+	build_layout.add_theme_constant_override("separation", 9)
 	build_panel.add_child(build_layout)
 
 	var heading := Label.new()
 	heading.text = "СТРОИТЕЛЬСТВО"
-	heading.add_theme_font_size_override("font_size", 15)
+	heading.add_theme_font_size_override("font_size", 12)
+	heading.add_theme_color_override(
+		"font_color",
+		Color(0.48, 0.82, 0.72, 1.0)
+	)
 	build_layout.add_child(heading)
 
 	var script_button := Button.new()
-	script_button.text = "Построить сценарный отдел"
+	script_button.text = "＋ Сценарный отдел"
+	script_button.tooltip_text = "Построить сценарный отдел"
+	script_button.custom_minimum_size = Vector2(0.0, 42.0)
+	script_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	script_button.pressed.connect(
 		_begin_placement.bind("script_department")
 	)
 	build_layout.add_child(script_button)
 
 	var stage_button := Button.new()
-	stage_button.text = "Построить съёмочный павильон"
+	stage_button.text = "＋ Съёмочный павильон"
+	stage_button.tooltip_text = "Построить съёмочный павильон"
+	stage_button.custom_minimum_size = Vector2(0.0, 42.0)
+	stage_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stage_button.pressed.connect(
 		_begin_placement.bind("sound_stage")
 	)
 	build_layout.add_child(stage_button)
 
 	var editing_button := Button.new()
-	editing_button.text = "Построить монтажный отдел"
+	editing_button.text = "＋ Монтажный отдел"
+	editing_button.tooltip_text = "Построить монтажный отдел"
+	editing_button.custom_minimum_size = Vector2(0.0, 42.0)
+	editing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	editing_button.pressed.connect(
 		_begin_placement.bind("editing_suite")
 	)
@@ -442,6 +456,10 @@ func _build_ui() -> void:
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_build_status_label.add_theme_font_size_override("font_size", 11)
+	_build_status_label.add_theme_color_override(
+		"font_color",
+		Color(0.60, 0.80, 0.78, 1.0)
+	)
 	build_layout.add_child(_build_status_label)
 
 	_placement_hint_label = Label.new()
@@ -473,10 +491,12 @@ func _build_building_detail_panel() -> void:
 	scroll.custom_minimum_size = Vector2(0.0, 0.0)
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	studio_hud.call("configure_scroll_container", scroll)
 	_building_detail_panel.add_child(scroll)
 
 	_building_detail_layout = VBoxContainer.new()
 	_building_detail_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_building_detail_layout.add_theme_constant_override("separation", 9)
 	scroll.add_child(_building_detail_layout)
 
 
@@ -740,6 +760,10 @@ func _refresh_building_detail() -> void:
 	var title := Label.new()
 	title.text = str(building.display_name).to_upper()
 	title.add_theme_font_size_override("font_size", 18)
+	title.add_theme_color_override(
+		"font_color",
+		Color(0.78, 0.94, 0.88, 1.0)
+	)
 	_building_detail_layout.add_child(title)
 
 	var description := Label.new()
@@ -747,6 +771,11 @@ func _refresh_building_detail() -> void:
 		str(building.building_type_id)
 	)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	description.add_theme_font_size_override("font_size", 12)
+	description.add_theme_color_override(
+		"font_color",
+		Color(0.62, 0.77, 0.79, 1.0)
+	)
 	_building_detail_layout.add_child(description)
 
 	var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
@@ -763,30 +792,68 @@ func _refresh_building_detail() -> void:
 	var assigned_names: Array[String] = []
 	for employee in assigned_staff:
 		assigned_names.append(
-			"%s — %s" % [
+			"%s · %s" % [
 				employee.get_full_name(),
 				_get_profession_title(str(employee.profession_id)),
 			]
 		)
-	var assigned_text: String = (
-		", ".join(assigned_names)
-		if not assigned_names.is_empty()
-		else "пока нет"
+
+	var stats_grid := GridContainer.new()
+	stats_grid.columns = 3
+	stats_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_grid.add_theme_constant_override("h_separation", 6)
+	stats_grid.add_theme_constant_override("v_separation", 6)
+	_building_detail_layout.add_child(stats_grid)
+	stats_grid.add_child(
+		_create_building_stat_card(
+			"РАБОЧИЕ МЕСТА",
+			str(capacity),
+			Color(0.50, 0.86, 0.73, 1.0)
+		)
 	)
+	stats_grid.add_child(
+		_create_building_stat_card(
+			"НАЗНАЧЕНО",
+			"%d / %d" % [assigned_staff.size(), capacity],
+			Color(0.50, 0.78, 0.90, 1.0)
+		)
+	)
+	stats_grid.add_child(
+		_create_building_stat_card(
+			"УЧАСТОК",
+			"%.0f × %.0f м" % [footprint.x, footprint.y],
+			Color(0.72, 0.87, 0.84, 1.0)
+		)
+	)
+
+	var crew_heading := Label.new()
+	crew_heading.text = "КОМАНДА · %d" % assigned_staff.size()
+	crew_heading.add_theme_font_size_override("font_size", 11)
+	crew_heading.add_theme_color_override(
+		"font_color",
+		Color(0.50, 0.82, 0.74, 1.0)
+	)
+	_building_detail_layout.add_child(crew_heading)
+
 	var staff_summary := Label.new()
 	staff_summary.text = (
-		"Рабочие места: %d  ·  Назначено: %d\nСотрудники: %s\n"
-		+ "Подходят по профессии: %d  ·  Участок: %.0f × %.0f м"
-	) % [
-		capacity,
-		assigned_staff.size(),
-		assigned_text,
-		eligible_staff.size(),
-		footprint.x,
-		footprint.y,
-	]
+		"\n".join(assigned_names)
+		if not assigned_names.is_empty()
+		else "Пока никто не назначен."
+	)
 	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
+
+	var eligible_summary := Label.new()
+	eligible_summary.text = (
+		"Ещё подходят по профессии: %d" % eligible_staff.size()
+	)
+	eligible_summary.add_theme_font_size_override("font_size", 10)
+	eligible_summary.add_theme_color_override(
+		"font_color",
+		Color(0.58, 0.76, 0.79, 1.0)
+	)
+	_building_detail_layout.add_child(eligible_summary)
 
 	if str(building.building_type_id) == "script_department":
 		_build_script_department_detail(assigned_staff)
@@ -795,11 +862,79 @@ func _refresh_building_detail() -> void:
 	elif str(building.building_type_id) == "editing_suite":
 		_build_film_editing_detail(assigned_staff)
 
+	_apply_inspector_width_constraints(_building_detail_layout)
+
+
+func _apply_inspector_width_constraints(node: Node) -> void:
+	for child in node.get_children():
+		if child is Label:
+			var label := child as Label
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.custom_minimum_size.x = 0.0
+		elif child is OptionButton:
+			_configure_compact_option_button(child as OptionButton)
+		elif child is SpinBox:
+			var spin_box := child as SpinBox
+			spin_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			spin_box.custom_minimum_size.x = 0.0
+		elif child is Container:
+			var container := child as Container
+			container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_apply_inspector_width_constraints(child)
+
+
+func _create_building_stat_card(
+	caption: String,
+	value: String,
+	value_color: Color
+) -> PanelContainer:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.065, 0.15, 0.17, 1.0)
+	style.border_color = Color(0.16, 0.36, 0.38, 0.95)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(9)
+	style.content_margin_left = 7.0
+	style.content_margin_top = 7.0
+	style.content_margin_right = 7.0
+	style.content_margin_bottom = 7.0
+	card.add_theme_stylebox_override("panel", style)
+
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 2)
+	card.add_child(content)
+
+	var caption_label := Label.new()
+	caption_label.text = caption
+	caption_label.add_theme_font_size_override("font_size", 9)
+	caption_label.add_theme_color_override(
+		"font_color",
+		Color(0.60, 0.77, 0.78, 1.0)
+	)
+	content.add_child(caption_label)
+
+	var value_label := Label.new()
+	value_label.text = value
+	value_label.add_theme_font_size_override("font_size", 15)
+	value_label.add_theme_color_override("font_color", value_color)
+	content.add_child(value_label)
+	return card
+
+
+func _configure_compact_option_button(option: OptionButton) -> void:
+	option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	option.custom_minimum_size = Vector2(0.0, 0.0)
+	option.fit_to_longest_item = false
+
 
 func _build_script_department_detail(eligible_staff: Array) -> void:
 	var heading := Label.new()
-	heading.text = "АВТОМАТИЧЕСКОЕ СОЗДАНИЕ СЦЕНАРИЯ"
-	heading.add_theme_font_size_override("font_size", 14)
+	heading.text = "СОЗДАНИЕ СЦЕНАРИЯ"
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	heading.add_theme_font_size_override("font_size", 12)
+	heading.add_theme_color_override("font_color", Color(0.48, 0.82, 0.72, 1.0))
 	_building_detail_layout.add_child(heading)
 
 	var writer_heading := Label.new()
@@ -807,13 +942,12 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_building_detail_layout.add_child(writer_heading)
 
 	_script_writer_option = OptionButton.new()
-	_script_writer_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var writer_count: int = 0
 	for employee in eligible_staff:
 		if str(employee.profession_id) != "screenwriter":
 			continue
 		_script_writer_option.add_item(
-			"%s · сценарное мастерство %d/100" % [
+			"%s · %d/100" % [
 				employee.get_full_name(),
 				roundi(float(employee.skills.get("writing", 0.0))),
 			]
@@ -835,7 +969,6 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_building_detail_layout.add_child(genre_heading)
 
 	_script_genre_option = OptionButton.new()
-	_script_genre_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for genre_id in SCRIPT_GENERATOR_SCRIPT.get_genre_ids():
 		_script_genre_option.add_item(
 			SCRIPT_GENERATOR_SCRIPT.get_genre_title(genre_id)
@@ -861,23 +994,27 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_script_scene_count.max_value = 20
 	_script_scene_count.step = 1
 	_script_scene_count.value = 8
+	_script_scene_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_script_scene_count.custom_minimum_size = Vector2(0.0, 0.0)
 	scenes_column.add_child(_script_scene_count)
 
 	var roles_column := VBoxContainer.new()
 	roles_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parameters_row.add_child(roles_column)
 	var roles_label := Label.new()
-	roles_label.text = "Актёров / ролей"
+	roles_label.text = "Ролей"
 	roles_column.add_child(roles_label)
 	_script_role_count = SpinBox.new()
 	_script_role_count.min_value = 1
 	_script_role_count.max_value = 8
 	_script_role_count.step = 1
 	_script_role_count.value = 3
+	_script_role_count.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_script_role_count.custom_minimum_size = Vector2(0.0, 0.0)
 	roles_column.add_child(_script_role_count)
 
 	_script_generate_button = Button.new()
-	_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
+	_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ"
 	_script_generate_button.disabled = writer_count == 0
 	_script_generate_button.pressed.connect(_on_generate_script_pressed)
 	_building_detail_layout.add_child(_script_generate_button)
@@ -1389,7 +1526,6 @@ func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 		_building_detail_layout.add_child(role_label)
 
 		var role_option := OptionButton.new()
-		role_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var selected_index: int = -1
 		var saved_employee_id: String = str(
 			_film_cast_assignments.get(role_id, "")
@@ -2293,7 +2429,6 @@ func _build_film_editing_detail(assigned_staff: Array) -> void:
 		_building_detail_layout.add_child(editor_heading)
 
 		_film_editing_editor_option = OptionButton.new()
-		_film_editing_editor_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var selected_index: int = -1
 		for index in range(editor_candidates.size()):
 			var editor: Variant = editor_candidates[index]
@@ -2335,7 +2470,7 @@ func _build_film_editing_detail(assigned_staff: Array) -> void:
 		_building_detail_layout.add_child(create_note)
 
 		_film_editing_create_button = Button.new()
-		_film_editing_create_button.text = "ПОДГОТОВИТЬ МОНТАЖНЫЙ ПРОЕКТ"
+		_film_editing_create_button.text = "ПОДГОТОВИТЬ МОНТАЖ"
 		_film_editing_create_button.disabled = _film_editing_editor_id.is_empty()
 		_film_editing_create_button.pressed.connect(
 			_on_create_film_editing_project_pressed
@@ -2397,7 +2532,6 @@ func _build_film_editing_timeline_controls(project: Variant) -> void:
 	_building_detail_layout.add_child(heading)
 
 	_film_editing_timeline_option = OptionButton.new()
-	_film_editing_timeline_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var ordered_scenes: Array = _film_editing_system.call(
 		"get_ordered_scene_results",
 		project
@@ -2405,10 +2539,9 @@ func _build_film_editing_timeline_controls(project: Variant) -> void:
 	for timeline_position in range(ordered_scenes.size()):
 		var scene_result: Dictionary = ordered_scenes[timeline_position]
 		_film_editing_timeline_option.add_item(
-			"%02d · Сцена %02d · %s · качество %d/100" % [
+			"%02d · Сцена %02d · %d/100" % [
 				timeline_position + 1,
 				int(scene_result.get("scene_number", 0)),
-				str(scene_result.get("beat", "Сцена")),
 				int(scene_result.get("quality", 0)),
 			]
 		)
@@ -2449,7 +2582,6 @@ func _build_film_editing_replacement_controls(
 	_building_detail_layout.add_child(note)
 
 	_film_editing_replacement_option = OptionButton.new()
-	_film_editing_replacement_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for employee in assigned_staff:
 		if str(employee.profession_id) != "film_editor":
 			continue

@@ -103,7 +103,7 @@ func _build_shell() -> void:
 	var brand := Label.new()
 	brand.text = "MOVIESTUDIO"
 	brand.add_theme_font_size_override("font_size", 19)
-	brand.add_theme_color_override("font_color", Color(0.94, 0.88, 0.74, 1.0))
+	brand.add_theme_color_override("font_color", Color(0.72, 0.91, 0.86, 1.0))
 	top_row.add_child(brand)
 
 	var edition := Label.new()
@@ -143,7 +143,7 @@ func _build_shell() -> void:
 
 	var workspace_frame := PanelContainer.new()
 	workspace_frame.name = "WorkspacePanel"
-	workspace_frame.custom_minimum_size = Vector2(350.0, 0.0)
+	workspace_frame.custom_minimum_size = Vector2(320.0, 0.0)
 	workspace_frame.size_flags_horizontal = Control.SIZE_FILL
 	_apply_panel_style(workspace_frame, 0.93)
 	body.add_child(workspace_frame)
@@ -155,7 +155,7 @@ func _build_shell() -> void:
 
 	_workspace_heading = Label.new()
 	_workspace_heading.add_theme_font_size_override("font_size", 17)
-	_workspace_heading.add_theme_color_override("font_color", Color(0.94, 0.90, 0.82, 1.0))
+	_workspace_heading.add_theme_color_override("font_color", Color(0.82, 0.94, 0.92, 1.0))
 	workspace_layout.add_child(_workspace_heading)
 
 	var workspace_separator := HSeparator.new()
@@ -174,7 +174,7 @@ func _build_shell() -> void:
 	body_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(body_spacer)
 
-	_inspector_frame.custom_minimum_size = Vector2(350.0, 0.0)
+	_inspector_frame.custom_minimum_size = Vector2(330.0, 0.0)
 	_inspector_frame.size_flags_horizontal = Control.SIZE_FILL
 	_inspector_frame.visible = false
 	_apply_panel_style(_inspector_frame, 0.95)
@@ -192,7 +192,7 @@ func _build_shell() -> void:
 	_inspector_heading = Label.new()
 	_inspector_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspector_heading.add_theme_font_size_override("font_size", 17)
-	_inspector_heading.add_theme_color_override("font_color", Color(0.94, 0.90, 0.82, 1.0))
+	_inspector_heading.add_theme_color_override("font_color", Color(0.82, 0.94, 0.92, 1.0))
 	inspector_header_row.add_child(_inspector_heading)
 
 	var close_inspector_button := Button.new()
@@ -235,7 +235,7 @@ func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	navigation_heading.add_theme_font_size_override("font_size", 10)
 	navigation_heading.add_theme_color_override(
 		"font_color",
-		Color(0.66, 0.70, 0.73, 1.0)
+		Color(0.58, 0.76, 0.79, 1.0)
 	)
 	navigation_layout.add_child(navigation_heading)
 
@@ -258,7 +258,7 @@ func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	footer_label.add_theme_font_size_override("font_size", 9)
 	footer_label.add_theme_color_override(
 		"font_color",
-		Color(0.46, 0.51, 0.55, 1.0)
+		Color(0.43, 0.61, 0.65, 1.0)
 	)
 	navigation_layout.add_child(footer_label)
 
@@ -519,87 +519,76 @@ func _build_ui_theme() -> Theme:
 	var ui_theme := Theme.new()
 	ui_theme.default_font_size = 14
 
-	ui_theme.set_color(
-		"font_color",
-		"Label",
-		Color(0.90, 0.91, 0.90, 1.0)
-	)
-	ui_theme.set_color(
-		"font_color",
-		"Button",
-		Color(0.88, 0.89, 0.88, 1.0)
-	)
-	ui_theme.set_color(
-		"font_hover_color",
-		"Button",
-		Color(0.98, 0.95, 0.87, 1.0)
-	)
-	ui_theme.set_color(
-		"font_pressed_color",
-		"Button",
-		Color(0.98, 0.94, 0.82, 1.0)
-	)
-	ui_theme.set_color(
-		"font_disabled_color",
-		"Button",
-		Color(0.48, 0.51, 0.52, 1.0)
-	)
+	ui_theme.set_color("font_color", "Label", Color(0.86, 0.94, 0.93, 1.0))
+	ui_theme.set_color("font_color", "Button", Color(0.84, 0.94, 0.92, 1.0))
+	ui_theme.set_color("font_hover_color", "Button", Color(0.98, 1.0, 0.98, 1.0))
+	ui_theme.set_color("font_pressed_color", "Button", Color(0.92, 1.0, 0.96, 1.0))
+	ui_theme.set_color("font_disabled_color", "Button", Color(0.48, 0.62, 0.64, 1.0))
+	ui_theme.set_color("font_color", "OptionButton", Color(0.84, 0.94, 0.92, 1.0))
+	ui_theme.set_color("font_color", "SpinBox", Color(0.84, 0.94, 0.92, 1.0))
 	ui_theme.set_font_size("font_size", "Button", 12)
+	ui_theme.set_font_size("font_size", "OptionButton", 12)
+
+	_apply_button_theme(ui_theme, "Button")
+	_apply_button_theme(ui_theme, "OptionButton")
 
 	ui_theme.set_stylebox(
 		"normal",
-		"Button",
-		_make_button_style(
-			Color(0.085, 0.099, 0.112, 1.0),
-			Color(0.19, 0.23, 0.26, 1.0)
+		"LineEdit",
+		_make_flat_style(
+			Color(0.055, 0.12, 0.14, 1.0),
+			Color(0.16, 0.35, 0.38, 1.0),
+			8,
+			0
 		)
 	)
 	ui_theme.set_stylebox(
-		"hover",
-		"Button",
-		_make_button_style(
-			Color(0.13, 0.15, 0.16, 1.0),
-			Color(0.48, 0.43, 0.32, 1.0)
+		"focus",
+		"LineEdit",
+		_make_flat_style(
+			Color(0.06, 0.14, 0.16, 1.0),
+			Color(0.34, 0.72, 0.66, 1.0),
+			8,
+			0
 		)
 	)
 	ui_theme.set_stylebox(
-		"pressed",
-		"Button",
-		_make_button_style(
-			Color(0.18, 0.20, 0.19, 1.0),
-			Color(0.72, 0.61, 0.39, 1.0)
+		"panel",
+		"PanelContainer",
+		_make_flat_style(
+			Color(0.045, 0.095, 0.11, 0.97),
+			Color(0.15, 0.32, 0.36, 0.98),
+			12,
+			7
 		)
 	)
 	ui_theme.set_stylebox(
-		"hover_pressed",
-		"Button",
-		_make_button_style(
-			Color(0.20, 0.22, 0.20, 1.0),
-			Color(0.78, 0.67, 0.44, 1.0)
+		"panel",
+		"PopupPanel",
+		_make_flat_style(
+			Color(0.055, 0.12, 0.14, 1.0),
+			Color(0.22, 0.47, 0.49, 1.0),
+			9,
+			8
 		)
 	)
 	ui_theme.set_stylebox(
-		"disabled",
-		"Button",
-		_make_button_style(
-			Color(0.065, 0.073, 0.081, 1.0),
-			Color(0.14, 0.16, 0.18, 1.0)
+		"panel",
+		"PopupMenu",
+		_make_flat_style(
+			Color(0.055, 0.12, 0.14, 1.0),
+			Color(0.22, 0.47, 0.49, 1.0),
+			9,
+			8
 		)
 	)
-	var focus_style := StyleBoxFlat.new()
-	focus_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	focus_style.border_color = Color(0.78, 0.67, 0.44, 0.9)
-	focus_style.set_border_width_all(1)
-	focus_style.set_corner_radius_all(7)
-	ui_theme.set_stylebox("focus", "Button", focus_style)
-
 	ui_theme.set_stylebox(
 		"background",
 		"ProgressBar",
 		_make_flat_style(
-			Color(0.10, 0.12, 0.13, 1.0),
-			Color(0.20, 0.23, 0.24, 1.0),
-			5,
+			Color(0.075, 0.16, 0.18, 1.0),
+			Color(0.12, 0.28, 0.31, 1.0),
+			6,
 			0
 		)
 	)
@@ -607,13 +596,94 @@ func _build_ui_theme() -> Theme:
 		"fill",
 		"ProgressBar",
 		_make_flat_style(
-			Color(0.69, 0.59, 0.39, 1.0),
-			Color(0.69, 0.59, 0.39, 1.0),
-			5,
+			Color(0.36, 0.78, 0.65, 1.0),
+			Color(0.36, 0.78, 0.65, 1.0),
+			6,
 			0
 		)
 	)
+
+	var separator_style := StyleBoxLine.new()
+	separator_style.color = Color(0.18, 0.38, 0.41, 0.85)
+	separator_style.thickness = 1
+	ui_theme.set_stylebox("separator", "HSeparator", separator_style)
+	ui_theme.set_stylebox("separator", "VSeparator", separator_style)
+
+	var scroll_track := _make_flat_style(
+		Color(0.035, 0.09, 0.105, 0.8),
+		Color(0.035, 0.09, 0.105, 0.0),
+		5,
+		0
+	)
+	var scroll_grabber := _make_flat_style(
+		Color(0.22, 0.48, 0.49, 0.95),
+		Color(0.28, 0.60, 0.57, 0.95),
+		5,
+		0
+	)
+	var scroll_grabber_hover := _make_flat_style(
+		Color(0.34, 0.70, 0.62, 1.0),
+		Color(0.48, 0.82, 0.70, 1.0),
+		5,
+		0
+	)
+	for scrollbar_type in ["VScrollBar", "HScrollBar"]:
+		ui_theme.set_stylebox("scroll", scrollbar_type, scroll_track)
+		ui_theme.set_stylebox("grabber", scrollbar_type, scroll_grabber)
+		ui_theme.set_stylebox("grabber_highlight", scrollbar_type, scroll_grabber_hover)
+		ui_theme.set_stylebox("grabber_pressed", scrollbar_type, scroll_grabber_hover)
+	ui_theme.set_constant("scrollbar_width", "VScrollBar", 7)
+	ui_theme.set_constant("grabber_min_size", "VScrollBar", 24)
 	return ui_theme
+
+
+func _apply_button_theme(ui_theme: Theme, theme_type: String) -> void:
+	ui_theme.set_stylebox(
+		"normal",
+		theme_type,
+		_make_button_style(
+			Color(0.075, 0.16, 0.18, 1.0),
+			Color(0.16, 0.34, 0.37, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"hover",
+		theme_type,
+		_make_button_style(
+			Color(0.10, 0.22, 0.24, 1.0),
+			Color(0.30, 0.63, 0.60, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"pressed",
+		theme_type,
+		_make_button_style(
+			Color(0.13, 0.29, 0.27, 1.0),
+			Color(0.43, 0.79, 0.67, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"hover_pressed",
+		theme_type,
+		_make_button_style(
+			Color(0.15, 0.33, 0.30, 1.0),
+			Color(0.54, 0.87, 0.74, 1.0)
+		)
+	)
+	ui_theme.set_stylebox(
+		"disabled",
+		theme_type,
+		_make_button_style(
+			Color(0.055, 0.11, 0.125, 1.0),
+			Color(0.11, 0.23, 0.26, 1.0)
+		)
+	)
+	var focus_style := StyleBoxFlat.new()
+	focus_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
+	focus_style.border_color = Color(0.48, 0.84, 0.72, 0.95)
+	focus_style.set_border_width_all(2)
+	focus_style.set_corner_radius_all(10)
+	ui_theme.set_stylebox("focus", theme_type, focus_style)
 
 
 func _make_button_style(background: Color, border: Color) -> StyleBoxFlat:
@@ -621,11 +691,11 @@ func _make_button_style(background: Color, border: Color) -> StyleBoxFlat:
 	style.bg_color = background
 	style.border_color = border
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(7)
-	style.content_margin_left = 11.0
-	style.content_margin_top = 7.0
-	style.content_margin_right = 11.0
-	style.content_margin_bottom = 7.0
+	style.set_corner_radius_all(10)
+	style.content_margin_left = 12.0
+	style.content_margin_top = 8.0
+	style.content_margin_right = 12.0
+	style.content_margin_bottom = 8.0
 	return style
 
 
@@ -649,13 +719,23 @@ func _make_flat_style(
 
 func _apply_panel_style(panel: PanelContainer, alpha: float) -> void:
 	var style := _make_flat_style(
-		Color(0.047, 0.057, 0.068, alpha),
-		Color(0.23, 0.28, 0.32, 0.96),
-		9,
-		7
+		Color(0.035, 0.085, 0.10, alpha),
+		Color(0.15, 0.32, 0.36, 0.98),
+		12,
+		8
 	)
 	style.content_margin_left = 12.0
-	style.content_margin_top = 10.0
+	style.content_margin_top = 11.0
 	style.content_margin_right = 12.0
-	style.content_margin_bottom = 10.0
+	style.content_margin_bottom = 11.0
 	panel.add_theme_stylebox_override("panel", style)
+
+
+func configure_scroll_container(scroll_container: ScrollContainer) -> void:
+	if not is_instance_valid(scroll_container):
+		return
+	scroll_container.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll_container.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll_container.follow_focus = true
+	scroll_container.clip_contents = true
+	scroll_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL

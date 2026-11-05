@@ -90,6 +90,18 @@ func _run_tests() -> void:
 		hud.get("_root").theme != null,
 		"StudioHUD must provide a unified visual theme."
 	)
+	var scroll_test := ScrollContainer.new()
+	hud.call("configure_scroll_container", scroll_test)
+	_expect(
+		scroll_test.horizontal_scroll_mode == ScrollContainer.SCROLL_MODE_DISABLED,
+		"All studio UI scroll containers must disable horizontal scrolling."
+	)
+	_expect(
+		scroll_test.vertical_scroll_mode == ScrollContainer.SCROLL_MODE_AUTO,
+		"Vertical scrolling must remain available when content requires it."
+	)
+	scroll_test.free()
+
 	var speed_buttons: Dictionary = hud.get("_speed_buttons")
 	_expect(
 		speed_buttons.size() == 4,
