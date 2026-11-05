@@ -78,6 +78,8 @@ func _run_tests() -> void:
 		{"location": "Семейный дом", "expected": "family_home"},
 		{"location": "Вокзал", "expected": "city_street"},
 		{"location": "Больничный коридор", "expected": "office"},
+		{"location": "Больничная палата", "expected": "office"},
+		{"location": "Медицинская клиника", "expected": "office"},
 		{"location": "Набережная", "expected": "city_street"},
 		{"location": "Гостиничный холл", "expected": "family_home"},
 		{"location": "Офис", "expected": "office"},

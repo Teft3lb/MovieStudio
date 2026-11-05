@@ -193,7 +193,8 @@ static func _match_scene_context(context: String) -> String:
 		return "forest"
 	if _contains_any(context, [
 		"офис", "полиц", "участок", "кабинет",
-		"больниц", "архив", "следств",
+		"больнич", "больниц", "медицин", "клиник",
+		"архив", "следств",
 	]):
 		return "office"
 	if _contains_any(context, [
