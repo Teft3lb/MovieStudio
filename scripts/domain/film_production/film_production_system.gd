@@ -184,7 +184,12 @@ func advance_minute(
 		project.last_activity_message = project.pause_reason
 		return _empty_advance_result()
 
-	if not cast_ready:
+	var cast_required: bool = str(project.current_phase) in [
+		"rehearsal",
+		"shooting",
+		"review",
+	]
+	if cast_required and not cast_ready:
 		project.pause_reason = "Ожидает актёров на съёмочных позициях."
 		project.last_activity_message = project.pause_reason
 		return _empty_advance_result()

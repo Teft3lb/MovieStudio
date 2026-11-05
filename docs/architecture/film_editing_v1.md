@@ -34,7 +34,7 @@ The editor must be on shift and physically at the Editing Suite for editing to a
 
 Creating an editing project copies the source film title, genre, final production quality and scene result records. The initial timeline preserves screenplay order.
 
-Before editing starts, the player can select a scene and move it one position earlier or later. The timeline is locked once editing begins. Every scene must appear exactly once; invalid or duplicate timeline indices are rejected, and malformed serialized timelines recover to source order.
+Before editing starts, the player can select a scene and move it one position earlier or later. This changes the scene order in the finished film, not the order in which scenes were shot. The timeline is locked once editing begins. Every scene must appear exactly once; invalid or duplicate timeline indices are rejected, and malformed serialized timelines recover to source order.
 
 The timeline is currently scene-level. Shot-level trims, transitions, multiple video/audio tracks and keyframe editing are not implemented.
 

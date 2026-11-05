@@ -1038,16 +1038,35 @@ func _refresh_after_staffing_day() -> void:
 
 func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 	for employee in employees:
-		var actor: Variant = _employee_actors.get(str(employee.id))
+		var employee_id: String = str(employee.id)
+		var actor: Variant = _employee_actors.get(employee_id)
 		if actor == null or not is_instance_valid(actor):
 			continue
-		if bool(actor.call("is_in_scene_performance")):
+
+		var is_active_participant: bool = _is_active_production_participant(
+			employee_id
+		)
+		var is_waiting_for_scene: bool = (
+			is_active_participant
+			and is_instance_valid(_studio_building_manager)
+			and _studio_building_manager.has_method(
+				"is_employee_waiting_for_scene"
+			)
+			and bool(
+				_studio_building_manager.call(
+					"is_employee_waiting_for_scene",
+					employee_id
+				)
+			)
+		)
+		if is_waiting_for_scene:
+			actor.call("snap_outside_workplace")
+		elif bool(actor.call("is_in_scene_performance")):
 			actor.call("snap_to_scene_mark")
-		elif bool(actor.call("is_returning_to_workplace")):
-			actor.call("snap_to_workplace")
 		elif (
-			str(employee.work_state) == "working"
-			or _is_active_production_participant(str(employee.id))
+			bool(actor.call("is_returning_to_workplace"))
+			or str(employee.work_state) == "working"
+			or is_active_participant
 		):
 			actor.call("snap_to_workplace")
 		else:
@@ -1180,6 +1199,17 @@ func _get_production_participant_status(employee_id: String) -> String:
 	var actor: Node = get_employee_actor(employee_id)
 	if actor == null:
 		return "Съёмочная смена"
+	if (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_method("is_employee_waiting_for_scene")
+		and bool(
+			_studio_building_manager.call(
+				"is_employee_waiting_for_scene",
+				employee_id
+			)
+		)
+	):
+		return "Свободное время до вызова"
 	if bool(actor.call("is_in_scene_performance")):
 		if bool(actor.call("is_at_scene_mark")):
 			return "На съёмочной позиции"

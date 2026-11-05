@@ -142,6 +142,40 @@ func _test_off_shift_crew_returns_to_stage() -> void:
 		)) == "На площадке",
 		"An arrived production participant must be shown as present on the Sound Stage."
 	)
+
+	actor.call("leave_workplace")
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		str(actor.call("get_workplace_building_id")).is_empty()
+		and not bool(actor.call("is_leaving_workplace")),
+		"A employee must be able to leave the Sound Stage after being released from the scene."
+	)
+	var roaming_position: Vector3 = actor.global_position
+	actor.call("_process", 0.25)
+	_expect(
+		actor.global_position.distance_to(roaming_position) > 0.1,
+		"A released employee must resume the studio's free-roaming route."
+	)
+	var recalled_before_arrival: bool = character_manager.call(
+		"dispatch_employee_to_workplace",
+		"EMP-OFF-SHIFT-DIRECTOR"
+	)
+	_expect(
+		not recalled_before_arrival
+		and str(actor.call("get_workplace_building_id")) == "BLD-TEST-STAGE",
+		"A employee must be recalled to the Sound Stage when rehearsal is ready."
+	)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		bool(character_manager.call(
+			"dispatch_employee_to_workplace",
+			"EMP-OFF-SHIFT-DIRECTOR"
+		))
+		and bool(actor.call("is_at_workplace")),
+		"A recalled employee must physically return to the Sound Stage."
+	)
 	character_manager.free()
 	fake_building_manager.free()
 	actor.free()

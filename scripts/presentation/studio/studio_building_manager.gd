@@ -1415,9 +1415,10 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	var production_note := Label.new()
 	production_note.text = (
 		"Каждая сцена проходит подготовку, монтаж декораций, репетицию, "
-		+ "съёмку и просмотр. Покупки до начала установки учитываются в "
-		+ "текущей сцене; позднее — в следующих. Реквизит переиспользуется "
-		+ "в фильмах. Недостающие декорации не блокируют съёмки, но снижают качество."
+		+ "съёмку и просмотр. Пока техник готовит площадку, актёры гуляют "
+		+ "по студии и возвращаются на репетицию по вызову. Покупки до начала "
+		+ "установки учитываются в текущей сцене; позднее — в следующих. "
+		+ "Реквизит переиспользуется, а его отсутствие снижает качество."
 	)
 	production_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	production_note.add_theme_font_size_override("font_size", 10)
@@ -1929,6 +1930,16 @@ func _sync_film_scene_performance() -> bool:
 	if stage_id.is_empty():
 		return false
 
+	var current_phase: String = str(_active_film_project.current_phase)
+	if current_phase in ["preparation", "set_dressing"]:
+		_release_cast_for_scene_preparation(stage_id, current_phase)
+		set_stage_camera_target(
+			stage_id,
+			get_scene_focus_point(stage_id),
+			false
+		)
+		return true
+
 	var performer_ids: Array = _film_production_system.call(
 		"get_scene_performer_ids",
 		_active_film_script,
@@ -2089,6 +2100,60 @@ func _sync_film_scene_performance() -> bool:
 	return all_at_marks
 
 
+func _release_cast_for_scene_preparation(
+	stage_id: String,
+	phase: String
+) -> void:
+	if (
+		_active_film_project == null
+		or not is_instance_valid(_character_manager)
+	):
+		return
+
+	var scene_number: int = int(_active_film_project.current_scene_index) + 1
+	var processed_ids: Dictionary = {}
+	for assigned_id_value in _active_film_project.cast_assignments.values():
+		var employee_id: String = str(assigned_id_value)
+		if employee_id.is_empty() or processed_ids.has(employee_id):
+			continue
+		processed_ids[employee_id] = true
+
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			employee_id
+		)
+		if actor == null or not is_instance_valid(actor):
+			continue
+
+		if bool(actor.call("is_returning_to_workplace")):
+			pass
+		elif bool(actor.call("is_in_scene_performance")):
+			var workplace_position: Vector3 = actor.call(
+				"get_workplace_position"
+			)
+			var return_path: Array[Vector3] = get_scene_path(
+				stage_id,
+				actor.global_position,
+				workplace_position
+			)
+			if return_path.is_empty():
+				actor.call("leave_workplace")
+			else:
+				actor.call("return_to_workplace", return_path)
+		elif bool(actor.call("is_leaving_workplace")):
+			pass
+		elif not str(actor.call("get_workplace_building_id")).is_empty():
+			actor.call("leave_workplace")
+
+		_character_manager.call(
+			"set_employee_task",
+			employee_id,
+			_get_cast_production_task(phase, scene_number)
+		)
+
+	_active_scene_performer_ids.clear()
+
+
 func _sync_film_set_dressing() -> void:
 	if (
 		_active_film_project == null
@@ -2183,9 +2248,9 @@ func _sync_film_set_dressing() -> void:
 func _get_cast_production_task(phase: String, scene_number: int) -> String:
 	match phase:
 		"preparation":
-			return "Готовится к сцене %d" % scene_number
+			return "Гуляет по студии, пока готовят сцену %d" % scene_number
 		"set_dressing":
-			return "Ждёт установки декораций сцены %d" % scene_number
+			return "Гуляет по студии, пока монтируют декорации сцены %d" % scene_number
 		"rehearsal":
 			return "Репетирует сцену %d" % scene_number
 		"shooting":
@@ -2613,7 +2678,10 @@ func _build_film_editing_timeline_controls(project: Variant) -> void:
 
 	var movement_row := HBoxContainer.new()
 	_film_editing_move_up_button = Button.new()
-	_film_editing_move_up_button.text = "ВЫШЕ"
+	_film_editing_move_up_button.text = "↑ РАНЬШЕ"
+	_film_editing_move_up_button.tooltip_text = (
+		"Переместить выбранную сцену на одну позицию раньше в финальном фильме."
+	)
 	_film_editing_move_up_button.disabled = true
 	_film_editing_move_up_button.pressed.connect(
 		_on_film_editing_move_scene_pressed.bind(-1)
@@ -2621,13 +2689,24 @@ func _build_film_editing_timeline_controls(project: Variant) -> void:
 	movement_row.add_child(_film_editing_move_up_button)
 
 	_film_editing_move_down_button = Button.new()
-	_film_editing_move_down_button.text = "НИЖЕ"
+	_film_editing_move_down_button.text = "↓ ПОЗЖЕ"
+	_film_editing_move_down_button.tooltip_text = (
+		"Переместить выбранную сцену на одну позицию позже в финальном фильме."
+	)
 	_film_editing_move_down_button.disabled = ordered_scenes.size() < 2
 	_film_editing_move_down_button.pressed.connect(
 		_on_film_editing_move_scene_pressed.bind(1)
 	)
 	movement_row.add_child(_film_editing_move_down_button)
 	_building_detail_layout.add_child(movement_row)
+
+	var timeline_note := Label.new()
+	timeline_note.text = (
+		"Это меняет порядок сцен в готовом фильме, а не порядок съёмок."
+	)
+	timeline_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	timeline_note.add_theme_font_size_override("font_size", 10)
+	_building_detail_layout.add_child(timeline_note)
 
 
 func _build_film_editing_replacement_controls(
@@ -3113,6 +3192,35 @@ func is_employee_in_active_production(employee_id: String) -> bool:
 	for assigned_id in _active_film_project.cast_assignments.values():
 		if str(assigned_id) == employee_id:
 			return true
+	return false
+
+
+func is_employee_waiting_for_scene(employee_id: String) -> bool:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or _active_film_script == null
+		or employee_id.is_empty()
+	):
+		return false
+	var is_cast_member: bool = false
+	for assigned_id in _active_film_project.cast_assignments.values():
+		if str(assigned_id) == employee_id:
+			is_cast_member = true
+			break
+	if not is_cast_member:
+		return false
+
+	var phase: String = str(_active_film_project.current_phase)
+	if phase in ["preparation", "set_dressing"]:
+		return true
+	if phase in ["rehearsal", "shooting", "review"]:
+		var current_performer_ids: Array = _film_production_system.call(
+			"get_scene_performer_ids",
+			_active_film_script,
+			_active_film_project
+		)
+		return not current_performer_ids.has(employee_id)
 	return false
 
 

@@ -62,6 +62,12 @@ func _run_tests() -> void:
 	)
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
+	_test_cast_can_wait_during_set_preparation(
+		system,
+		script,
+		crew_assignments,
+		cast_assignments
+	)
 	_test_mid_phase_progress(system, script, project)
 	_test_project_serialization(project)
 	_test_full_film_completion(system, script, project)
@@ -364,7 +370,38 @@ func _test_production_pause(
 		not str(project.pause_reason).is_empty(),
 		"Paused production must explain why it is waiting."
 	)
-	var cast_pause: Dictionary = system.call(
+
+
+
+func _test_cast_can_wait_during_set_preparation(
+	system: RefCounted,
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var no_owned_props: Array[String] = []
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		no_owned_props,
+		str(script.genre_id)
+	)
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-CAST-WAIT-TEST",
+		445566,
+		1,
+		8,
+		0,
+		scene_setups
+	)
+	_expect(project != null, "A separate project must be created for cast waiting tests.")
+	if project == null:
+		return
+
+	var advanced_during_preparation: Dictionary = system.call(
 		"advance_minute",
 		project,
 		script,
@@ -373,9 +410,58 @@ func _test_production_pause(
 		{}
 	)
 	_expect(
-		not bool(cast_pause.get("advanced", false))
-		and int(project.total_elapsed_minutes) == before,
-		"Production must also pause when the current scene cast is unavailable."
+		bool(advanced_during_preparation.get("advanced", false))
+		and str(project.current_phase) == "preparation",
+		"Cast must not be required on set while the director and crew prepare the stage."
+	)
+	var preparation_complete: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		false,
+		{}
+	)
+	_expect(
+		bool(preparation_complete.get("phase_changed", false))
+		and str(project.current_phase) == "set_dressing",
+		"Set dressing must begin even while the cast is away from the stage."
+	)
+	var first_dressing_minute: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		false,
+		{}
+	)
+	var second_dressing_minute: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		false,
+		{}
+	)
+	_expect(
+		bool(first_dressing_minute.get("advanced", false))
+		and bool(second_dressing_minute.get("phase_changed", false))
+		and str(project.current_phase) == "rehearsal",
+		"The technician must be able to finish set dressing before actors are called."
+	)
+	var rehearsal_wait: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		false,
+		{}
+	)
+	_expect(
+		not bool(rehearsal_wait.get("advanced", false))
+		and int(project.total_elapsed_minutes) == 4
+		and str(project.pause_reason).contains("актёров"),
+		"Production must wait for the cast only when rehearsal is ready to begin."
 	)
 
 

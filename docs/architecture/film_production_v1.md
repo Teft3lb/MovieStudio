@@ -36,7 +36,7 @@ A producer is optional. When present, the producer coordinates the production an
 
 Each script role receives an \`OptionButton\` assignment. Initial assignments distribute roles across available actors/extras in roster order. The player can change these assignments before filming. One employee may play multiple roles across the film; if two such roles appear in the same scene, the employee is represented once in the physical blocking.
 
-The director, camera operator, technician and all cast employees must be on shift and inside the Sound Stage when the player starts filming. During production, a break, low availability or leaving the workplace pauses production instead of consuming shooting time.
+The director, camera operator and technician are dispatched to the Sound Stage when production starts. Cast members do not need to stand on set immediately: they walk around the studio during Preparation and Set Dressing, then are called back for Rehearsal. Production pauses if a required crew member is unavailable, or if a performer cannot reach the set when rehearsal, shooting or review requires them.
 
 ## Scene state machine
 
@@ -44,22 +44,23 @@ Each scripted scene passes through these states:
 
 | Phase | Base duration | Visible activity |
 |---|---:|---|
-| Preparation | 2 min | Cast gathers on the set; director stages the scene; technician checks equipment |
-| Set Dressing | 2 min + 1 min per purchased prop | Technician walks the set and installs reusable props; an empty set uses the neutral setup |
+| Preparation | 2 min | Director stages the scene; camera operator frames the set; technician checks equipment; cast walks around the studio |
+| Set Dressing | 2 min + 1 min per purchased prop | Technician installs reusable props while cast remains free to roam; an empty set uses the neutral setup |
 | Rehearsal | 2 + 1 min per performer | Actors rehearse with visible gestures and partner reactions |
 | Shooting | 8 + 1 min per performer | Actors perform dialogue/actions; camera rigs track the cast |
 | Review | 1 min | Director reviews the take; crew changes to review poses |
 
 If a take scores below 58/100, the director requests a retake. A scene can have at most two retakes. A retake uses 16 + 5 minutes per performer, followed by another review.
 
-The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the cast and crew are routed back to their Sound Stage workstations automatically, even if they were off shift when filming began. Once production starts, assigned participants remain on the shoot through lunch and normal shift boundaries; the film is a compact gameplay event rather than a second employee-scheduling puzzle. Production pauses only while a required participant is travelling to the stage or has lost their stage assignment. Manual debug fast-forward processes production minutes deterministically and snaps active performers to their current blocking marks at the end of the skip.
+The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the director, camera operator and technician are routed to the Sound Stage, while the cast is released to its normal studio roaming routes during Preparation and Set Dressing. When the set is ready, only the actors needed in the current scene are called back and must physically reach their blocking marks before Rehearsal advances. Actors not needed in the current scene remain free to roam. Assigned production participants remain part of the film through lunch and normal shift boundaries. Manual debug fast-forward processes production minutes deterministically, keeping waiting cast outside and snapping called performers to their current blocking marks.
 
 ## In-world performance
 
 The Sound Stage has eight reusable scene marks on its set platform. The marks change by phase and alternate their staging layout between scenes, so performers do not remain at their regular employee workstations throughout the take.
 
 During production:
-- actors move from their workstations to scene marks and face their scene partners;
+- while the director, operator and technician prepare the set, cast members walk along their existing studio routes outside the Sound Stage;
+- when Rehearsal begins, only the actors assigned to the current scene return to the Sound Stage and move to scene marks;
 - the speaking actor plays a speaking gesture, animates a simple mouth shape and displays the current line above the character;
 - other performers play reaction or dramatic poses;
 - actors reposition between rehearsal, shooting and review blocking;
@@ -127,17 +128,19 @@ The production domain test covers role resolution, unavailable-crew pauses, proj
 2. Buy one or more set pieces in the Set Dressing Workshop; confirm the budget decreases and an owned item cannot be bought twice.
 3. Use a lighthouse script scene; confirm the lighthouse props are selected automatically and reused in every matching scene.
 4. Assign each scripted role to an actor/extra. Confirm the producer is optional.
-5. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The production can begin regardless of the current shift clock.
-6. Observe actors move from workstations to the set marks and the technician move between prop marks during Set Dressing.
-7. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
-8. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
-9. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
-10. Confirm the director, camera operator, technician and producer display their production poses/tasks.
-11. Confirm the cast and crew remain on the set through lunch and normal shift boundaries until the film is complete.
-12. Confirm low-quality takes request no more than two retakes.
-13. Confirm each completed scene advances to the next scene and updates the scene counter.
-14. Confirm final completion shows the film quality and all scene results, returns actors to workstations and changes the slate to ФИЛЬМ ГОТОВ.
-15. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
+5. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The crew is dispatched automatically.
+6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while the technician prepares the set.
+7. When Rehearsal begins, confirm only actors needed in the current scene return to the pavilion and take their marks; other cast members keep roaming.
+8. Observe the technician move between prop marks during Set Dressing.
+9. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
+10. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
+11. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
+12. Confirm the director, camera operator, technician and producer display their production poses/tasks.
+13. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
+14. Confirm low-quality takes request no more than two retakes.
+15. Confirm each completed scene advances to the next scene and updates the scene counter.
+16. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
+17. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
 
 ## Explicit limitations
 
