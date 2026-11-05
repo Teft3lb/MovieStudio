@@ -85,7 +85,7 @@ Each scene's take quality is based on:
 - team energy, morale and stress;
 - seeded take variance;
 - a small retake improvement modifier;
-- a scene-specific set-dressing modifier derived from the purchased props.
+- a scene-specific set-dressing modifier derived from owned and missing required props. Missing set pieces lower scene quality but do not prevent production from starting.
 
 The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, set ID/title, installed prop IDs, set-dressing quality, final quality, retake count and elapsed production minutes. Scene setup plans are serialized with the production project so the chosen props do not change if the inventory changes later.
 

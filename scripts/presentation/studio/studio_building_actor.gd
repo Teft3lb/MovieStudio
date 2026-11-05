@@ -123,8 +123,8 @@ func get_scene_path(
 				continue
 			obstacles.append({
 				"center": Vector2(prop.position.x, prop.position.z),
-				"half_extents": Vector2(0.55, 0.55),
-				"clearance": 0.25,
+				"half_extents": Vector2(0.98, 0.80),
+				"clearance": 0.18,
 			})
 
 	var local_start: Vector3 = to_local(start_world_position)
@@ -150,16 +150,13 @@ func get_set_dressing_prop_count() -> int:
 
 func get_set_dressing_mark(prop_index: int) -> Vector3:
 	var positions: Array[Vector3] = [
-		Vector3(-5.2, 0.0, -2.6),
-		Vector3(5.2, 0.0, -2.6),
-		Vector3(-5.2, 0.0, 2.0),
-		Vector3(5.2, 0.0, 2.0),
+		Vector3(-4.0, 0.0, -4.0),
+		Vector3(-1.3, 0.0, -4.0),
+		Vector3(4.0, 0.0, -4.0),
+		Vector3(0.0, 0.0, -2.0),
 	]
 	var index: int = clampi(prop_index, 0, positions.size() - 1)
-	var spot: Vector3 = positions[index]
-	spot.x += 0.9 if spot.x < 0.0 else -0.9
-	spot.z += 0.9 if spot.z < 0.0 else -0.9
-	return to_global(spot)
+	return to_global(positions[index])
 
 
 func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
@@ -185,10 +182,10 @@ func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 			child.queue_free()
 		_active_set_scene_key = scene_key
 		var positions: Array[Vector3] = [
-			Vector3(-5.2, 0.0, -2.6),
-			Vector3(5.2, 0.0, -2.6),
-			Vector3(-5.2, 0.0, 2.0),
-			Vector3(5.2, 0.0, 2.0),
+			Vector3(-2.65, 0.0, -4.0),
+			Vector3(0.0, 0.0, -4.0),
+			Vector3(2.65, 0.0, -4.0),
+			Vector3(0.0, 0.0, -2.0),
 		]
 		for prop_index in range(mini(prop_ids.size(), positions.size())):
 			var prop_id: String = str(prop_ids[prop_index])
@@ -316,10 +313,10 @@ func get_scene_mark(
 	scene_index: int = 0
 ) -> Vector3:
 	var scene_marks: Array[Vector3] = [
-		Vector3(-3.0, 0.0, -3.35),
-		Vector3(-1.0, 0.0, -3.35),
-		Vector3(1.0, 0.0, -3.35),
-		Vector3(3.0, 0.0, -3.35),
+		Vector3(-3.0, 0.0, -2.8),
+		Vector3(-1.0, 0.0, -2.8),
+		Vector3(1.0, 0.0, -2.8),
+		Vector3(3.0, 0.0, -2.8),
 		Vector3(-2.2, 0.0, -1.85),
 		Vector3(0.0, 0.0, -1.85),
 		Vector3(2.2, 0.0, -1.85),

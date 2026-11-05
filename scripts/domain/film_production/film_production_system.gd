@@ -335,6 +335,32 @@ func _normalize_scene_setups(
 			var prop_id: String = str(prop_id_value)
 			if not prop_id.is_empty() and not normalized_props.has(prop_id):
 				normalized_props.append(prop_id)
+
+		var raw_required_prop_ids: Variant = setup.get(
+			"required_prop_ids",
+			normalized_props
+		)
+		var normalized_required_props: Array[String] = []
+		if raw_required_prop_ids is Array:
+			for prop_id_value in raw_required_prop_ids:
+				var prop_id: String = str(prop_id_value)
+				if (
+					not prop_id.is_empty()
+					and not normalized_required_props.has(prop_id)
+				):
+					normalized_required_props.append(prop_id)
+
+		var raw_missing_prop_ids: Variant = setup.get("missing_prop_ids", [])
+		var normalized_missing_props: Array[String] = []
+		if raw_missing_prop_ids is Array:
+			for prop_id_value in raw_missing_prop_ids:
+				var prop_id: String = str(prop_id_value)
+				if (
+					not prop_id.is_empty()
+					and not normalized_missing_props.has(prop_id)
+				):
+					normalized_missing_props.append(prop_id)
+
 		setup["scene_id"] = str(
 			setup.get("scene_id", scene.get("scene_id", ""))
 		)
@@ -343,6 +369,8 @@ func _normalize_scene_setups(
 			setup.get("set_title", "Нейтральная площадка")
 		)
 		setup["prop_ids"] = normalized_props
+		setup["required_prop_ids"] = normalized_required_props
+		setup["missing_prop_ids"] = normalized_missing_props
 		setup["setup_minutes"] = clampi(
 			int(setup.get(
 				"setup_minutes",
@@ -523,6 +551,8 @@ func _complete_current_scene(project: Variant, script: Variant) -> void:
 	var scene: Dictionary = get_current_scene(script, project)
 	var setup: Dictionary = project.get_current_scene_setup()
 	var setup_props: Array = setup.get("prop_ids", [])
+	var required_props: Array = setup.get("required_prop_ids", setup_props)
+	var missing_props: Array = setup.get("missing_prop_ids", [])
 	var scene_duration: int = int(project.current_scene_elapsed_minutes)
 	project.scene_results.append({
 		"scene_id": str(scene.get("scene_id", "")),
@@ -537,6 +567,8 @@ func _complete_current_scene(project: Variant, script: Variant) -> void:
 			setup.get("set_dressing_quality", 45.0)
 		),
 		"set_dressing_props": setup_props.duplicate(),
+		"required_prop_ids": required_props.duplicate(),
+		"missing_prop_ids": missing_props.duplicate(),
 		"quality": roundi(project.current_scene_quality),
 		"retakes": project.current_scene_retakes,
 		"production_minutes": scene_duration,

@@ -41,11 +41,11 @@ The UI disables already-purchased items and items the current budget cannot affo
 
 ## Scene matching
 
-For each scene, the catalog first checks its location text and then its action text. A deterministic Russian-language keyword map assigns the scene to one of the seven thematic groups.
+For each scene, the catalog checks location text first, then action text, and finally uses a genre-specific fallback group when the generated wording is not recognized. The keyword map covers the current ScriptGenerator location catalogue; specific locations take precedence over genre defaults.
 
-All owned props from the matched group are included in the scene setup. If the studio owns no props for that group, the scene uses the neutral stage. Props are reused across matching scenes and future films.
+Every catalog item in the matched group is a required scene prop. Owned items are included in the physical setup; missing items are retained in the plan and reduce set-dressing quality. A scene with no owned items still uses the neutral stage, but its missing requirements remain visible to the player. Props are reusable across matching scenes and future films.
 
-A scene setup contains its scene ID, matched set/group ID and localized title, source group ID, selected prop IDs, setup duration and set-dressing quality.
+A scene setup contains its scene ID, matched source group, visible set ID/title, installed prop IDs, required and missing prop IDs, setup duration and set-dressing quality.
 
 The current duration rule is two base minutes plus one minute per installed prop, capped at ten minutes. A neutral scene therefore still has a short two-minute equipment/setup phase. The plan is stored on FilmProductionProject and is not recalculated every minute.
 
@@ -61,11 +61,11 @@ Each scene follows:
 
 The technician remains a required crew member. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. Manual debug fast-forward snaps the active technician to the current installation mark at the end of each skipped minute, preserving deterministic phase progress.
 
-If a scene has no owned props for its location, the technician performs a short equipment/neutral-stage setup. There is no indefinite rehearsal or setup loop: every phase has a bounded duration and production transitions automatically.
+If a scene has no owned props for its location, the technician performs a short equipment/neutral-stage setup. Missing props never block production start: the player may proceed with a neutral or incomplete set, while the scene quality score is reduced for every missing required item. The pre-production panel previews missing catalog items, and the active production panel shows scene coverage and the current set-dressing quality. There is no indefinite rehearsal or setup loop: every phase has a bounded duration and production transitions automatically.
 
 ## Physical presentation
 
-The Sound Stage owns an Interior/SetDressing node. Each scene plan creates child Node3D instances at a small fixed set of installation positions. Their visual meshes are assembled from the existing box, cylinder and sphere primitives, so no external art assets are required for the first playable slice.
+The Sound Stage owns an Interior/SetDressing node. Each scene plan creates child Node3D instances at fixed installation positions on the central set platform, between the internal side walls. The technician marks are placed beside those pieces along the rear edge so the crew can reach them without crossing the set walls. Their visual meshes are assembled from the existing box, cylinder and sphere primitives, so no external art assets are required for the first playable slice.
 
 Props start hidden. During Set Dressing, the number of visible props follows phase progress. The same scene key prevents unnecessary recreation every game minute. When the scene changes, the old prop roots are replaced with the next scene's planned props.
 
@@ -83,9 +83,9 @@ This is a bounded solution for the current small studio map. It is not a general
 
 ## Quality contribution
 
-The scene setup stores a set-dressing quality score. The production quality calculation adds a small modifier based on the difference from the neutral baseline. The base weights for acting, directing, camera, technical work and script potential remain unchanged; purchased decorations are a polish bonus, not a replacement for staff skills or screenplay quality.
+The scene setup stores a set-dressing quality score starting from a neutral baseline of 45. Owned pieces add their catalog quality bonuses; each missing required piece applies a 10-point set-dressing penalty before the score is clamped. The production quality calculation applies the existing 14% scene modifier against the neutral baseline, so a missing set lowers the scene score without overpowering acting, directing, camera work or script potential. Production start remains available regardless of set coverage.
 
-Completed scene results retain the set ID/title, set-dressing quality and installed prop IDs for later editing, release and review systems.
+Completed scene results retain the set ID/title, set-dressing quality, installed prop IDs, required prop IDs and missing prop IDs for later editing, release and review systems.
 
 ## Tests
 
@@ -105,7 +105,7 @@ The navigation test checks detours around outdoor building footprints and Sound 
 
 - The prototype uses a separate 3,000-unit set budget; it is not connected to the future Studio Economy ledger.
 - Purchased inventory has serialization methods, but campaign SaveSystem integration does not yet exist.
-- Set matching is based on a small deterministic Russian-language keyword map.
+- Set matching is based on a deterministic Russian-language keyword map with genre fallbacks; more complex screenplay tags and custom set requirements remain future work.
 - All matching owned props are used automatically; there is no per-scene prop picker yet.
 - Prop positions are selected from a fixed layout; the player cannot manually place, rotate or remove set pieces.
 - Visuals use primitive meshes; imported models, production lighting, dressing presets and environment-specific wall kits are future work.

@@ -21,6 +21,17 @@ const GROUPS: Dictionary = {
 	"science_fiction": {"title": "Научная фантастика"},
 }
 
+const GENRE_DEFAULT_GROUPS: Dictionary = {
+	"drama": "family_home",
+	"comedy": "city_street",
+	"action": "industrial",
+	"romance": "family_home",
+	"mystery": "office",
+	"adventure": "forest",
+	"science_fiction": "science_fiction",
+}
+const MISSING_PROP_QUALITY_PENALTY: float = 10.0
+
 const PROPS: Dictionary = {
 	"street_storefront": {
 		"title": "Фасад магазина", "group_id": "city_street",
@@ -134,7 +145,10 @@ static func get_prop_definition(prop_id: String) -> Dictionary:
 	return PROPS[prop_id].duplicate(true)
 
 
-static func get_group_for_scene(scene: Dictionary) -> String:
+static func get_group_for_scene(
+	scene: Dictionary,
+	genre_id: String = ""
+) -> String:
 	var location_context: String = str(
 		scene.get("location", "")
 	).to_lower()
@@ -144,43 +158,75 @@ static func get_group_for_scene(scene: Dictionary) -> String:
 	var location_group: String = _match_scene_context(location_context)
 	if not location_group.is_empty():
 		return location_group
-	return _match_scene_context(action_context)
+
+	var action_group: String = _match_scene_context(action_context)
+	if not action_group.is_empty():
+		return action_group
+
+	return str(GENRE_DEFAULT_GROUPS.get(genre_id, ""))
 
 
 static func _match_scene_context(context: String) -> String:
-	if _contains_any(context, ["улиц", "город", "переул", "магаз", "площадь", "кафе", "ресторан", "вокзал"]):
-		return "city_street"
-	if _contains_any(context, ["дом", "гостин", "квартир", "семь", "спальн", "кухн", "отель"]):
-		return "family_home"
-	if _contains_any(context, ["лес", "полян", "сад", "парк", "природ", "дерев"]):
-		return "forest"
-	if _contains_any(context, ["маяк", "побереж", "берег", "море", "порт", "пляж"]):
-		return "lighthouse"
-	if _contains_any(context, ["завод", "склад", "фабрик", "промышлен", "цех"]):
-		return "industrial"
-	if _contains_any(context, ["офис", "полиц", "участок", "кабинет", "больниц"]):
-		return "office"
-	if _contains_any(context, ["космос", "лаборатор", "науч", "будущ", "космич"]):
+	if _contains_any(context, [
+		"космос", "орбит", "космич", "лаборатор", "науч",
+		"будущ", "исследовательск", "командн", "реактор", "станци",
+	]):
 		return "science_fiction"
+	if _contains_any(context, [
+		"промышленный порт", "грузовой порт", "портовый",
+		"завод", "склад", "фабрик", "промышлен", "цех", "верф", "док",
+	]):
+		return "industrial"
+	if _contains_any(context, [
+		"маяк", "побереж", "морск", "море", "берег", "пляж", "пристан",
+	]):
+		return "lighthouse"
+	if _contains_any(context, [
+		"дом", "гостин", "квартир", "семь", "спальн",
+		"кухн", "отел", "прачеч",
+	]):
+		return "family_home"
+	if _contains_any(context, [
+		"лес", "полян", "сад", "парк", "природ", "дерев",
+		"горн", "перевал", "храм", "пещер", "троп",
+	]):
+		return "forest"
+	if _contains_any(context, [
+		"офис", "полиц", "участок", "кабинет",
+		"больниц", "архив", "следств",
+	]):
+		return "office"
+	if _contains_any(context, [
+		"улиц", "город", "переул", "площад", "кафе", "ресторан",
+		"вокзал", "шоссе", "небоскр", "переход", "набереж",
+		"театр", "магаз",
+	]):
+		return "city_street"
 	return ""
 
 
 static func build_scene_setups(
 	scenes: Array,
-	owned_prop_ids: Array[String]
+	owned_prop_ids: Array[String],
+	genre_id: String = ""
 ) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for scene_value in scenes:
 		var scene: Dictionary = scene_value
-		var group_id: String = get_group_for_scene(scene)
+		var group_id: String = get_group_for_scene(scene, genre_id)
+		var required_props: Array[String] = get_prop_ids_for_group(group_id)
 		var selected_props: Array[String] = []
+		var missing_props: Array[String] = []
 		var quality: float = 45.0
-		for prop_id in get_prop_ids_for_group(group_id):
-			if not owned_prop_ids.has(prop_id):
-				continue
-			selected_props.append(prop_id)
-			var definition: Dictionary = get_prop_definition(prop_id)
-			quality += float(definition.get("quality_bonus", 0))
+		for prop_id in required_props:
+			if owned_prop_ids.has(prop_id):
+				selected_props.append(prop_id)
+				var definition: Dictionary = get_prop_definition(prop_id)
+				quality += float(definition.get("quality_bonus", 0))
+			else:
+				missing_props.append(prop_id)
+				quality -= MISSING_PROP_QUALITY_PENALTY
+
 		var set_id: String = group_id if not selected_props.is_empty() else "neutral"
 		var set_title: String = (
 			get_group_title(group_id)
@@ -193,8 +239,10 @@ static func build_scene_setups(
 			"source_group_id": group_id,
 			"set_title": set_title,
 			"prop_ids": selected_props,
+			"required_prop_ids": required_props,
+			"missing_prop_ids": missing_props,
 			"setup_minutes": 2 + selected_props.size(),
-			"set_dressing_quality": clampf(quality, 45.0, 80.0),
+			"set_dressing_quality": clampf(quality, 15.0, 80.0),
 		})
 	return result
 

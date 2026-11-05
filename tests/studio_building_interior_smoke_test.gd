@@ -207,6 +207,14 @@ func _test_sound_stage_interior() -> void:
 			not (set_dressing_root.get_child(0) as Node3D).visible,
 			"Purchased props must remain hidden until the technician installs them."
 		)
+	for prop_node in set_dressing_root.get_children():
+		var prop_root: Node3D = prop_node as Node3D
+		_expect(
+			absf(prop_root.position.x) < 3.9
+			and prop_root.position.z >= -4.2
+			and prop_root.position.z <= -1.0,
+			"Purchased props must be placed on the visible set platform, inside its side walls."
+		)
 	actor.call("set_scene_set_dressing", setup, 0.34)
 	var visible_prop_count: int = 0
 	for prop_node in set_dressing_root.get_children():
@@ -225,14 +233,18 @@ func _test_sound_stage_interior() -> void:
 		visible_prop_count == 3,
 		"All planned props must be visible when technician setup completes."
 	)
+	var set_start: Vector3 = actor.to_global(Vector3(0.0, 0.0, 1.4))
+	var set_target: Vector3 = actor.call("get_set_dressing_mark", 0)
 	var set_path: Array[Vector3] = actor.call(
 		"get_scene_path",
-		actor.to_global(Vector3(0.0, 0.0, 1.4)),
-		actor.call("get_set_dressing_mark", 0)
+		set_start,
+		set_target
 	)
 	_expect(
-		set_path.size() >= 3,
-		"Technicians must route around the stage side walls when installing props."
+		set_path.size() >= 2
+		and set_path.front().distance_to(set_start) <= 0.1
+		and set_path.back().distance_to(set_target) <= 0.1,
+		"Technicians must receive a valid route to each prop installation mark."
 	)
 
 

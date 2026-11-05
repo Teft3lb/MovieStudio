@@ -1261,7 +1261,8 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	production_note.text = (
 		"Каждая сцена проходит подготовку, монтаж декораций, репетицию, "
 		+ "съёмку и просмотр. Техник устанавливает купленный реквизит, "
-		+ "который можно переиспользовать в следующих сценах и фильмах."
+		+ "который можно переиспользовать в следующих сценах и фильмах. "
+		+ "Недостающий реквизит не блокирует съёмки, но снижает качество сцены."
 	)
 	production_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	production_note.add_theme_font_size_override("font_size", 10)
@@ -1503,7 +1504,8 @@ func _on_start_film_production_pressed() -> void:
 	)
 	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		_latest_script.scenes,
-		_set_inventory.get_owned_prop_ids()
+		_set_inventory.get_owned_prop_ids(),
+		str(_latest_script.genre_id)
 	)
 	var project: Variant = _film_production_system.call(
 		"start_project",
@@ -2653,6 +2655,42 @@ func _update_film_editing_ui() -> void:
 		]
 
 
+func _format_set_prop_titles(prop_ids: Array) -> String:
+	var titles: Array[String] = []
+	for prop_id_value in prop_ids:
+		var prop_id: String = str(prop_id_value)
+		var definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(prop_id)
+		titles.append(str(definition.get("title", prop_id)))
+	return ", ".join(titles)
+
+
+func _get_script_set_dressing_preview(script: Variant) -> Dictionary:
+	if script == null:
+		return {}
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		_set_inventory.get_owned_prop_ids(),
+		str(script.genre_id)
+	)
+	var missing_lookup: Dictionary = {}
+	var fully_dressed_scene_count: int = 0
+	for setup in scene_setups:
+		var missing_prop_ids: Array = setup.get("missing_prop_ids", [])
+		if missing_prop_ids.is_empty():
+			fully_dressed_scene_count += 1
+		for prop_id_value in missing_prop_ids:
+			missing_lookup[str(prop_id_value)] = true
+	var missing_prop_ids: Array[String] = []
+	for prop_id_value in missing_lookup.keys():
+		missing_prop_ids.append(str(prop_id_value))
+	missing_prop_ids.sort()
+	return {
+		"scene_count": scene_setups.size(),
+		"fully_dressed_scene_count": fully_dressed_scene_count,
+		"missing_prop_ids": missing_prop_ids,
+	}
+
+
 func _update_film_production_ui() -> void:
 	if not is_instance_valid(_film_production_status_label):
 		return
@@ -2683,6 +2721,30 @@ func _update_film_production_ui() -> void:
 				"Назначь режиссёра, оператора и техника, затем распредели "
 				+ "актёров по всем ролям сценария."
 			)
+		if _latest_script != null:
+			var set_preview: Dictionary = _get_script_set_dressing_preview(
+				_latest_script
+			)
+			var missing_prop_ids: Array = set_preview.get(
+				"missing_prop_ids",
+				[]
+			)
+			var set_preview_text: String = (
+				"Комплекты декораций: %d/%d сцен полностью обеспечены."
+				% [
+					int(set_preview.get("fully_dressed_scene_count", 0)),
+					int(set_preview.get("scene_count", 0)),
+				]
+			)
+			if not missing_prop_ids.is_empty():
+				set_preview_text += (
+					"\nНе хватает: %s. Съёмки не блокируются, "
+					+ "но отсутствие нужных декораций снизит качество сцен."
+				) % _format_set_prop_titles(missing_prop_ids)
+			else:
+				set_preview_text += "\nВсе необходимые декорации уже куплены."
+			_film_production_detail_label.text += "\n\n" + set_preview_text
+
 		if is_instance_valid(_film_production_start_button):
 			_film_production_start_button.text = "НАЧАТЬ СЪЁМКИ"
 			_film_production_start_button.disabled = not can_start
@@ -2710,6 +2772,8 @@ func _update_film_production_ui() -> void:
 		var dialogue: String = str(scene.get("dialogue", ""))
 		var setup: Dictionary = project.get_current_scene_setup()
 		var setup_props: Array = setup.get("prop_ids", [])
+		var required_props: Array = setup.get("required_prop_ids", setup_props)
+		var missing_props: Array = setup.get("missing_prop_ids", [])
 		var installed_prop_count: int = setup_props.size()
 		var phase: String = str(project.current_phase)
 		if phase == "preparation":
@@ -2719,9 +2783,21 @@ func _update_film_production_ui() -> void:
 				float(project.get_phase_progress_percent()) / 100.0
 				* float(setup_props.size())
 			)
+		var prop_coverage_text: String = (
+			"%d/%d" % [installed_prop_count, required_props.size()]
+			if not required_props.is_empty()
+			else "не требуется"
+		)
+		var prop_quality_text: String = "Качество декораций: %d/100" % roundi(
+			float(setup.get("set_dressing_quality", 45.0))
+		)
+		if not missing_props.is_empty():
+			prop_quality_text += "\nНе хватает: %s" % _format_set_prop_titles(
+				missing_props
+			)
 		_film_production_detail_label.text = (
 			"Фильм: %s\nСцена %d: %s · %s\n"
-			+ "Декорации: %s · реквизит %d/%d\n"
+			+ "Декорации: %s · реквизит %s\n%s\n"
 			+ "%s\n%s\n"
 			+ "Событие: %s\n"
 			+ "Этап: %d / %d мин · Всего прошло: %d мин · Осталось примерно: %d мин\n"
@@ -2732,8 +2808,8 @@ func _update_film_production_ui() -> void:
 			str(scene.get("beat", "")),
 			str(scene.get("location", "")),
 			str(setup.get("set_title", "Нейтральная площадка")),
-			installed_prop_count,
-			setup_props.size(),
+			prop_coverage_text,
+			prop_quality_text,
 			str(scene.get("action", "")),
 			dialogue,
 			str(project.last_activity_message),

@@ -48,6 +48,12 @@ func _run_tests() -> void:
 		"A complete script, cast and crew must be startable without waiting for a shift change."
 	)
 	_test_quick_production_pacing(script, crew_assignments, cast_assignments)
+	_test_missing_props_do_not_block_production(
+		system,
+		script,
+		crew_assignments,
+		cast_assignments
+	)
 	_test_scene_cast_resolution(system, script, project)
 	_test_production_pause(system, script, project)
 	_test_mid_phase_progress(system, script, project)
@@ -122,6 +128,42 @@ func _create_script() -> Variant:
 		},
 	]
 	return script
+
+
+func _test_missing_props_do_not_block_production(
+	system: RefCounted,
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var no_owned_props: Array[String] = []
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		no_owned_props,
+		str(script.genre_id)
+	)
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-NO-PROPS",
+		123456,
+		1,
+		8,
+		0,
+		scene_setups
+	)
+	_expect(
+		project != null,
+		"A film must remain startable when the studio has not purchased its required props."
+	)
+	_expect(
+		project != null
+		and project.scene_setups[0].get("missing_prop_ids", []).size() == 3
+		and float(project.scene_setups[0].get("set_dressing_quality", 100.0)) < 45.0,
+		"Missing set pieces must be recorded and lower scene set-dressing quality."
+	)
 
 
 func _test_scene_cast_resolution(
@@ -248,7 +290,8 @@ func _test_quick_production_pacing(
 	]
 	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		script.scenes,
-		owned_props
+		owned_props,
+		str(script.genre_id)
 	)
 	var project: Variant = system.call(
 		"start_project",
@@ -321,12 +364,16 @@ func _test_quick_production_pacing(
 	)
 	_expect(
 		str(project.scene_setups[0].get("set_id", "")) == "lighthouse"
-		and project.scene_setups[0].get("prop_ids", []).size() == 3,
+		and project.scene_setups[0].get("prop_ids", []).size() == 3
+		and project.scene_setups[0].get("required_prop_ids", []).size() == 3
+		and project.scene_setups[0].get("missing_prop_ids", []).is_empty(),
 		"Each scene must retain its reusable prop plan."
 	)
 	_expect(
 		str(project.scene_results[0].get("set_id", "")) == "lighthouse"
-		and project.scene_results[0].get("set_dressing_props", []).size() == 3,
+		and project.scene_results[0].get("set_dressing_props", []).size() == 3
+		and project.scene_results[0].get("required_prop_ids", []).size() == 3
+		and project.scene_results[0].get("missing_prop_ids", []).is_empty(),
 		"Completed scene results must record the installed set and props."
 	)
 
