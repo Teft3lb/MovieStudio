@@ -15,7 +15,7 @@ This slice deliberately stops when principal photography is complete. Editing, r
 - \`FilmProductionSystem\` owns deterministic production rules and phase transitions.
 - \`FilmProductionProject\` owns the runtime project state and its serializable representation.
 - \`StudioBuildingManager\` coordinates the active script, crew/cast selection, GameClock updates, production UI, stage presentation and off-camera crew staging.
-- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster.
+- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production readiness accepts an assigned crew member at their workstation, active scene mark or off-camera holding mark; it does not try to pull an actor out of an active scene route.
 - \`CharacterActor\` handles movement between the assigned workplace and a scene blocking mark.
 - \`CharacterVisual\` plays procedural acting and crew poses using the existing Character System v2 model.
 - \`StudioBuildingActor\` owns the physical scene marks, production slate and camera rigs.
@@ -124,7 +124,7 @@ Run with Godot 4.7.2 from the project root:
 
 All smoke-test scripts defer their test bodies until the SceneTree is ready. They share `smoke_test_base.gd`, which accumulates failed expectations and exits with code 1 instead of printing a false PASS.
 
-The production domain test covers role resolution, unavailable-crew pauses, technician-scaled installation/strike timing, project serialization, all phase transitions, retakes, final quality and completion. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers the warehouse, prop pickup/return visuals, phase-specific blocking marks, camera tracking and the production slate.
+The production domain test covers role resolution, unavailable-crew pauses and automatic recovery, technician-scaled installation/strike timing, project serialization, all phase transitions, retakes, final quality and completion. The production-session test verifies that active crew remain ready at their scene/holding marks instead of being incorrectly recalled to their desks. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers the warehouse, prop pickup/return visuals, phase-specific blocking marks, camera tracking and the production slate.
 
 ## Manual verification
 
@@ -143,6 +143,8 @@ The production domain test covers role resolution, unavailable-crew pauses, tech
 13. After the scene is accepted, observe Set Strike: technicians remove the pieces, carry them back to the warehouse and place them on the shelves. Confirm the stage is not cleared before the last prop is returned.
 14. Confirm the next scene does not begin until the previous set is cleared and the technicians return to their workstations.
 15. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
+16. Let the clock pass the end of the normal shift and reach 00:15 while a film is in progress. Confirm active crew at their production marks remain ready and the phase clock continues.
+17. Let the clock reach the next workday without restarting the film. Confirm the same scene, phase and set-logistics task continue, with no duplicated props or reset progress.
 16. Confirm low-quality takes request no more than two retakes.
 17. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
 18. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
@@ -161,3 +163,4 @@ The production domain test covers role resolution, unavailable-crew pauses, tech
 - Navigation uses grid-based obstacle avoidance for the current studio scale; it is not a full NavMesh or dynamic crowd-avoidance system.
 - Film projects and completed results are serializable domain objects but are not yet connected to campaign save/load.
 - Only one film production project is active at a time.
+- Staff housing is not implemented yet. Active production participants remain available at the Sound Stage outside normal shift hours; the future housing system will route them away from the stage, at which point production will wait for the required crew and cast to return.

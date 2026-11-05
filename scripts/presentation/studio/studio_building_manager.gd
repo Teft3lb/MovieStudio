@@ -1890,17 +1890,38 @@ func _dispatch_film_crew_to_stage() -> void:
 		var employee_id: String = str(
 			crew_assignments.get(profession_id, "")
 		)
-		if not employee_id.is_empty():
-			_character_manager.call(
-				"dispatch_employee_to_workplace",
-				employee_id
-			)
+		if employee_id.is_empty():
+			continue
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			employee_id
+		)
+		if (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_in_scene_performance"))
+		):
+			continue
+		_character_manager.call(
+			"dispatch_employee_to_workplace",
+			employee_id
+		)
 
 	var primary_technician_id: String = str(
 		crew_assignments.get("technician", "")
 	)
 	for technician_id in _active_production_technician_ids:
 		if technician_id == primary_technician_id:
+			continue
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			technician_id
+		)
+		if (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_in_scene_performance"))
+		):
 			continue
 		_character_manager.call(
 			"dispatch_employee_to_workplace",
@@ -1952,11 +1973,17 @@ func _advance_film_production() -> void:
 			_active_film_project.pause_reason = (
 				"Логистика реквизита остановлена: проверь склад и маршруты техников."
 			)
-		elif _set_logistics_phase == "set_dressing":
+		elif (
+			_set_logistics_phase == "set_dressing"
+			and not _are_set_logistics_tasks_complete()
+		):
 			_active_film_project.pause_reason = (
 				"Техники доставляют декорации со склада и устанавливают их на площадке."
 			)
-		elif _set_logistics_phase == "set_strike":
+		elif (
+			_set_logistics_phase == "set_strike"
+			and not _are_set_logistics_tasks_complete()
+		):
 			_active_film_project.pause_reason = (
 				"Техники снимают декорации и возвращают их на склад."
 			)
@@ -2036,14 +2063,30 @@ func _are_film_crew_ready() -> bool:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			return false
-		var at_workplace: bool = bool(
+		var ready: bool = bool(
+			_character_manager.call(
+				"is_employee_ready_for_production",
+				employee_id,
+				"sound_stage"
+			)
+		)
+		if ready:
+			continue
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			employee_id
+		)
+		if (
+			actor != null
+			and is_instance_valid(actor)
+			and not bool(actor.call("is_in_scene_performance"))
+			and not bool(actor.call("is_returning_to_workplace"))
+		):
 			_character_manager.call(
 				"dispatch_employee_to_workplace",
 				employee_id
 			)
-		)
-		if not at_workplace:
-			return false
+		return false
 	return true
 
 

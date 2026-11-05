@@ -362,6 +362,13 @@ func _test_production_pause(
 	project: Variant
 ) -> void:
 	var before: int = int(project.total_elapsed_minutes)
+	var saved_phase: String = str(project.current_phase)
+	var saved_phase_elapsed: int = int(project.phase_minutes_elapsed)
+	var saved_phase_duration: int = int(project.phase_duration_minutes)
+	var saved_scene_elapsed: int = int(project.current_scene_elapsed_minutes)
+	var saved_estimated_total: int = int(project.estimated_total_minutes)
+	var saved_pause_reason: String = str(project.pause_reason)
+	var saved_activity_message: String = str(project.last_activity_message)
 	var result: Dictionary = system.call(
 		"advance_minute",
 		project,
@@ -382,6 +389,28 @@ func _test_production_pause(
 		not str(project.pause_reason).is_empty(),
 		"Paused production must explain why it is waiting."
 	)
+	var resumed: Dictionary = system.call(
+		"advance_minute",
+		project,
+		script,
+		true,
+		true,
+		{}
+	)
+	_expect(
+		bool(resumed.get("advanced", false))
+		and int(project.total_elapsed_minutes) == before + 1
+		and str(project.pause_reason).is_empty(),
+		"Production must automatically resume from the same phase when the required crew becomes available again."
+	)
+	project.current_phase = saved_phase
+	project.phase_minutes_elapsed = saved_phase_elapsed
+	project.phase_duration_minutes = saved_phase_duration
+	project.current_scene_elapsed_minutes = saved_scene_elapsed
+	project.total_elapsed_minutes = before
+	project.estimated_total_minutes = saved_estimated_total
+	project.pause_reason = saved_pause_reason
+	project.last_activity_message = saved_activity_message
 
 
 

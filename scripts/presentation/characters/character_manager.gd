@@ -293,6 +293,25 @@ func is_employee_at_workplace(
 	return bool(actor.call("is_at_workplace"))
 
 
+func is_employee_ready_for_production(
+	employee_id: String,
+	building_type_id: String
+) -> bool:
+	if not is_employee_assigned_to_building(employee_id, building_type_id):
+		return false
+	var actor: Node = get_employee_actor(employee_id)
+	if actor == null:
+		return false
+	if bool(actor.call("is_returning_to_workplace")):
+		return false
+	if bool(actor.call("is_in_scene_performance")):
+		return (
+			bool(actor.call("is_at_scene_mark"))
+			or bool(actor.call("is_at_scene_hold_mark"))
+		)
+	return bool(actor.call("is_at_workplace"))
+
+
 func dispatch_employee_to_workplace(employee_id: String) -> bool:
 	if not is_instance_valid(_studio_building_manager):
 		return false

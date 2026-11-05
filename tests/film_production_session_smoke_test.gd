@@ -11,6 +11,29 @@ const FILM_PRODUCTION_PROJECT_SCRIPT = preload(
 )
 
 
+class StubProductionActor extends Node:
+	var at_workplace: bool = false
+	var in_scene_performance: bool = false
+	var at_scene_mark: bool = false
+	var at_scene_hold_mark: bool = false
+	var returning_to_workplace: bool = false
+
+	func is_at_workplace() -> bool:
+		return at_workplace
+
+	func is_in_scene_performance() -> bool:
+		return in_scene_performance
+
+	func is_at_scene_mark() -> bool:
+		return at_scene_mark
+
+	func is_at_scene_hold_mark() -> bool:
+		return at_scene_hold_mark
+
+	func is_returning_to_workplace() -> bool:
+		return returning_to_workplace
+
+
 func _initialize() -> void:
 	call_deferred("_run_tests")
 
@@ -31,6 +54,68 @@ func _run_tests() -> void:
 
 	var character_manager: Node = CHARACTER_MANAGER_SCRIPT.new()
 	character_manager.set("_studio_building_manager", studio_manager)
+	var production_actor := StubProductionActor.new()
+	character_manager.set("_workplace_assignments", {
+		"EMP-DIRECTOR": {
+			"building_id": "BUILDING-STAGE-01",
+			"building_type_id": "sound_stage",
+			"slot_index": 0,
+		}
+	})
+	character_manager.set("_employee_actors", {
+		"EMP-DIRECTOR": production_actor,
+	})
+
+	production_actor.in_scene_performance = true
+	production_actor.at_scene_mark = true
+	_expect(
+		bool(character_manager.call(
+			"is_employee_ready_for_production",
+			"EMP-DIRECTOR",
+			"sound_stage"
+		)),
+		"An assigned crew member at a scene mark must remain production-ready outside normal shift hours."
+	)
+	production_actor.at_scene_mark = false
+	production_actor.at_scene_hold_mark = true
+	_expect(
+		bool(character_manager.call(
+			"is_employee_ready_for_production",
+			"EMP-DIRECTOR",
+			"sound_stage"
+		)),
+		"An assigned crew member at an off-camera holding mark must remain production-ready."
+	)
+	production_actor.at_scene_hold_mark = false
+	_expect(
+		not bool(character_manager.call(
+			"is_employee_ready_for_production",
+			"EMP-DIRECTOR",
+			"sound_stage"
+		)),
+		"A crew member still moving to a scene mark must not be treated as ready."
+	)
+	production_actor.returning_to_workplace = true
+	_expect(
+		not bool(character_manager.call(
+			"is_employee_ready_for_production",
+			"EMP-DIRECTOR",
+			"sound_stage"
+		)),
+		"A crew member returning from a scene must finish the return before production resumes."
+	)
+	production_actor.returning_to_workplace = false
+	production_actor.in_scene_performance = false
+	production_actor.at_workplace = true
+	_expect(
+		bool(character_manager.call(
+			"is_employee_ready_for_production",
+			"EMP-DIRECTOR",
+			"sound_stage"
+		)),
+		"A crew member at their assigned Sound Stage workstation must be production-ready."
+	)
+	production_actor.at_workplace = false
 
 	_expect(
 		bool(studio_manager.call(
@@ -92,6 +177,7 @@ func _run_tests() -> void:
 		"Production priority must end when the film shoot is completed."
 	)
 
+	production_actor.free()
 	character_manager.free()
 	studio_manager.free()
 	_finish_test("FilmProductionSessionSmokeTest")
