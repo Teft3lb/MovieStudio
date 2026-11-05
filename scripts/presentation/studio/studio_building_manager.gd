@@ -2200,11 +2200,14 @@ func _release_cast_for_scene_preparation(
 
 	var scene_number: int = int(_active_film_project.current_scene_index) + 1
 	var processed_ids: Dictionary = {}
+	var crew_ids: Array = _active_film_project.crew_assignments.values()
 	for assigned_id_value in _active_film_project.cast_assignments.values():
 		var employee_id: String = str(assigned_id_value)
 		if employee_id.is_empty() or processed_ids.has(employee_id):
 			continue
 		processed_ids[employee_id] = true
+		if crew_ids.has(employee_id):
+			continue
 
 		var actor: Variant = _character_manager.call(
 			"get_employee_actor",
@@ -2213,22 +2216,10 @@ func _release_cast_for_scene_preparation(
 		if actor == null or not is_instance_valid(actor):
 			continue
 
-		if bool(actor.call("is_returning_to_workplace")):
-			pass
-		elif bool(actor.call("is_in_scene_performance")):
-			var workplace_position: Vector3 = actor.call(
-				"get_workplace_position"
-			)
-			var return_path: Array[Vector3] = get_scene_path(
-				stage_id,
-				actor.global_position,
-				workplace_position
-			)
-			if return_path.is_empty():
-				actor.call("leave_workplace")
-			else:
-				actor.call("return_to_workplace", return_path)
-		elif bool(actor.call("is_leaving_workplace")):
+		if (
+			bool(actor.call("is_returning_to_workplace"))
+			or bool(actor.call("is_leaving_workplace"))
+		):
 			pass
 		elif not str(actor.call("get_workplace_building_id")).is_empty():
 			actor.call("leave_workplace")
@@ -2251,9 +2242,19 @@ func _move_stage_bystanders_off_camera(
 	var all_clear: bool = true
 	var current_off_camera_ids: Array[String] = []
 	var hold_slot: int = 0
+	var cast_ids: Array = _active_film_project.cast_assignments.values()
+	var crew_ids: Array = _active_film_project.crew_assignments.values()
 	for employee in _get_assigned_staff(stage_id):
 		var employee_id: String = str(employee.id)
-		if employee_id.is_empty() or performer_ids.has(employee_id):
+		var is_cast_only: bool = (
+			cast_ids.has(employee_id)
+			and not crew_ids.has(employee_id)
+		)
+		if (
+			employee_id.is_empty()
+			or performer_ids.has(employee_id)
+			or is_cast_only
+		):
 			continue
 		var actor: Variant = _character_manager.call(
 			"get_employee_actor",

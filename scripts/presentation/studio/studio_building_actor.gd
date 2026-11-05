@@ -344,14 +344,14 @@ func get_scene_mark(
 
 func get_scene_hold_mark(slot_index: int) -> Vector3:
 	var hold_marks: Array[Vector3] = [
-		Vector3(-5.8, 0.0, 4.5),
-		Vector3(-4.2, 0.0, 4.7),
-		Vector3(-2.8, 0.0, 4.8),
-		Vector3(-1.4, 0.0, 4.9),
-		Vector3(1.4, 0.0, 4.9),
-		Vector3(2.8, 0.0, 4.8),
-		Vector3(4.2, 0.0, 4.7),
-		Vector3(5.8, 0.0, 4.5),
+		Vector3(-4.8, 0.0, 4.3),
+		Vector3(-3.5, 0.0, 4.5),
+		Vector3(-2.2, 0.0, 4.7),
+		Vector3(-0.9, 0.0, 4.8),
+		Vector3(0.9, 0.0, 4.8),
+		Vector3(2.2, 0.0, 4.7),
+		Vector3(3.5, 0.0, 4.5),
+		Vector3(4.8, 0.0, 4.3),
 	]
 	var normalized_index: int = posmod(slot_index, hold_marks.size())
 	var row_index: int = floori(float(slot_index) / float(hold_marks.size()))
