@@ -68,13 +68,27 @@ func _test_off_shift_crew_returns_to_stage() -> void:
 	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(actor)
 	var initial_position: Vector3 = Vector3(6.0, 0.0, 5.0)
+	var initial_waypoints: Array[Vector3] = [
+		initial_position,
+		initial_position + Vector3.RIGHT,
+	]
 	actor.call(
 		"setup",
 		employee,
-		[initial_position, initial_position + Vector3.RIGHT],
+		initial_waypoints,
 		clock,
 		2.0
 	)
+	var initialized_visual: Node = actor.get_node_or_null("CharacterVisual")
+	_expect(
+		actor.get("character_data") == employee
+		and initialized_visual != null,
+		"CharacterActor.setup must initialize the employee and visual before workplace dispatch."
+	)
+	if actor.get("character_data") != employee or initialized_visual == null:
+		actor.free()
+		clock.free()
+		return
 	actor.global_position = initial_position
 
 	var fake_building_manager := FakeWorkplaceManager.new()
@@ -130,6 +144,8 @@ func _test_off_shift_crew_returns_to_stage() -> void:
 	)
 	character_manager.free()
 	fake_building_manager.free()
+	actor.free()
+	clock.free()
 
 
 func _test_character_moves_and_performs_scene() -> void:
@@ -160,6 +176,16 @@ func _test_character_moves_and_performs_scene() -> void:
 		clock,
 		2.0
 	)
+	var initialized_visual: Node = actor.get_node_or_null("CharacterVisual")
+	_expect(
+		actor.get("character_data") == employee
+		and initialized_visual != null,
+		"CharacterActor.setup must initialize the employee and visual before scene performance."
+	)
+	if actor.get("character_data") != employee or initialized_visual == null:
+		actor.free()
+		clock.free()
+		return
 	var route: Array[Vector3] = [
 		Vector3(0.0, 0.0, 0.0),
 		Vector3(0.0, 0.0, -1.0),
@@ -272,3 +298,5 @@ func _test_character_moves_and_performs_scene() -> void:
 		not bool(actor.call("is_scene_animation_active")),
 		"The scene performance animation must stop after returning to work."
 	)
+	actor.free()
+	clock.free()
