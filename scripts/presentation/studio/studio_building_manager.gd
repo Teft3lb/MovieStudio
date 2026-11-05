@@ -57,6 +57,11 @@ var _film_production_system: RefCounted
 var _film_editing_system: RefCounted
 var _navigation_system: RefCounted
 var _set_inventory: Variant
+var _off_camera_employee_ids: Array[String] = []
+var _decor_shop_group_id: String = ""
+var _decor_shop_group_option: OptionButton
+var _decor_shop_budget_label: Label
+var _decor_shop_items: VBoxContainer
 var _active_set_dressing_technician_id: String = ""
 var _active_writing_project: Variant
 var _active_film_project: Variant
@@ -287,6 +292,13 @@ func get_set_dressing_mark(building_id: String, prop_index: int) -> Vector3:
 	return actor.call("get_set_dressing_mark", prop_index)
 
 
+func get_scene_hold_mark(building_id: String, slot_index: int) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	return actor.call("get_scene_hold_mark", slot_index)
+
+
 func get_scene_focus_point(building_id: String) -> Vector3:
 	var actor: Variant = _building_actors.get(building_id)
 	if actor == null or not is_instance_valid(actor):
@@ -469,6 +481,7 @@ func _build_ui() -> void:
 	build_layout.add_child(_placement_hint_label)
 
 	_build_building_detail_panel()
+	_build_decor_shop_panel(studio_hud)
 
 
 func _build_building_detail_panel() -> void:
@@ -1387,8 +1400,6 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 		no_script_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_building_detail_layout.add_child(no_script_label)
 
-	_build_set_dressing_shop()
-
 	_film_production_status_label = Label.new()
 	_film_production_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_film_production_status_label.add_theme_font_size_override("font_size", 14)
@@ -1427,54 +1438,125 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	_update_film_production_ui()
 
 
-func _build_set_dressing_shop() -> void:
-	var separator := HSeparator.new()
-	_building_detail_layout.add_child(separator)
+func _build_decor_shop_panel(studio_hud: Node) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "DecorShopPanel"
+	studio_hud.call(
+		"register_workspace_panel",
+		"decor_shop",
+		"Магазин декораций",
+		panel
+	)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	studio_hud.call("configure_scroll_container", scroll)
+	panel.add_child(scroll)
+
+	var layout := VBoxContainer.new()
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_theme_constant_override("separation", 9)
+	scroll.add_child(layout)
 
 	var heading := Label.new()
-	heading.text = "МАСТЕРСКАЯ ДЕКОРАЦИЙ"
-	heading.add_theme_font_size_override("font_size", 14)
-	_building_detail_layout.add_child(heading)
+	heading.text = "МАГАЗИН ДЕКОРАЦИЙ"
+	heading.add_theme_font_size_override("font_size", 15)
+	layout.add_child(heading)
 
-	var budget_label := Label.new()
-	budget_label.text = "Бюджет реквизита: %d усл. ед.\nКупленные элементы можно использовать в любом количестве фильмов." % int(_set_inventory.budget)
-	budget_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_building_detail_layout.add_child(budget_label)
+	var description := Label.new()
+	description.text = (
+		"Покупай элементы для разных типов сцен. "
+		+ "Декорации не расходуются и используются повторно в следующих фильмах."
+	)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	layout.add_child(description)
 
-	for group_id in SET_CATALOG_SCRIPT.get_group_ids():
-		var group_heading := Label.new()
-		group_heading.text = SET_CATALOG_SCRIPT.get_group_title(group_id)
-		group_heading.add_theme_font_size_override("font_size", 12)
-		_building_detail_layout.add_child(group_heading)
+	_decor_shop_budget_label = Label.new()
+	_decor_shop_budget_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	layout.add_child(_decor_shop_budget_label)
 
-		for prop_id in SET_CATALOG_SCRIPT.get_prop_ids_for_group(group_id):
-			var definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(prop_id)
-			var row := HBoxContainer.new()
-			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_decor_shop_group_option = OptionButton.new()
+	_decor_shop_group_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.add_child(_decor_shop_group_option)
+	var group_ids: Array[String] = SET_CATALOG_SCRIPT.get_group_ids()
+	for group_id in group_ids:
+		_decor_shop_group_option.add_item(
+			SET_CATALOG_SCRIPT.get_group_title(group_id)
+		)
+	if not group_ids.is_empty():
+		_decor_shop_group_id = group_ids[0]
+		_decor_shop_group_option.select(0)
+	_decor_shop_group_option.item_selected.connect(
+		_on_decor_shop_group_selected
+	)
 
-			var prop_label := Label.new()
-			prop_label.text = "%s · %d" % [
-				str(definition.get("title", prop_id)),
-				int(definition.get("price", 0)),
-			]
-			prop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			prop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			row.add_child(prop_label)
+	_decor_shop_items = VBoxContainer.new()
+	_decor_shop_items.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_decor_shop_items.add_theme_constant_override("separation", 7)
+	layout.add_child(_decor_shop_items)
+	_refresh_decor_shop_panel()
 
-			var purchase_button := Button.new()
-			if _set_inventory.is_owned(prop_id):
-				purchase_button.text = "КУПЛЕНО"
-				purchase_button.disabled = true
-			else:
-				purchase_button.text = "КУПИТЬ"
-				purchase_button.disabled = (
-					int(_set_inventory.budget) < int(definition.get("price", 0))
-				)
-				purchase_button.pressed.connect(
-					_on_buy_set_prop_pressed.bind(prop_id)
-				)
-			row.add_child(purchase_button)
-			_building_detail_layout.add_child(row)
+
+func _on_decor_shop_group_selected(selected_index: int) -> void:
+	var group_ids: Array[String] = SET_CATALOG_SCRIPT.get_group_ids()
+	if selected_index < 0 or selected_index >= group_ids.size():
+		return
+	_decor_shop_group_id = group_ids[selected_index]
+	_refresh_decor_shop_panel()
+
+
+func _refresh_decor_shop_panel() -> void:
+	if not is_instance_valid(_decor_shop_items):
+		return
+	_decor_shop_budget_label.text = (
+		"Бюджет декораций: %d усл. ед. · купленные элементы доступны без ограничений."
+		% int(_set_inventory.budget)
+	)
+	for child in _decor_shop_items.get_children():
+		_decor_shop_items.remove_child(child)
+		child.queue_free()
+
+	for prop_id in SET_CATALOG_SCRIPT.get_prop_ids_for_group(
+		_decor_shop_group_id
+	):
+		var definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(
+			prop_id
+		)
+		var row := PanelContainer.new()
+		var row_layout := HBoxContainer.new()
+		row_layout.add_theme_constant_override("separation", 8)
+		row.add_child(row_layout)
+
+		var prop_label := Label.new()
+		prop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		prop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		prop_label.text = "%s\nКачество сцены: +%d\nЦена: %d усл. ед." % [
+			str(definition.get("title", prop_id)),
+			int(definition.get("quality_bonus", 0)),
+			int(definition.get("price", 0)),
+		]
+		row_layout.add_child(prop_label)
+
+		var purchase_button := Button.new()
+		purchase_button.custom_minimum_size = Vector2(104.0, 38.0)
+		if _set_inventory.is_owned(prop_id):
+			purchase_button.text = "КУПЛЕНО"
+			purchase_button.disabled = true
+		else:
+			purchase_button.text = "КУПИТЬ"
+			purchase_button.disabled = (
+				int(_set_inventory.budget)
+				< int(definition.get("price", 0))
+			)
+			purchase_button.pressed.connect(
+				_on_buy_set_prop_pressed.bind(prop_id)
+			)
+		row_layout.add_child(purchase_button)
+		_decor_shop_items.add_child(row)
+
+
+
 
 
 func _on_buy_set_prop_pressed(prop_id: String) -> void:
@@ -1488,7 +1570,7 @@ func _on_buy_set_prop_pressed(prop_id: String) -> void:
 	))
 	if purchased:
 		_refresh_active_scene_set_dressing_if_unstarted()
-		_refresh_building_detail()
+		_refresh_decor_shop_panel()
 
 
 func _refresh_active_scene_set_dressing_if_unstarted() -> void:
@@ -1889,6 +1971,7 @@ func _sync_film_scene_performance() -> bool:
 		var idle_stage_id: String = _get_sound_stage_building_id()
 		if not idle_stage_id.is_empty():
 			set_stage_camera_target(idle_stage_id, Vector3.ZERO, false)
+			_restore_off_camera_staff(idle_stage_id)
 		for employee_id in _active_scene_performer_ids:
 			var actor: Variant = _character_manager.call(
 				"get_employee_actor",
@@ -1932,6 +2015,7 @@ func _sync_film_scene_performance() -> bool:
 
 	var current_phase: String = str(_active_film_project.current_phase)
 	if current_phase in ["preparation", "set_dressing"]:
+		_restore_off_camera_staff(stage_id)
 		_release_cast_for_scene_preparation(stage_id, current_phase)
 		set_stage_camera_target(
 			stage_id,
@@ -2097,7 +2181,11 @@ func _sync_film_scene_performance() -> bool:
 				previous_actor.call("return_to_workplace", previous_return_path)
 
 	_active_scene_performer_ids = new_active_ids
-	return all_at_marks
+	var bystanders_ready: bool = _move_stage_bystanders_off_camera(
+		stage_id,
+		performer_ids
+	)
+	return all_at_marks and bystanders_ready
 
 
 func _release_cast_for_scene_preparation(
@@ -2152,6 +2240,138 @@ func _release_cast_for_scene_preparation(
 		)
 
 	_active_scene_performer_ids.clear()
+
+
+func _move_stage_bystanders_off_camera(
+	stage_id: String,
+	performer_ids: Array
+) -> bool:
+	if not is_instance_valid(_character_manager):
+		return false
+	var all_clear: bool = true
+	var current_off_camera_ids: Array[String] = []
+	var hold_slot: int = 0
+	for employee in _get_assigned_staff(stage_id):
+		var employee_id: String = str(employee.id)
+		if employee_id.is_empty() or performer_ids.has(employee_id):
+			continue
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			employee_id
+		)
+		if actor == null or not is_instance_valid(actor):
+			continue
+		if str(actor.call("get_workplace_building_id")) != stage_id:
+			continue
+
+		var hold_mark: Vector3 = get_scene_hold_mark(stage_id, hold_slot)
+		hold_slot += 1
+		current_off_camera_ids.append(employee_id)
+		var already_at_mark: bool = (
+			bool(actor.call("is_at_scene_hold_mark"))
+			and actor.global_position.distance_to(hold_mark) <= 0.25
+		)
+		if not already_at_mark and not bool(actor.call("is_off_camera")):
+			var movement_path: Array[Vector3] = get_scene_path(
+				stage_id,
+				actor.global_position,
+				hold_mark
+			)
+			if movement_path.is_empty():
+				all_clear = false
+				continue
+			actor.call("move_to_scene_hold", hold_mark, movement_path)
+			_character_manager.call(
+				"set_employee_task",
+				employee_id,
+				"Уходит за кадр перед съёмкой"
+			)
+
+		if _game_clock.is_manual_fast_forward:
+			actor.call("snap_to_scene_hold_mark")
+		if not bool(actor.call("is_at_scene_hold_mark")):
+			all_clear = false
+		else:
+			_character_manager.call(
+				"set_employee_task",
+				employee_id,
+				"За кадром во время съёмки"
+			)
+
+	for previous_id in _off_camera_employee_ids:
+		if current_off_camera_ids.has(previous_id):
+			continue
+		var previous_actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			previous_id
+		)
+		if (
+			previous_actor == null
+			or not is_instance_valid(previous_actor)
+			or not bool(previous_actor.call("is_off_camera"))
+		):
+			continue
+		if str(previous_actor.call("get_workplace_building_id")) != stage_id:
+			previous_actor.call("leave_workplace")
+		else:
+			var return_path: Array[Vector3] = get_scene_path(
+				stage_id,
+				previous_actor.global_position,
+				previous_actor.call("get_workplace_position")
+			)
+			if return_path.is_empty():
+				previous_actor.call("leave_workplace")
+			else:
+				previous_actor.call("return_to_workplace", return_path)
+		_character_manager.call("clear_employee_task", previous_id)
+
+	_off_camera_employee_ids = current_off_camera_ids
+	return all_clear
+
+
+func _restore_off_camera_staff(stage_id: String) -> void:
+	if _off_camera_employee_ids.is_empty():
+		return
+	if not is_instance_valid(_character_manager):
+		_off_camera_employee_ids.clear()
+		return
+	for employee_id in _off_camera_employee_ids:
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			employee_id
+		)
+		if (
+			actor == null
+			or not is_instance_valid(actor)
+			or not bool(actor.call("is_off_camera"))
+		):
+			continue
+		if str(actor.call("get_workplace_building_id")) != stage_id:
+			actor.call("leave_workplace")
+		else:
+			var return_path: Array[Vector3] = get_scene_path(
+				stage_id,
+				actor.global_position,
+				actor.call("get_workplace_position")
+			)
+			if return_path.is_empty():
+				actor.call("leave_workplace")
+			else:
+				actor.call("return_to_workplace", return_path)
+		_character_manager.call("clear_employee_task", employee_id)
+	_off_camera_employee_ids.clear()
+
+
+func is_employee_off_camera(employee_id: String) -> bool:
+	if not is_instance_valid(_character_manager):
+		return false
+	var actor: Node = _character_manager.call(
+		"get_employee_actor",
+		employee_id
+	)
+	if actor == null or not actor.has_method("is_off_camera"):
+		return false
+	return bool(actor.call("is_off_camera"))
 
 
 func _sync_film_set_dressing() -> void:

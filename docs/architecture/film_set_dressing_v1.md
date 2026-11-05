@@ -16,14 +16,14 @@ The player does not manually place every object in this slice. The focus is a vi
 - **StudioSetInventory** owns the prototype prop budget and purchased prop IDs. Purchased props are reusable and are not consumed by production.
 - **FilmProductionSystem** normalizes one setup plan per scripted scene, includes setup time in the production estimate, advances the set-dressing phase and records the used set and props in the completed scene result.
 - **FilmProductionProject** serializes each scene setup plan. A plan can be refreshed during Preparation and until the first Set Dressing minute is processed.
-- **StudioBuildingManager** provides the Set Dressing Workshop UI, builds scene plans from the current inventory and coordinates technician movement.
+- **StudioBuildingManager** provides the dedicated Decor Shop workspace, builds scene plans from the current inventory and coordinates technician movement and off-camera crew staging.
 - **StudioBuildingActor** owns the physical set-dressing root, creates prop meshes, progressively reveals installed pieces and provides navigation marks.
 - **StudioNavigationSystem** builds obstacle-aware paths for outdoor workplace travel and movement inside the Sound Stage.
 - **CharacterActor** follows supplied scene paths; **CharacterVisual** provides a distinct set-piece installation pose.
 
 ## The Set Dressing Workshop
 
-The Sound Stage inspector exposes seven themed groups:
+The standalone **Decor Shop** workspace exposes seven themed groups. It is available from the bottom navigation and is not embedded in the Sound Stage inspector, so players can browse and buy reusable pieces without first selecting a building:
 
 | Set group | Example pieces |
 |---|---|
@@ -59,7 +59,7 @@ Each scene follows:
 4. **Shooting** — actors perform their generated action/dialogue; camera rigs track the blocking.
 5. **Review** — the director reviews the take and production quality is calculated.
 
-The technician remains a required crew member. Production routes the director, camera operator and technician back to their Sound Stage workstations regardless of shift state; cast members are routed to the stage before moving to their blocking marks. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. Manual debug fast-forward snaps the active technician to the current installation mark at the end of each skipped minute, preserving deterministic phase progress.
+The technician remains a required crew member. Production routes the director, camera operator and technician back to their Sound Stage workstations regardless of shift state; cast members are routed to the stage before moving to their blocking marks. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. During Rehearsal, Shooting and Review, employees assigned to the Sound Stage who are not performing in the current scene move to holding marks behind the camera line. They remain part of the stage roster, receive an explicit off-camera task/status and return to their workstations during the next Preparation phase or when production ends. Manual debug fast-forward snaps off-camera staff to their holding marks, preserving deterministic phase progress.
 
 If a scene has no owned props for its location, the technician performs a short equipment/neutral-stage setup. Missing props never block production start: the player may proceed with a neutral or incomplete set, while the scene quality score is reduced for every missing required item. The pre-production panel previews missing catalog items, and the active production panel shows scene coverage and the current set-dressing quality. There is no indefinite rehearsal or setup loop: every phase has a bounded duration and production transitions automatically.
 
@@ -99,7 +99,7 @@ Run from the project root with Godot 4.7.2:
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 ~~~
 
-The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, duplicate/invalid purchases, serialization, scene matching and reusable prop plans. The production test checks the bounded Set Dressing phase, estimates, project serialization and recorded scene props. The interior test checks physical prop creation and progressive visibility. The performance test checks speaking mouth motion.
+The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, duplicate/invalid purchases, serialization, scene matching and reusable prop plans. The production test checks the bounded Set Dressing phase, estimates, project serialization and recorded scene props. The interior test checks physical prop creation, progressive visibility and safe off-camera holding marks. The performance test checks speaking mouth motion, plus a stage employee walking behind the camera and returning to the workstation.
 
 ## Explicit limitations
 

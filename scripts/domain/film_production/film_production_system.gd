@@ -190,7 +190,7 @@ func advance_minute(
 		"review",
 	]
 	if cast_required and not cast_ready:
-		project.pause_reason = "Ожидает актёров на съёмочных позициях."
+		project.pause_reason = "Ожидает актёров на позициях и освобождения кадра."
 		project.last_activity_message = project.pause_reason
 		return _empty_advance_result()
 

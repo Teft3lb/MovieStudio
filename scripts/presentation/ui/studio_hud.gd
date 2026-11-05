@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const SECTION_ORDER: Array[String] = [
 	"studio",
+	"decor_shop",
 	"employees",
 	"market",
 	"developer",
@@ -413,6 +414,8 @@ func _get_navigation_label(section_id: String, fallback_title: String) -> String
 	match section_id:
 		"studio":
 			return "СТУДИЯ"
+		"decor_shop":
+			return "ДЕКОРАЦИИ"
 		"employees":
 			return "ПЕРСОНАЛ"
 		"market":

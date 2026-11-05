@@ -139,6 +139,20 @@ func _is_active_production_participant(employee_id: String) -> bool:
 	)
 
 
+func _is_employee_off_camera(employee_id: String) -> bool:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _studio_building_manager.has_method("is_employee_off_camera")
+	):
+		return false
+	return bool(
+		_studio_building_manager.call(
+			"is_employee_off_camera",
+			employee_id
+		)
+	)
+
+
 func _should_leave_workplace(
 	employee_id: String,
 	work_state: String,
@@ -146,6 +160,8 @@ func _should_leave_workplace(
 ) -> bool:
 	if assignment_is_empty:
 		return true
+	if _is_employee_off_camera(employee_id):
+		return false
 	if work_state == "working":
 		return false
 	return not _is_active_production_participant(employee_id)
@@ -256,6 +272,16 @@ func is_employee_at_workplace(
 		return false
 	var employee: Variant = _find_employee(employee_id)
 	if (
+		actor.has_method("is_off_camera")
+		and bool(actor.call("is_off_camera"))
+	):
+		return bool(actor.call("is_at_scene_hold_mark"))
+	if (
+		actor.has_method("is_returning_to_workplace")
+		and bool(actor.call("is_returning_to_workplace"))
+	):
+		return false
+	if (
 		_game_clock.is_manual_fast_forward
 		and employee != null
 		and (
@@ -296,6 +322,16 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		actor.call("get_workplace_building_id")
 	)
 	if current_building_id == building_id:
+		if (
+			actor.has_method("is_off_camera")
+			and bool(actor.call("is_off_camera"))
+		):
+			return (
+				bool(actor.call("is_at_scene_hold_mark"))
+				or _is_active_production_participant(employee_id)
+			)
+		if bool(actor.call("is_returning_to_workplace")):
+			return false
 		if bool(actor.call("is_at_workplace")):
 			return true
 		if bool(actor.call("is_leaving_workplace")):
@@ -1043,6 +1079,7 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 		if actor == null or not is_instance_valid(actor):
 			continue
 
+		var is_off_camera: bool = _is_employee_off_camera(employee_id)
 		var is_active_participant: bool = _is_active_production_participant(
 			employee_id
 		)
@@ -1059,7 +1096,9 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 				)
 			)
 		)
-		if is_waiting_for_scene:
+		if is_off_camera:
+			actor.call("snap_to_scene_hold_mark")
+		elif is_waiting_for_scene:
 			actor.call("snap_outside_workplace")
 		elif bool(actor.call("is_in_scene_performance")):
 			actor.call("snap_to_scene_mark")
@@ -1199,6 +1238,13 @@ func _get_production_participant_status(employee_id: String) -> String:
 	var actor: Node = get_employee_actor(employee_id)
 	if actor == null:
 		return "Съёмочная смена"
+	if _is_employee_off_camera(employee_id):
+		if (
+			actor.has_method("is_at_scene_hold_mark")
+			and bool(actor.call("is_at_scene_hold_mark"))
+		):
+			return "За кадром"
+		return "Уходит за кадр"
 	if (
 		is_instance_valid(_studio_building_manager)
 		and _studio_building_manager.has_method("is_employee_waiting_for_scene")
@@ -1233,7 +1279,10 @@ func _refresh_roster() -> void:
 
 		var needs: Dictionary = employee.needs
 		var work_state_title: String = employee.get_work_state_title()
-		if _is_active_production_participant(employee_id):
+		if (
+			_is_active_production_participant(employee_id)
+			or _is_employee_off_camera(employee_id)
+		):
 			work_state_title = _get_production_participant_status(
 				employee_id
 			)

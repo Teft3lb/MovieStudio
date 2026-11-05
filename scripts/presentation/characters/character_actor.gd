@@ -17,6 +17,7 @@ var _scene_path: Array[Vector3] = []
 var _scene_path_index: int = 0
 var _scene_performance_active: bool = false
 var _scene_returning_to_workplace: bool = false
+var _scene_hold_active: bool = false
 var _scene_is_moving: bool = false
 var _scene_target_position: Vector3 = Vector3.ZERO
 var _scene_focus_position: Vector3 = Vector3.ZERO
@@ -153,6 +154,7 @@ func start_scene_performance(
 	)
 	_scene_performance_active = true
 	_scene_returning_to_workplace = false
+	_scene_hold_active = false
 	_scene_target_position = target_position
 	_scene_focus_position = focus_position
 	_scene_action_id = action_id
@@ -192,6 +194,68 @@ func set_scene_performance_action(
 		_apply_scene_pose()
 
 
+func move_to_scene_hold(
+	target_position: Vector3,
+	movement_path: Array[Vector3] = []
+) -> void:
+	if not _has_workplace_destination:
+		return
+	if (
+		_scene_hold_active
+		and not _scene_returning_to_workplace
+		and _scene_target_position.distance_to(target_position) <= 0.2
+	):
+		return
+	_scene_performance_active = true
+	_scene_returning_to_workplace = false
+	_scene_hold_active = true
+	_scene_target_position = target_position
+	_scene_focus_position = target_position + Vector3.RIGHT
+	_scene_action_id = ""
+	_scene_dialogue = ""
+	_set_scene_dialogue("")
+	_scene_is_moving = global_position.distance_to(target_position) > 0.25
+	_scene_path = movement_path.duplicate()
+	if _scene_path.is_empty():
+		_scene_path.append(target_position)
+	_scene_path_index = 0
+	while (
+		_scene_path_index < _scene_path.size()
+		and global_position.distance_to(_scene_path[_scene_path_index]) <= 0.25
+	):
+		_scene_path_index += 1
+	_is_at_workplace = not _scene_is_moving
+	if _scene_is_moving:
+		_set_walking(true)
+	else:
+		_set_walking(false)
+		if is_instance_valid(_visual):
+			_visual.call("set_performance_action", "")
+
+
+func snap_to_scene_hold_mark() -> void:
+	if not _scene_hold_active or _scene_returning_to_workplace:
+		return
+	global_position = _scene_target_position
+	_scene_is_moving = false
+	_is_at_workplace = true
+	_set_walking(false)
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", "")
+
+
+func is_off_camera() -> bool:
+	return _scene_hold_active and not _scene_returning_to_workplace
+
+
+func is_at_scene_hold_mark() -> bool:
+	return (
+		_scene_hold_active
+		and not _scene_returning_to_workplace
+		and not _scene_is_moving
+	)
+
+
 func set_production_action(action_id: String) -> void:
 	_production_action_id = action_id
 	if not is_instance_valid(_visual):
@@ -215,6 +279,7 @@ func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
 	var last_index: int = _workplace_commute_path.size() - 1
 	_scene_performance_active = true
 	_scene_returning_to_workplace = true
+	_scene_hold_active = false
 	_scene_is_moving = true
 	_scene_target_position = _workplace_commute_path[last_index]
 	_scene_path = movement_path.duplicate()
@@ -238,7 +303,11 @@ func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
 
 
 func snap_to_scene_mark() -> void:
-	if not _scene_performance_active or _scene_returning_to_workplace:
+	if (
+		not _scene_performance_active
+		or _scene_returning_to_workplace
+		or _scene_hold_active
+	):
 		return
 	global_position = _scene_target_position
 	_scene_is_moving = false
@@ -251,12 +320,17 @@ func is_at_scene_mark() -> bool:
 	return (
 		_scene_performance_active
 		and not _scene_returning_to_workplace
+		and not _scene_hold_active
 		and not _scene_is_moving
 	)
 
 
 func is_in_scene_performance() -> bool:
-	return _scene_performance_active and not _scene_returning_to_workplace
+	return (
+		_scene_performance_active
+		and not _scene_returning_to_workplace
+		and not _scene_hold_active
+	)
 
 
 func _process_scene_performance(simulation_delta: float) -> void:
@@ -273,6 +347,11 @@ func _process_scene_performance(simulation_delta: float) -> void:
 			_scene_is_moving = false
 			if _scene_returning_to_workplace:
 				_finish_scene_return()
+			elif _scene_hold_active:
+				_is_at_workplace = true
+				_set_walking(false)
+				if is_instance_valid(_visual):
+					_visual.call("set_performance_action", "")
 			else:
 				_is_at_workplace = true
 				_face_scene_focus()
@@ -299,6 +378,14 @@ func _process_scene_performance(simulation_delta: float) -> void:
 		_advance_visual(simulation_delta)
 		return
 
+	if _scene_hold_active:
+		_is_at_workplace = true
+		_set_walking(false)
+		if is_instance_valid(_visual):
+			_visual.call("set_performance_action", "")
+		_advance_visual(simulation_delta)
+		return
+
 	_is_at_workplace = true
 	_face_scene_focus()
 	_apply_scene_pose()
@@ -308,6 +395,7 @@ func _process_scene_performance(simulation_delta: float) -> void:
 func _finish_scene_return() -> void:
 	_scene_performance_active = false
 	_scene_returning_to_workplace = false
+	_scene_hold_active = false
 	_scene_is_moving = false
 	_scene_path.clear()
 	_scene_path_index = 0
@@ -340,6 +428,7 @@ func _set_scene_dialogue(dialogue_text: String) -> void:
 func _cancel_scene_performance() -> void:
 	_scene_performance_active = false
 	_scene_returning_to_workplace = false
+	_scene_hold_active = false
 	_scene_is_moving = false
 	_scene_path.clear()
 	_scene_path_index = 0

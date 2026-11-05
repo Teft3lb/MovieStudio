@@ -47,6 +47,7 @@ class FakeWorkplaceManager extends Node:
 func _run_tests() -> void:
 	_test_character_moves_and_performs_scene()
 	_test_off_shift_crew_returns_to_stage()
+	_test_stage_bystander_moves_off_camera_and_returns()
 	_finish_test("FilmScenePerformanceSmokeTest")
 
 
@@ -178,6 +179,83 @@ func _test_off_shift_crew_returns_to_stage() -> void:
 	)
 	character_manager.free()
 	fake_building_manager.free()
+	actor.free()
+	clock.free()
+
+
+func _test_stage_bystander_moves_off_camera_and_returns() -> void:
+	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 445566
+	var employee: Variant = generator.call(
+		"generate",
+		rng,
+		"EMP-OFF-CAMERA-CREW",
+		"camera_operator"
+	)
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+	clock.call("set_speed_mode", 1)
+
+	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(actor)
+	var workplace_position: Vector3 = Vector3(0.0, 0.0, -2.0)
+	var initial_position: Vector3 = Vector3.ZERO
+	var initial_waypoints: Array[Vector3] = [
+		initial_position,
+		initial_position + Vector3.RIGHT,
+	]
+	var workplace_route: Array[Vector3] = [
+		initial_position,
+		workplace_position,
+	]
+	actor.call("setup", employee, initial_waypoints, clock, 2.0)
+	actor.call(
+		"assign_workplace_route",
+		"BLD-OFF-CAMERA-STAGE",
+		workplace_route,
+		"camera_operator"
+	)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		bool(actor.call("is_at_workplace")),
+		"A stage bystander must begin from an arrived workstation."
+	)
+
+	var hold_position: Vector3 = Vector3(0.0, 0.0, 4.4)
+	var hold_route: Array[Vector3] = [
+		workplace_position,
+		hold_position,
+	]
+	actor.call("move_to_scene_hold", hold_position, hold_route)
+	_expect(
+		bool(actor.call("is_off_camera"))
+		and not bool(actor.call("is_at_scene_hold_mark"))
+		and not bool(actor.call("is_in_scene_performance")),
+		"An off-camera employee must be marked as leaving the frame, not as a performer."
+	)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		bool(actor.call("is_at_scene_hold_mark"))
+		and actor.global_position.distance_to(hold_position) <= 0.25,
+		"A stage bystander must reach a holding mark behind the camera line."
+	)
+
+	var return_route: Array[Vector3] = [
+		hold_position,
+		workplace_position,
+	]
+	actor.call("return_to_workplace", return_route)
+	for _step in range(30):
+		actor.call("_process", 1.0)
+	_expect(
+		not bool(actor.call("is_off_camera"))
+		and bool(actor.call("is_at_workplace"))
+		and actor.global_position.distance_to(workplace_position) <= 0.25,
+		"An off-camera employee must return to the original workstation after the take."
+	)
 	actor.free()
 	clock.free()
 

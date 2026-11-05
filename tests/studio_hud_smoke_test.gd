@@ -15,6 +15,7 @@ func _run_tests() -> void:
 
 	var employee_panel := PanelContainer.new()
 	var studio_panel := PanelContainer.new()
+	var decor_panel := PanelContainer.new()
 	hud.call(
 		"register_workspace_panel",
 		"employees",
@@ -26,6 +27,12 @@ func _run_tests() -> void:
 		"studio",
 		"Студия",
 		studio_panel
+	)
+	hud.call(
+		"register_workspace_panel",
+		"decor_shop",
+		"Магазин декораций",
+		decor_panel
 	)
 
 	hud.call("show_workspace_panel", "employees")
@@ -85,6 +92,18 @@ func _run_tests() -> void:
 	_expect(
 		bottom_navigation is PanelContainer,
 		"Bottom navigation panel must exist in the HUD shell."
+	)
+	var navigation_buttons: Dictionary = hud.get("_navigation_buttons")
+	var decor_button: Button = navigation_buttons.get("decor_shop") as Button
+	_expect(
+		decor_button != null
+		and decor_button.text == "ДЕКОРАЦИИ",
+		"Decor shop must have a dedicated bottom-navigation button."
+	)
+	hud.call("show_workspace_panel", "decor_shop")
+	_expect(
+		decor_panel.visible,
+		"Selecting the decor shop navigation item must show its workspace."
 	)
 	_expect(
 		hud.get("_root").theme != null,

@@ -145,6 +145,14 @@ func _test_sound_stage_interior() -> void:
 	_assert_workplace_route(actor, 0, 8, 14.0, 12.0)
 	_assert_workplace_route(actor, 7, 8, 14.0, 12.0)
 
+	var hold_mark: Vector3 = actor.call("get_scene_hold_mark", 0)
+	var local_hold_mark: Vector3 = actor.to_local(hold_mark)
+	_expect(
+		absf(local_hold_mark.x) > 4.5
+		and local_hold_mark.z >= 4.0
+		and local_hold_mark.z <= 5.4,
+		"Off-camera holding marks must be behind the camera line and inside the Sound Stage."
+	)
 	var preparation_mark: Vector3 = actor.call(
 		"get_scene_mark",
 		0,

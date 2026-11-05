@@ -342,6 +342,24 @@ func get_scene_mark(
 	return to_global(mark)
 
 
+func get_scene_hold_mark(slot_index: int) -> Vector3:
+	var hold_marks: Array[Vector3] = [
+		Vector3(-5.8, 0.0, 4.5),
+		Vector3(-4.2, 0.0, 4.7),
+		Vector3(-2.8, 0.0, 4.8),
+		Vector3(-1.4, 0.0, 4.9),
+		Vector3(1.4, 0.0, 4.9),
+		Vector3(2.8, 0.0, 4.8),
+		Vector3(4.2, 0.0, 4.7),
+		Vector3(5.8, 0.0, 4.5),
+	]
+	var normalized_index: int = posmod(slot_index, hold_marks.size())
+	var row_index: int = floori(float(slot_index) / float(hold_marks.size()))
+	var mark: Vector3 = hold_marks[normalized_index]
+	mark.z += float(row_index) * 0.55
+	return to_global(mark)
+
+
 func get_scene_focus_point() -> Vector3:
 	return to_global(Vector3(0.0, 1.45, -4.35))
 
