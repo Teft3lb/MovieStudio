@@ -65,7 +65,7 @@ If a scene has no owned props for its location, the technician performs a short 
 
 ## Physical presentation
 
-The Sound Stage owns an Interior/SetDressing node. Each scene plan creates child Node3D instances at fixed installation positions on the central set platform, between the internal side walls. The technician marks are placed beside those pieces along the rear edge so the crew can reach them without crossing the set walls. Their visual meshes are assembled from the existing box, cylinder and sphere primitives, so no external art assets are required for the first playable slice.
+The Sound Stage owns an Interior/SetDressing node. Each scene plan creates child Node3D instances at fixed installation positions on the central set platform, between the internal side walls. The technician marks are placed in front of the rear prop row so the crew can install pieces without standing inside their footprints or crossing the set walls. Their visual meshes are assembled from the existing box, cylinder and sphere primitives, so no external art assets are required for the first playable slice.
 
 Props start hidden. During Set Dressing, the number of visible props follows phase progress. The same scene key prevents unnecessary recreation every game minute. When the scene changes, the old prop roots are replaced with the next scene's planned props.
 
