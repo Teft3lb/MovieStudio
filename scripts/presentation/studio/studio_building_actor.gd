@@ -25,6 +25,8 @@ var _entrance_inside: Vector3 = Vector3.ZERO
 var _entrance_outside: Vector3 = Vector3.ZERO
 var _set_dressing_root: Node3D
 var _active_set_scene_key: String = ""
+var _warehouse_inventory_root: Node3D
+var _warehouse_storage_positions: Array[Vector3] = []
 var _navigation_system: RefCounted
 
 
@@ -159,9 +161,9 @@ func get_set_dressing_mark(prop_index: int) -> Vector3:
 	return to_global(positions[index])
 
 
-func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
+func prepare_scene_set_dressing(setup: Dictionary) -> bool:
 	if not is_instance_valid(_set_dressing_root):
-		return
+		return false
 	var raw_prop_ids: Variant = setup.get("prop_ids", [])
 	var prop_ids: Array = []
 	if raw_prop_ids is Array:
@@ -176,28 +178,73 @@ func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 		str(setup.get("set_id", "neutral")),
 		prop_signature,
 	]
-	if scene_key != _active_set_scene_key:
-		for child in _set_dressing_root.get_children():
-			_set_dressing_root.remove_child(child)
-			child.queue_free()
-		_active_set_scene_key = scene_key
-		var positions: Array[Vector3] = [
-			Vector3(-2.65, 0.0, -4.0),
-			Vector3(0.0, 0.0, -4.0),
-			Vector3(2.65, 0.0, -4.0),
-			Vector3(0.0, 0.0, -2.0),
-		]
-		for prop_index in range(mini(prop_ids.size(), positions.size())):
-			var prop_id: String = str(prop_ids[prop_index])
-			var prop_root := Node3D.new()
-			prop_root.name = "SetProp_%s" % prop_id
-			prop_root.position = positions[prop_index]
-			_build_set_prop_visual(prop_root, prop_id)
-			_set_dressing_root.add_child(prop_root)
-			prop_root.visible = false
+	if scene_key == _active_set_scene_key:
+		return true
+	if _set_dressing_root.get_child_count() > 0:
+		push_warning(
+			"StudioBuildingActor: refusing to replace set dressing before strike is complete."
+		)
+		return false
+	_active_set_scene_key = scene_key
+	var positions: Array[Vector3] = [
+		Vector3(-2.65, 0.0, -4.0),
+		Vector3(0.0, 0.0, -4.0),
+		Vector3(2.65, 0.0, -4.0),
+		Vector3(0.0, 0.0, -2.0),
+	]
+	for prop_index in range(mini(prop_ids.size(), positions.size())):
+		var prop_id: String = str(prop_ids[prop_index])
+		var prop_root := Node3D.new()
+		prop_root.name = "SetProp_%s" % prop_id
+		prop_root.position = positions[prop_index]
+		_build_set_prop_visual(prop_root, prop_id)
+		_set_dressing_root.add_child(prop_root)
+		prop_root.visible = false
+	return true
 
+
+func install_set_prop(prop_id: String) -> bool:
+	var prop_node: Node3D = _find_set_prop(prop_id)
+	if prop_node == null:
+		return false
+	prop_node.visible = true
+	return true
+
+
+func remove_set_prop(prop_id: String) -> bool:
+	var prop_node: Node3D = _find_set_prop(prop_id)
+	if prop_node == null:
+		return false
+	prop_node.visible = false
+	return true
+
+
+func clear_scene_set_dressing() -> void:
+	if not is_instance_valid(_set_dressing_root):
+		return
+	for child in _set_dressing_root.get_children():
+		_set_dressing_root.remove_child(child)
+		child.queue_free()
+	_active_set_scene_key = ""
+
+
+func _find_set_prop(prop_id: String) -> Node3D:
+	if not is_instance_valid(_set_dressing_root):
+		return null
+	return _set_dressing_root.get_node_or_null(
+		"SetProp_%s" % prop_id
+	) as Node3D
+
+
+func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
+	if not prepare_scene_set_dressing(setup):
+		return
 	var visible_count: int = clampi(
-		floori(clampf(progress, 0.0, 1.0) * float(prop_ids.size()) + 0.0001),
+		floori(
+			clampf(progress, 0.0, 1.0)
+			* float(_set_dressing_root.get_child_count())
+			+ 0.0001
+		),
 		0,
 		_set_dressing_root.get_child_count()
 	)
@@ -206,6 +253,40 @@ func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 			prop_index
 		) as Node3D
 		prop_node.visible = prop_index < visible_count
+
+
+func get_storage_mark(prop_index: int) -> Vector3:
+	if _warehouse_storage_positions.is_empty():
+		return global_position
+	var index: int = posmod(prop_index, _warehouse_storage_positions.size())
+	return to_global(_warehouse_storage_positions[index])
+
+
+func set_warehouse_inventory(prop_ids: Array) -> void:
+	if not is_instance_valid(_warehouse_inventory_root):
+		return
+	for child in _warehouse_inventory_root.get_children():
+		_warehouse_inventory_root.remove_child(child)
+		child.queue_free()
+	var shelf_positions: Array[Vector3] = []
+	for side in [-1.0, 1.0]:
+		for shelf_level in range(3):
+			for column in range(4):
+				shelf_positions.append(Vector3(
+					side * 3.75,
+					0.62 + float(shelf_level) * 1.12,
+					-2.55 + float(column) * 1.55
+				))
+	for prop_index in range(prop_ids.size()):
+		var prop_id: String = str(prop_ids[prop_index])
+		var prop_root := Node3D.new()
+		prop_root.name = "StoredProp_%s" % prop_id
+		prop_root.position = shelf_positions[
+			posmod(prop_index, shelf_positions.size())
+		]
+		prop_root.scale = Vector3.ONE * 0.22
+		_build_set_prop_visual(prop_root, prop_id)
+		_warehouse_inventory_root.add_child(prop_root)
 
 
 func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
@@ -403,6 +484,8 @@ func _build_visual() -> void:
 			_build_sound_stage(footprint, height, definition)
 		"editing_suite":
 			_build_editing_suite(footprint, height, definition)
+		"prop_warehouse":
+			_build_prop_warehouse(footprint, height, definition)
 		_:
 			_build_script_department(footprint, height, definition)
 
@@ -763,6 +846,115 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		Vector3(0.0, 0.0, 1.55),
 		Vector3(3.0, 0.0, 1.55),
 	]
+
+
+func _build_prop_warehouse(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	var wall_color: Color = Color(0.42, 0.38, 0.32)
+	var roof_color: Color = Color(0.22, 0.23, 0.23)
+	var trim_color: Color = Color(0.16, 0.17, 0.17)
+	var accent_color: Color = definition.get(
+		"accent_color",
+		Color(0.48, 0.38, 0.25)
+	)
+
+	_create_floor(
+		footprint,
+		Color(0.30, 0.27, 0.22),
+		"WarehouseFloor"
+	)
+	_create_perimeter_walls(
+		width,
+		depth,
+		wall_height,
+		wall_color,
+		2.2,
+		2.65
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"WarehouseRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		roof_color,
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		self,
+		"WarehouseBaseTrim",
+		Vector3(width + 0.12, 0.28, depth + 0.12),
+		trim_color,
+		Vector3(0.0, 0.14, 0.0)
+	)
+	_create_box(
+		self,
+		"WarehouseSign",
+		Vector3(4.6, 0.62, 0.16),
+		accent_color,
+		Vector3(0.0, 3.05, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		self,
+		"WarehouseSignText",
+		"СКЛАД РЕКВИЗИТА",
+		Vector3(0.0, 3.05, depth * 0.5 + 0.32),
+		18
+	)
+
+	var rack_color: Color = Color(0.20, 0.22, 0.22)
+	var shelf_color: Color = Color(0.39, 0.31, 0.22)
+	for side in [-1.0, 1.0]:
+		_create_box(
+			_interior_root,
+			"WarehouseRackFrame_%d" % int(side),
+			Vector3(0.22, 3.75, 6.0),
+			rack_color,
+			Vector3(side * 4.2, 1.88, -0.25)
+		)
+		for shelf_level in range(3):
+			_create_box(
+				_interior_root,
+				"WarehouseShelf_%d_%d" % [int(side), shelf_level],
+				Vector3(1.0, 0.14, 6.0),
+				shelf_color,
+				Vector3(
+					side * 3.75,
+					0.55 + float(shelf_level) * 1.12,
+					-0.25
+				)
+			)
+		for support_index in range(2):
+			var support_z: float = -3.0 + float(support_index) * 5.5
+			_create_box(
+				_interior_root,
+				"WarehouseSupport_%d_%d" % [int(side), support_index],
+				Vector3(0.12, 3.6, 0.12),
+				rack_color,
+				Vector3(side * 3.75, 1.8, support_z)
+			)
+
+	_warehouse_storage_positions = [
+		Vector3(-2.55, 0.0, -2.1),
+		Vector3(-0.85, 0.0, -2.1),
+		Vector3(0.85, 0.0, -2.1),
+		Vector3(2.55, 0.0, -2.1),
+		Vector3(-2.55, 0.0, 0.45),
+		Vector3(-0.85, 0.0, 0.45),
+		Vector3(0.85, 0.0, 0.45),
+		Vector3(2.55, 0.0, 0.45),
+	]
+	_workplace_points = _warehouse_storage_positions.duplicate()
+	_warehouse_inventory_root = Node3D.new()
+	_warehouse_inventory_root.name = "WarehouseInventory"
+	_interior_root.add_child(_warehouse_inventory_root)
 
 
 func _build_script_department(

@@ -1575,3 +1575,26 @@ func _show_employee_message(message: String) -> void:
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.close_requested.connect(dialog.queue_free)
 	dialog.popup_centered()
+
+func get_employee_workplace_path(employee_id: String) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	if not is_instance_valid(_studio_building_manager):
+		return result
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	if assignment.is_empty():
+		return result
+	var raw_path: Variant = _studio_building_manager.call(
+		"get_workplace_path",
+		str(assignment.get("building_id", "")),
+		int(assignment.get("slot_index", 0))
+	)
+	if raw_path is Array:
+		for point_value in raw_path:
+			if point_value is Vector3:
+				result.append(point_value)
+	return result
+
+

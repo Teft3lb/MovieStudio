@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmProductionProject
 
-const SCHEMA_VERSION: int = 2
+const SCHEMA_VERSION: int = 3
 
 var id: String = ""
 var script_id: String = ""
@@ -23,6 +23,7 @@ var current_scene_elapsed_minutes: int = 0
 var estimated_total_minutes: int = 0
 var current_scene_retakes: int = 0
 var current_scene_quality: float = 0.0
+var technician_count: int = 1
 
 var crew_assignments: Dictionary = {}
 var cast_assignments: Dictionary = {}
@@ -77,6 +78,8 @@ func get_phase_title() -> String:
 			return "Съёмка дубля"
 		"review":
 			return "Просмотр материала"
+		"set_strike":
+			return "Уборка декораций"
 		_:
 			return "Неизвестный этап"
 
@@ -126,6 +129,7 @@ func to_dict() -> Dictionary:
 		"estimated_total_minutes": estimated_total_minutes,
 		"current_scene_retakes": current_scene_retakes,
 		"current_scene_quality": current_scene_quality,
+		"technician_count": technician_count,
 		"crew_assignments": crew_assignments.duplicate(true),
 		"cast_assignments": cast_assignments.duplicate(true),
 		"scene_results": scene_results.duplicate(true),
@@ -204,6 +208,11 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		float(payload.get("current_scene_quality", 0.0)),
 		0.0,
 		100.0
+	)
+	result.technician_count = clampi(
+		int(payload.get("technician_count", 1)),
+		1,
+		8
 	)
 	var raw_crew: Variant = payload.get("crew_assignments", {})
 	if raw_crew is Dictionary:

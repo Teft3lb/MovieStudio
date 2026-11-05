@@ -181,6 +181,11 @@ func start_scene_performance(
 		_apply_scene_pose()
 
 
+func set_carrying_prop(value: bool) -> void:
+	if is_instance_valid(_visual):
+		_visual.call("set_carrying_prop", value)
+
+
 func set_scene_performance_action(
 	action_id: String,
 	dialogue_text: String = ""

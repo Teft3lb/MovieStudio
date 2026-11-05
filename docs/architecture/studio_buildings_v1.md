@@ -2,7 +2,7 @@
 
 **Engine:** Godot 4.7.2  
 **Branch:** \`main\`
-**Status:** interactive placement, workplace assignment and cutaway interiors for three production facilities.
+**Status:** interactive placement, workplace assignment and cutaway interiors for three production facilities plus a dedicated prop warehouse.
 
 ## Scope
 
@@ -15,10 +15,12 @@ Implemented building types:
 | \`script_department\` | Сценарный отдел | 8 × 6 m | 3 | Screenwriter, producer, casting director |
 | \`sound_stage\` | Съёмочный павильон | 14 × 12 m | 8 | Actor, extra, director, camera operator, technician, production designer, producer |
 | \`editing_suite\` | Монтажный отдел | 10 × 8 m | 3 | Film editor |
+| \`prop_warehouse\` | Склад реквизита | 10 × 8 m | 0 | Storage only; no employee workplace slots |
 
-Two starter buildings are spawned when the main scene initializes:
+Three starter buildings are spawned when the main scene initializes:
 - Script Department at \`(-16, 0, -16)\`.
 - Sound Stage №1 at \`(0, 0, 0)\`.
+- Prop Warehouse at \`(20, 0, 10)\`.
 
 The building models are assembled from reusable Godot primitive meshes. No external art assets are required for this prototype.
 
@@ -74,6 +76,10 @@ The starting roster covers three of the four required positions. The standard re
 
 The Sound Stage is the player-facing production workspace for Film Production v1. It hosts casting and crew assignments, scene blocking, rehearsal, takes, retakes and recorded scene results.
 
+### Prop Warehouse
+
+The warehouse is a dedicated storage facility rather than a staffed workplace. It has a cutaway interior with racks and shelf positions for the studio's reusable set props. The film production manager updates the shelf display as props are collected and returned. Technicians use the warehouse's storage marks as the endpoints of their indoor/outdoor delivery routes.
+
 ### Editing Suite
 
 The building panel:
@@ -89,6 +95,7 @@ The standard eight-person recruitment market guarantees one film editor. The Edi
 ## Simulation boundaries
 
 The current implementation does **not** yet:
+- connect warehouse inventory locations to campaign SaveSystem state;
 - charge construction or maintenance costs;
 - simulate construction time;
 - persist workplace assignments in a campaign save;

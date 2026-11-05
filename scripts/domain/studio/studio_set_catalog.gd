@@ -209,9 +209,11 @@ static func _match_scene_context(context: String) -> String:
 static func build_scene_setups(
 	scenes: Array,
 	owned_prop_ids: Array[String],
-	genre_id: String = ""
+	genre_id: String = "",
+	technician_count: int = 1
 ) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+	var effective_technician_count: int = clampi(technician_count, 1, 8)
 	for scene_value in scenes:
 		var scene: Dictionary = scene_value
 		var group_id: String = get_group_for_scene(scene, genre_id)
@@ -242,7 +244,9 @@ static func build_scene_setups(
 			"prop_ids": selected_props,
 			"required_prop_ids": required_props,
 			"missing_prop_ids": missing_props,
-			"setup_minutes": 2 + selected_props.size(),
+			"setup_minutes": 2 + ceili(
+				float(selected_props.size()) / float(effective_technician_count)
+			),
 			"set_dressing_quality": clampf(quality, 15.0, 80.0),
 		})
 	return result

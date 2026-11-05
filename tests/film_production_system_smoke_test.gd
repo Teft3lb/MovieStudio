@@ -48,6 +48,11 @@ func _run_tests() -> void:
 		"A complete script, cast and crew must be startable without waiting for a shift change."
 	)
 	_test_quick_production_pacing(script, crew_assignments, cast_assignments)
+	_test_multiple_technicians_reduce_logistics_time(
+		script,
+		crew_assignments,
+		cast_assignments
+	)
 	_test_missing_props_do_not_block_production(
 		system,
 		script,
@@ -218,8 +223,8 @@ func _test_late_prop_purchases_update_unprepared_scenes(
 		"A prop purchased after production starts must update the current scene while it is still in preparation."
 	)
 	_expect(
-		int(project.estimated_total_minutes) == initial_estimate + 1,
-		"Refreshing an unprepared scene must update the remaining production estimate by the setup-time difference."
+		int(project.estimated_total_minutes) == initial_estimate + 2,
+		"Refreshing an unprepared scene must update both installation and later strike time."
 	)
 
 	var snapshot: Dictionary = {
@@ -281,6 +286,13 @@ func _test_late_prop_purchases_update_unprepared_scenes(
 	for _minute in range(10):
 		system.call("advance_minute", project, script, true, true, snapshot)
 	system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "set_strike"
+		and int(project.phase_duration_minutes) == 3,
+		"Two installed props must require a three-minute strike with one technician."
+	)
+	for _minute in range(3):
+		system.call("advance_minute", project, script, true, true, snapshot)
 
 	_expect(
 		int(project.current_scene_index) == 1
@@ -307,7 +319,7 @@ func _test_late_prop_purchases_update_unprepared_scenes(
 		"Later purchases must not retroactively rewrite the completed scene's recorded set."
 	)
 	_expect(
-		int(project.estimated_total_minutes) == initial_estimate + 5,
+		int(project.estimated_total_minutes) == initial_estimate + 10,
 		"Newly purchased props must update only the remaining scene setup estimate."
 	)
 
@@ -576,17 +588,26 @@ func _test_quick_production_pacing(
 	system.call("advance_minute", project, script, true, true, snapshot)
 	_expect(
 		int(project.completed_scene_count) == 1
-		and int(project.current_scene_index) == 1
-		and str(project.current_phase) == "preparation",
-		"The next scene must begin automatically after the first scene's review."
+		and int(project.current_scene_index) == 0
+		and str(project.current_phase) == "set_strike"
+		and int(project.phase_duration_minutes) == 4,
+		"A completed scene must enter a four-minute prop strike before the next scene begins."
 	)
 	_expect(
 		int(project.total_elapsed_minutes) == 22,
-		"A two-performer scene with three installed props must take twenty-two minutes."
+		"A two-performer scene with three installed props must take twenty-two minutes before strike."
+	)
+	for _minute in range(4):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		int(project.current_scene_index) == 1
+		and str(project.current_phase) == "preparation"
+		and int(project.total_elapsed_minutes) == 26,
+		"The next scene must begin only after all four strike minutes have elapsed."
 	)
 	_expect(
-		int(project.estimated_total_minutes) == 44,
-		"Both scenes must include their five-minute reusable set-dressing phase."
+		int(project.estimated_total_minutes) == 52,
+		"Both scenes must include technician-scaled installation and strike phases."
 	)
 	_expect(
 		str(project.scene_setups[0].get("set_id", "")) == "lighthouse"
@@ -690,6 +711,79 @@ func _test_retake_limit() -> void:
 	)
 
 
+func _test_multiple_technicians_reduce_logistics_time(
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	var owned_props: Array[String] = [
+		"lighthouse_console",
+		"lighthouse_beacon",
+		"lighthouse_rail",
+	]
+	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		script.scenes,
+		owned_props,
+		str(script.genre_id),
+		3
+	)
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-MULTI-TECH-LOGISTICS",
+		998812,
+		1,
+		8,
+		0,
+		scene_setups,
+		3
+	)
+	var snapshot: Dictionary = {
+		"acting_average": 90.0,
+		"directing": 90.0,
+		"camera_work": 90.0,
+		"technical": 90.0,
+		"energy": 0.95,
+		"morale": 0.95,
+		"stress": 0.05,
+	}
+	_expect(
+		int(project.technician_count) == 3
+		and int(project.scene_setups[0].get("setup_minutes", 0)) == 3
+		and int(project.estimated_total_minutes) == 44,
+		"Three technicians must parallelize three props and reduce estimated installation/strike time."
+	)
+	for _minute in range(2):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "set_dressing"
+		and int(project.phase_duration_minutes) == 3,
+		"Three technicians must reduce a three-prop set-dressing phase to three minutes."
+	)
+	for _minute in range(3):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	for _minute in range(4):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	for _minute in range(10):
+		system.call("advance_minute", project, script, true, true, snapshot)
+	system.call("advance_minute", project, script, true, true, snapshot)
+	_expect(
+		str(project.current_phase) == "set_strike"
+		and int(project.phase_duration_minutes) == 2,
+		"Three technicians must parallelize the three-prop strike to two minutes."
+	)
+	var restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(
+		project.to_dict()
+	)
+	_expect(
+		int(restored.technician_count) == 3,
+		"Technician count must survive production project serialization."
+	)
+
+
 func _test_full_film_completion(
 	system: RefCounted,
 	script: Variant,
@@ -741,10 +835,10 @@ func _test_full_film_completion(
 		"A completed film must have no remaining production time."
 	)
 	_expect(
-		int(project.total_elapsed_minutes) == 38,
-		"A two-scene film must include both neutral two-minute set-dressing phases."
+		int(project.total_elapsed_minutes) == 40,
+		"A two-scene film must include both neutral set-dressing and one-minute strike phases."
 	)
-	for phase in ["preparation", "set_dressing", "rehearsal", "shooting", "review"]:
+	for phase in ["preparation", "set_dressing", "rehearsal", "shooting", "review", "set_strike"]:
 		_expect(
 			phases_seen.has(phase),
 			"Every scene must pass through the %s phase." % phase

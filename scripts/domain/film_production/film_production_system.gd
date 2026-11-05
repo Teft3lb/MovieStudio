@@ -16,6 +16,7 @@ const REHEARSAL_MINUTES_PER_ACTOR: int = 1
 const SHOOTING_BASE_MINUTES: int = 8
 const SHOOTING_MINUTES_PER_ACTOR: int = 1
 const REVIEW_MINUTES: int = 1
+const SET_STRIKE_BASE_MINUTES: int = 1
 const RETAKE_BASE_MINUTES: int = 4
 const RETAKE_MINUTES_PER_ACTOR: int = 1
 const RETAKE_QUALITY_THRESHOLD: float = 58.0
@@ -50,7 +51,8 @@ func start_project(
 	current_day: int,
 	current_hour: int,
 	current_minute: int,
-	scene_setups: Array = []
+	scene_setups: Array = [],
+	technician_count: int = 1
 ) -> Variant:
 	if not can_start_project(script, crew_assignments, cast_assignments):
 		return null
@@ -78,6 +80,7 @@ func start_project(
 		script.scenes,
 		scene_setups
 	)
+	project.technician_count = clampi(technician_count, 1, 8)
 	project.seed = seed
 	project.started_day = maxi(current_day, 1)
 	project.started_hour = clampi(current_hour, 0, 23)
@@ -86,7 +89,8 @@ func start_project(
 	project.estimated_total_minutes = _estimate_total_minutes(
 		script,
 		cast_assignments,
-		project.scene_setups
+		project.scene_setups,
+		int(project.technician_count)
 	)
 	project.last_activity_message = "Съёмочная группа собирается на площадке."
 	_rng.seed = seed
@@ -126,7 +130,8 @@ func refresh_current_scene_setup(
 	var fresh_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		[scene],
 		owned_prop_ids,
-		str(script.genre_id)
+		str(script.genre_id),
+		int(project.technician_count)
 	)
 	if fresh_setups.is_empty():
 		return {}
@@ -148,6 +153,14 @@ func refresh_current_scene_setup(
 		SET_DRESSING_BASE_MINUTES,
 		10
 	)
+	var previous_strike_duration: int = _get_set_strike_duration(
+		previous_setup.get("prop_ids", []).size(),
+		int(project.technician_count)
+	)
+	var refreshed_strike_duration: int = _get_set_strike_duration(
+		refreshed_setup.get("prop_ids", []).size(),
+		int(project.technician_count)
+	)
 	project.scene_setups[scene_index] = refreshed_setup.duplicate(true)
 	if current_phase == "set_dressing":
 		project.phase_duration_minutes = refreshed_duration
@@ -157,7 +170,9 @@ func refresh_current_scene_setup(
 	project.estimated_total_minutes = maxi(
 		int(project.estimated_total_minutes)
 		+ refreshed_duration
-		- previous_duration,
+		- previous_duration
+		+ refreshed_strike_duration
+		- previous_strike_duration,
 		int(project.total_elapsed_minutes) + 1
 	)
 	return refreshed_setup.duplicate(true)
@@ -275,22 +290,35 @@ func advance_minute(
 				return retake_result
 
 			_complete_current_scene(project, script)
+			var setup: Dictionary = project.get_current_scene_setup()
+			_set_phase(
+				project,
+				"set_strike",
+				_get_set_strike_duration(
+					setup.get("prop_ids", []).size(),
+					int(project.technician_count)
+				)
+			)
+			project.last_activity_message = (
+				"Сцена %d снята. Техники возвращают декорации на склад."
+				% (project.current_scene_index + 1)
+			)
+			var strike_result: Dictionary = _phase_change_result()
+			strike_result["scene_completed"] = true
+			strike_result["scene_quality"] = project.current_scene_quality
+			return strike_result
+		"set_strike":
 			if project.completed_scene_count >= project.total_scene_count:
 				project.status = "completed"
 				project.final_quality = _calculate_final_quality(project)
 				project.pause_reason = ""
 				project.last_activity_message = (
-					"Съёмки фильма «%s» завершены. Материал готов к монтажу."
+					"Съёмки фильма «%s» завершены. Реквизит возвращён на склад; материал готов к монтажу."
 					% project.film_title
 				)
-				return {
-					"advanced": true,
-					"phase_changed": true,
-					"scene_completed": true,
-					"completed": true,
-					"retake_required": false,
-					"scene_quality": project.current_scene_quality,
-				}
+				var completion_result: Dictionary = _phase_change_result()
+				completion_result["completed"] = true
+				return completion_result
 
 			project.current_scene_index += 1
 			project.current_scene_retakes = 0
@@ -298,19 +326,9 @@ func advance_minute(
 			project.current_scene_elapsed_minutes = 0
 			_set_phase(project, "preparation", PREPARATION_MINUTES)
 			project.last_activity_message = (
-				"Сцена %d завершена. Подготовка следующей сцены."
-				% (project.current_scene_index + 1)
+				"Реквизит убран. Подготовка следующей сцены."
 			)
-			return {
-				"advanced": true,
-				"phase_changed": true,
-				"scene_completed": true,
-				"completed": false,
-				"retake_required": false,
-				"scene_quality": float(
-					project.scene_results.back().get("quality", 0.0)
-				),
-			}
+			return _phase_change_result()
 
 	return _empty_advance_result()
 
@@ -487,7 +505,8 @@ func _has_complete_cast(
 func _estimate_total_minutes(
 	script: Variant,
 	cast_assignments: Dictionary,
-	scene_setups: Array
+	scene_setups: Array,
+	technician_count: int
 ) -> int:
 	var total: int = 0
 	for scene_index in range(script.scenes.size()):
@@ -507,6 +526,10 @@ func _estimate_total_minutes(
 		total += _get_phase_duration("rehearsal", performer_count)
 		total += _get_phase_duration("shooting", performer_count)
 		total += REVIEW_MINUTES
+		total += _get_set_strike_duration(
+			setup.get("prop_ids", []).size(),
+			technician_count
+		)
 	return maxi(total, 1)
 
 
@@ -534,6 +557,20 @@ func _get_scene_performer_count(
 			if not unique_ids.has(employee_id):
 				unique_ids.append(employee_id)
 	return maxi(unique_ids.size(), 1)
+
+
+func _get_set_strike_duration(
+	prop_count: int,
+	technician_count: int
+) -> int:
+	var effective_technician_count: int = clampi(technician_count, 1, 8)
+	return clampi(
+		SET_STRIKE_BASE_MINUTES + ceili(
+			float(maxi(prop_count, 0)) / float(effective_technician_count)
+		),
+		SET_STRIKE_BASE_MINUTES,
+		10
+	)
 
 
 func _get_phase_duration(phase: String, actor_count: int) -> int:

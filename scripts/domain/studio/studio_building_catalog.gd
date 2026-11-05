@@ -24,6 +24,16 @@ const BUILDINGS: Dictionary = {
 		"primary_profession": "film_editor",
 		"accent_color": Color(0.34, 0.48, 0.52),
 	},
+	"prop_warehouse": {
+		"title": "Склад реквизита",
+		"description": "Складское помещение для хранения, выдачи и возврата многоразовых декораций.",
+		"footprint": Vector2(10.0, 8.0),
+		"building_height": 6.2,
+		"workplace_capacity": 0,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.48, 0.38, 0.25),
+	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",
 		"description": "Закрытая площадка для съёмки сцен с актёрами и съёмочной группой.",

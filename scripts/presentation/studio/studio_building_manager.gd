@@ -43,6 +43,7 @@ const SET_INVENTORY_SCRIPT = preload(
 const GRID_SIZE: float = 2.0
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
+const PROP_WAREHOUSE_START_POSITION: Vector3 = Vector3(20.0, 0.0, 10.0)
 const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 	"director",
 	"actor",
@@ -62,7 +63,14 @@ var _decor_shop_group_id: String = ""
 var _decor_shop_group_option: OptionButton
 var _decor_shop_budget_label: Label
 var _decor_shop_items: VBoxContainer
-var _active_set_dressing_technician_id: String = ""
+var _active_production_technician_ids: Array[String] = []
+var _set_logistics_phase: String = ""
+var _set_logistics_scene_key: String = ""
+var _set_logistics_pending_prop_ids: Array[String] = []
+var _set_logistics_worker_ids: Array[String] = []
+var _set_logistics_worker_tasks: Dictionary = {}
+var _set_logistics_blocked: bool = false
+var _last_scene_setup_refresh_key: String = ""
 var _active_writing_project: Variant
 var _active_film_project: Variant
 var _active_film_script: Variant
@@ -368,6 +376,13 @@ func _spawn_initial_buildings() -> void:
 		"Съёмочный павильон №1",
 		false
 	)
+	_create_building(
+		"prop_warehouse",
+		PROP_WAREHOUSE_START_POSITION,
+		0.0,
+		"Склад съёмочного реквизита",
+		false
+	)
 
 
 func _create_building(
@@ -400,6 +415,11 @@ func _create_building(
 	actor.call("setup", building_data)
 	add_child(actor)
 	_building_actors[building_data.id] = actor
+	if building_type_id == "prop_warehouse":
+		actor.call(
+			"set_warehouse_inventory",
+			_set_inventory.call("get_props_in_warehouse")
+		)
 
 	if is_player_placed:
 		_refresh_build_status()
@@ -454,6 +474,16 @@ func _build_ui() -> void:
 		_begin_placement.bind("sound_stage")
 	)
 	build_layout.add_child(stage_button)
+
+	var warehouse_button := Button.new()
+	warehouse_button.text = "＋ Склад реквизита"
+	warehouse_button.tooltip_text = "Построить дополнительный склад съёмочного инвентаря"
+	warehouse_button.custom_minimum_size = Vector2(0.0, 42.0)
+	warehouse_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	warehouse_button.pressed.connect(
+		_begin_placement.bind("prop_warehouse")
+	)
+	build_layout.add_child(warehouse_button)
 
 	var editing_button := Button.new()
 	editing_button.text = "＋ Монтажный отдел"
@@ -1467,7 +1497,7 @@ func _build_decor_shop_panel(studio_hud: Node) -> void:
 	var description := Label.new()
 	description.text = (
 		"Покупай элементы для разных типов сцен. "
-		+ "Декорации не расходуются и используются повторно в следующих фильмах."
+		+ "Техники забирают их со склада, устанавливают в павильоне и возвращают после съёмки."
 	)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(description)
@@ -1509,9 +1539,15 @@ func _on_decor_shop_group_selected(selected_index: int) -> void:
 func _refresh_decor_shop_panel() -> void:
 	if not is_instance_valid(_decor_shop_items):
 		return
+	var warehouse_count: int = _set_inventory.call(
+		"get_props_in_warehouse"
+	).size()
+	var stage_count: int = _set_inventory.call(
+		"get_props_on_stage"
+	).size()
 	_decor_shop_budget_label.text = (
-		"Бюджет декораций: %d усл. ед. · купленные элементы доступны без ограничений."
-		% int(_set_inventory.budget)
+		"Бюджет реквизита: %d  ·  На складе: %d  ·  На площадке: %d"
+		% [_set_inventory.budget, warehouse_count, stage_count]
 	)
 	for child in _decor_shop_items.get_children():
 		_decor_shop_items.remove_child(child)
@@ -1569,6 +1605,7 @@ func _on_buy_set_prop_pressed(prop_id: String) -> void:
 		int(definition.get("price", 0))
 	))
 	if purchased:
+		_refresh_warehouse_inventory_visuals()
 		_refresh_active_scene_set_dressing_if_unstarted()
 		_refresh_decor_shop_panel()
 
@@ -1576,11 +1613,13 @@ func _on_buy_set_prop_pressed(prop_id: String) -> void:
 func _refresh_active_scene_set_dressing_if_unstarted() -> void:
 	if (
 		_active_film_project == null
-		or str(_active_film_project.status) != "in_production"
 		or _active_film_script == null
+		or str(_active_film_project.status) != "in_production"
 	):
 		return
 	var current_phase: String = str(_active_film_project.current_phase)
+	if current_phase == "set_dressing" and not _set_logistics_phase.is_empty():
+		return
 	if (
 		current_phase != "preparation"
 		and not (
@@ -1589,16 +1628,14 @@ func _refresh_active_scene_set_dressing_if_unstarted() -> void:
 		)
 	):
 		return
-	var refreshed_setup: Dictionary = _film_production_system.call(
+	_film_production_system.call(
 		"refresh_current_scene_setup",
 		_active_film_project,
 		_active_film_script,
 		_set_inventory.get_owned_prop_ids()
 	)
-	if refreshed_setup.is_empty():
-		return
+	_last_scene_setup_refresh_key = _get_scene_setup_refresh_key()
 	_sync_film_set_dressing()
-	_update_film_stage_slate()
 	_update_film_production_ui()
 
 
@@ -1769,10 +1806,20 @@ func _on_start_film_production_pressed() -> void:
 		+ int(_game_clock.current_minute) * 10
 		+ _next_script_sequence
 	)
+	_active_production_technician_ids = _get_stage_technician_ids(
+		stage_id,
+		str(crew_assignments.get("technician", ""))
+	)
+	var technician_count: int = clampi(
+		maxi(_active_production_technician_ids.size(), 1),
+		1,
+		8
+	)
 	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		_latest_script.scenes,
 		_set_inventory.get_owned_prop_ids(),
-		str(_latest_script.genre_id)
+		str(_latest_script.genre_id),
+		technician_count
 	)
 	var project: Variant = _film_production_system.call(
 		"start_project",
@@ -1784,9 +1831,11 @@ func _on_start_film_production_pressed() -> void:
 		int(_game_clock.current_day),
 		int(_game_clock.current_hour),
 		int(_game_clock.current_minute),
-		scene_setups
+		scene_setups,
+		technician_count
 	)
 	if project == null:
+		_active_production_technician_ids.clear()
 		_film_production_status_label.text = (
 			"Не удалось запустить производство. Проверь сценарий, роли и команду."
 		)
@@ -1808,7 +1857,8 @@ func _on_start_film_production_pressed() -> void:
 	_active_film_project = project
 	_active_film_script = _latest_script
 	_active_scene_performer_ids.clear()
-	_active_set_dressing_technician_id = ""
+	_reset_set_logistics()
+	_last_scene_setup_refresh_key = ""
 	_dispatch_film_crew_to_stage()
 	_apply_film_crew_actions()
 	_sync_film_scene_performance()
@@ -1846,6 +1896,17 @@ func _dispatch_film_crew_to_stage() -> void:
 				employee_id
 			)
 
+	var primary_technician_id: String = str(
+		crew_assignments.get("technician", "")
+	)
+	for technician_id in _active_production_technician_ids:
+		if technician_id == primary_technician_id:
+			continue
+		_character_manager.call(
+			"dispatch_employee_to_workplace",
+			technician_id
+		)
+
 
 func _advance_film_production() -> void:
 	if (
@@ -1860,6 +1921,22 @@ func _advance_film_production() -> void:
 	var cast_ready: bool = _sync_film_scene_performance()
 	_sync_film_set_dressing()
 	var crew_ready: bool = _are_film_crew_ready()
+	if (
+		crew_ready
+		and _set_logistics_phase == "set_dressing"
+		and _are_set_logistics_tasks_complete()
+	):
+		_active_film_project.last_activity_message = (
+			"Декорации установлены. Съёмочная группа готовится к репетиции."
+		)
+	elif (
+		crew_ready
+		and _set_logistics_phase == "set_strike"
+		and _are_set_logistics_tasks_complete()
+	):
+		_active_film_project.last_activity_message = (
+			"Реквизит возвращён на склад. Площадка готова к следующей сцене."
+		)
 	var snapshot: Dictionary = _build_film_performance_snapshot()
 	var result: Dictionary = _film_production_system.call(
 		"advance_minute",
@@ -1870,6 +1947,23 @@ func _advance_film_production() -> void:
 		snapshot
 	)
 
+	if not bool(result.get("advanced", false)):
+		if _set_logistics_blocked:
+			_active_film_project.pause_reason = (
+				"Логистика реквизита остановлена: проверь склад и маршруты техников."
+			)
+		elif _set_logistics_phase == "set_dressing":
+			_active_film_project.pause_reason = (
+				"Техники доставляют декорации со склада и устанавливают их на площадке."
+			)
+		elif _set_logistics_phase == "set_strike":
+			_active_film_project.pause_reason = (
+				"Техники снимают декорации и возвращают их на склад."
+			)
+		_active_film_project.last_activity_message = (
+			_active_film_project.pause_reason
+		)
+
 	if bool(result.get("phase_changed", false)):
 		_apply_film_crew_actions()
 		if str(_active_film_project.current_phase) == "preparation":
@@ -1879,6 +1973,9 @@ func _advance_film_production() -> void:
 	if bool(result.get("completed", false)):
 		_sync_film_scene_performance()
 		_reset_film_crew_actions()
+		_active_production_technician_ids.clear()
+		_reset_set_logistics()
+		_last_scene_setup_refresh_key = ""
 	_update_film_stage_slate()
 	_update_film_production_ui()
 
@@ -1926,6 +2023,11 @@ func _update_film_stage_slate() -> void:
 
 
 func _are_film_crew_ready() -> bool:
+	if (
+		_set_logistics_phase in ["set_dressing", "set_strike"]
+		and not _are_set_logistics_workers_ready()
+	):
+		return false
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
 	for profession_id in ["director", "camera_operator", "technician"]:
 		var employee_id: String = str(
@@ -1934,23 +2036,6 @@ func _are_film_crew_ready() -> bool:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			return false
-		if (
-			profession_id == "technician"
-			and employee_id == _active_set_dressing_technician_id
-			and str(_active_film_project.current_phase) == "set_dressing"
-		):
-			var technician_actor: Variant = _character_manager.call(
-				"get_employee_actor",
-				employee_id
-			)
-			if (
-				technician_actor != null
-				and is_instance_valid(technician_actor)
-				and bool(technician_actor.call("is_in_scene_performance"))
-			):
-				if bool(technician_actor.call("is_at_scene_mark")):
-					continue
-				return false
 		var at_workplace: bool = bool(
 			_character_manager.call(
 				"dispatch_employee_to_workplace",
@@ -1988,25 +2073,6 @@ func _sync_film_scene_performance() -> bool:
 				if not return_path.is_empty():
 					actor.call("return_to_workplace", return_path)
 		_active_scene_performer_ids.clear()
-		if not _active_set_dressing_technician_id.is_empty():
-			var technician_actor: Variant = _character_manager.call(
-				"get_employee_actor",
-				_active_set_dressing_technician_id
-			)
-			if technician_actor != null and is_instance_valid(technician_actor):
-				var technician_return_path: Array[Vector3] = []
-				if not idle_stage_id.is_empty():
-					technician_return_path = get_scene_path(
-						idle_stage_id,
-						technician_actor.global_position,
-						technician_actor.call("get_workplace_position")
-					)
-				if not technician_return_path.is_empty():
-					technician_actor.call(
-						"return_to_workplace",
-						technician_return_path
-					)
-			_active_set_dressing_technician_id = ""
 		return false
 
 	var stage_id: String = _get_sound_stage_building_id()
@@ -2014,7 +2080,7 @@ func _sync_film_scene_performance() -> bool:
 		return false
 
 	var current_phase: String = str(_active_film_project.current_phase)
-	if current_phase in ["preparation", "set_dressing"]:
+	if current_phase in ["preparation", "set_dressing", "set_strike"]:
 		_restore_off_camera_staff(stage_id)
 		_release_cast_for_scene_preparation(stage_id, current_phase)
 		set_stage_camera_target(
@@ -2385,85 +2451,35 @@ func _sync_film_set_dressing() -> void:
 	if stage_id.is_empty():
 		return
 
-	var setup: Dictionary = _active_film_project.get_current_scene_setup()
 	var phase: String = str(_active_film_project.current_phase)
-	var progress: float = -1.0
 	if phase == "preparation":
-		progress = 0.0
-	elif phase == "set_dressing":
-		progress = float(_active_film_project.get_phase_progress_percent()) / 100.0
-	elif phase in ["rehearsal", "shooting", "review"]:
-		progress = 1.0
-	if progress >= 0.0:
-		set_scene_set_dressing(stage_id, setup, progress)
-
-	var technician_id: String = str(
-		_active_film_project.crew_assignments.get("technician", "")
-	)
-	var technician_actor: Variant = _character_manager.call(
-		"get_employee_actor",
-		technician_id
-	)
-	if technician_actor == null or not is_instance_valid(technician_actor):
-		return
-	if phase != "set_dressing":
+		_refresh_film_scene_setup_if_needed()
+	if phase not in ["set_dressing", "set_strike"]:
 		if (
-			technician_id == _active_set_dressing_technician_id
-			and bool(technician_actor.call("is_in_scene_performance"))
+			not _set_logistics_phase.is_empty()
+			and _are_set_logistics_tasks_complete()
 		):
-			technician_actor.call(
-				"set_scene_performance_action",
-				"checking_equipment"
-			)
+			_reset_set_logistics()
 		return
 
-	var prop_count: int = get_set_dressing_prop_count(stage_id)
-	if prop_count <= 0:
+	var setup: Dictionary = _active_film_project.get_current_scene_setup()
+	var scene_key: String = _get_set_logistics_scene_key(phase, setup)
+	if scene_key != _set_logistics_scene_key:
 		if (
-			technician_id == _active_set_dressing_technician_id
-			and bool(technician_actor.call("is_in_scene_performance"))
+			not _set_logistics_phase.is_empty()
+			and not _are_set_logistics_tasks_complete()
 		):
-			technician_actor.call(
-				"set_scene_performance_action",
-				"checking_equipment"
-			)
-		return
+			return
+		_reset_set_logistics()
+		_begin_set_logistics(phase, setup, stage_id, scene_key)
 
-	var prop_index: int = clampi(
-		floori(progress * float(prop_count)),
-		0,
-		prop_count - 1
-	)
-	var target_position: Vector3 = get_set_dressing_mark(
-		stage_id,
-		prop_index
-	)
-	var focus_position: Vector3 = get_scene_focus_point(stage_id)
-	var movement_path: Array[Vector3] = get_scene_path(
-		stage_id,
-		technician_actor.global_position,
-		target_position
-	)
-	if movement_path.is_empty():
-		return
-	technician_actor.call(
-		"start_scene_performance",
-		target_position,
-		focus_position,
-		"placing_set_piece",
-		"",
-		movement_path
-	)
-	_active_set_dressing_technician_id = technician_id
-	_character_manager.call(
-		"set_employee_task",
-		technician_id,
-		"Устанавливает декорации сцены %d" % (
-			int(_active_film_project.current_scene_index) + 1
-		)
-	)
-	if _game_clock.is_manual_fast_forward:
-		technician_actor.call("snap_to_scene_mark")
+	_process_set_logistics_tasks(stage_id)
+	if (
+		phase == "set_strike"
+		and _are_set_logistics_tasks_complete()
+		and _set_inventory.call("get_props_on_stage").is_empty()
+	):
+		clear_scene_set_dressing(stage_id)
 
 
 func _get_cast_production_task(phase: String, scene_number: int) -> String:
@@ -2472,6 +2488,8 @@ func _get_cast_production_task(phase: String, scene_number: int) -> String:
 			return "Гуляет по студии, пока готовят сцену %d" % scene_number
 		"set_dressing":
 			return "Гуляет по студии, пока монтируют декорации сцены %d" % scene_number
+		"set_strike":
+			return "Отдыхает, пока техники убирают декорации сцены %d" % scene_number
 		"rehearsal":
 			return "Репетирует сцену %d" % scene_number
 		"shooting":
@@ -3286,13 +3304,14 @@ func _update_film_production_ui() -> void:
 		var missing_props: Array = setup.get("missing_prop_ids", [])
 		var installed_prop_count: int = setup_props.size()
 		var phase: String = str(project.current_phase)
-		if phase == "preparation":
-			installed_prop_count = 0
-		elif phase == "set_dressing":
-			installed_prop_count = floori(
-				float(project.get_phase_progress_percent()) / 100.0
-				* float(setup_props.size())
-			)
+		installed_prop_count = 0
+		if phase != "preparation":
+			for prop_id_value in setup_props:
+				if str(_set_inventory.call(
+					"get_prop_location",
+					str(prop_id_value)
+				)) == "on_stage":
+					installed_prop_count += 1
 		var prop_coverage_text: String = (
 			"%d/%d" % [installed_prop_count, required_props.size()]
 			if not required_props.is_empty()
@@ -3308,7 +3327,7 @@ func _update_film_production_ui() -> void:
 			if (
 				phase == "set_dressing"
 				and int(project.phase_minutes_elapsed) > 0
-			) or phase in ["rehearsal", "shooting", "review"]:
+			) or phase in ["rehearsal", "shooting", "review", "set_strike"]:
 				prop_quality_text += (
 					"\nНовые покупки будут доступны со следующей сцены."
 				)
@@ -3495,3 +3514,789 @@ func _find_employee(employee_id: String) -> Variant:
 
 func _get_profession_title(profession_id: String) -> String:
 	return PROFESSION_CATALOG_SCRIPT.get_profession_title(profession_id)
+
+func prepare_scene_set_dressing(
+	building_id: String,
+	setup: Dictionary
+) -> bool:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return false
+	return bool(actor.call("prepare_scene_set_dressing", setup))
+
+
+
+func install_set_prop(building_id: String, prop_id: String) -> bool:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return false
+	return bool(actor.call("install_set_prop", prop_id))
+
+
+
+func remove_set_prop(building_id: String, prop_id: String) -> bool:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return false
+	return bool(actor.call("remove_set_prop", prop_id))
+
+
+
+func clear_scene_set_dressing(building_id: String) -> void:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return
+	actor.call("clear_scene_set_dressing")
+
+
+
+func get_storage_mark(building_id: String, prop_index: int) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	var mark: Variant = actor.call("get_storage_mark", prop_index)
+	if mark is Vector3:
+		return mark
+	return Vector3.ZERO
+
+
+
+func _refresh_warehouse_inventory_visuals() -> void:
+	var warehouse_id: String = _get_prop_warehouse_building_id()
+	var actor: Variant = _building_actors.get(warehouse_id)
+	if actor == null or not is_instance_valid(actor):
+		return
+	actor.call(
+		"set_warehouse_inventory",
+		_set_inventory.call("get_props_in_warehouse")
+	)
+
+
+
+func _get_scene_setup_refresh_key() -> String:
+	if _active_film_project == null:
+		return ""
+	return "%s:%d" % [
+		str(_active_film_project.id),
+		int(_active_film_project.current_scene_index),
+	]
+
+
+
+func _refresh_film_scene_setup_if_needed() -> void:
+	var refresh_key: String = _get_scene_setup_refresh_key()
+	if refresh_key.is_empty() or refresh_key == _last_scene_setup_refresh_key:
+		return
+	_film_production_system.call(
+		"refresh_current_scene_setup",
+		_active_film_project,
+		_active_film_script,
+		_set_inventory.get_owned_prop_ids()
+	)
+	_last_scene_setup_refresh_key = refresh_key
+
+
+
+func _get_prop_warehouse_building_id() -> String:
+	for building in _buildings:
+		if str(building.building_type_id) == "prop_warehouse":
+			return str(building.id)
+	return ""
+
+
+
+func _get_stage_technician_ids(
+	stage_id: String,
+	primary_technician_id: String
+) -> Array[String]:
+	var result: Array[String] = []
+	if not primary_technician_id.is_empty():
+		result.append(primary_technician_id)
+	for employee in _get_assigned_staff(stage_id):
+		if str(employee.profession_id) != "technician":
+			continue
+		var employee_id: String = str(employee.id)
+		if not employee_id.is_empty() and not result.has(employee_id):
+			result.append(employee_id)
+		if result.size() >= 8:
+			break
+	return result
+
+
+
+func _get_set_logistics_scene_key(
+	phase: String,
+	setup: Dictionary
+) -> String:
+	var prop_signature: String = ""
+	for prop_id_value in setup.get("prop_ids", []):
+		if not prop_signature.is_empty():
+			prop_signature += ","
+		prop_signature += str(prop_id_value)
+	return "%s:%s:%s:%s" % [
+		phase,
+		str(setup.get("scene_id", "")),
+		str(setup.get("set_id", "neutral")),
+		prop_signature,
+	]
+
+
+
+func _begin_set_logistics(
+	phase: String,
+	setup: Dictionary,
+	stage_id: String,
+	scene_key: String
+) -> void:
+	var warehouse_id: String = _get_prop_warehouse_building_id()
+	if warehouse_id.is_empty():
+		_set_logistics_phase = phase
+		_set_logistics_scene_key = scene_key
+		_set_logistics_blocked = true
+		push_error("StudioBuildingManager: prop warehouse is missing.")
+		return
+
+	_set_logistics_phase = phase
+	_set_logistics_scene_key = scene_key
+	_set_logistics_blocked = false
+	_set_logistics_pending_prop_ids.clear()
+
+	if phase == "set_dressing":
+		if not prepare_scene_set_dressing(stage_id, setup):
+			_set_logistics_blocked = true
+			push_error(
+				"StudioBuildingManager: previous set dressing has not been returned to the warehouse."
+			)
+			return
+		for prop_id_value in setup.get("prop_ids", []):
+			var prop_id: String = str(prop_id_value)
+			if (
+				prop_id.is_empty()
+				or str(_set_inventory.call("get_prop_location", prop_id)) != "warehouse"
+			):
+				_set_logistics_blocked = true
+				push_error(
+					"StudioBuildingManager: prop %s is not available in warehouse stock."
+					% prop_id
+				)
+				return
+			_set_logistics_pending_prop_ids.append(prop_id)
+	else:
+		var raw_stage_prop_ids: Variant = _set_inventory.call("get_props_on_stage")
+		if raw_stage_prop_ids is Array:
+			for prop_id_value in raw_stage_prop_ids:
+				var prop_id: String = str(prop_id_value)
+				if not setup.get("prop_ids", []).has(prop_id):
+					_set_logistics_blocked = true
+					push_error(
+						"StudioBuildingManager: unexpected prop %s remains on stage."
+						% prop_id
+					)
+				return
+				_set_logistics_pending_prop_ids.append(prop_id)
+		if _set_logistics_pending_prop_ids.is_empty():
+			clear_scene_set_dressing(stage_id)
+
+	var worker_count: int = mini(
+		_set_logistics_pending_prop_ids.size(),
+		_active_production_technician_ids.size()
+	)
+	if not _set_logistics_pending_prop_ids.is_empty() and worker_count <= 0:
+		_set_logistics_blocked = true
+		push_error("StudioBuildingManager: no technicians are available for set logistics.")
+		return
+
+	for worker_index in range(worker_count):
+		var worker_id: String = _active_production_technician_ids[worker_index]
+		if _set_logistics_worker_ids.has(worker_id):
+			continue
+		_set_logistics_worker_ids.append(worker_id)
+	for worker_id in _set_logistics_worker_ids:
+		_assign_next_set_logistics_task(
+			worker_id,
+			"stage",
+			stage_id,
+			warehouse_id
+		)
+
+
+
+func _assign_next_set_logistics_task(
+	worker_id: String,
+	last_location: String,
+	stage_id: String,
+	warehouse_id: String
+) -> void:
+	if _set_logistics_pending_prop_ids.is_empty():
+		_return_set_logistics_worker_to_stage(
+			worker_id,
+			last_location,
+			stage_id,
+			warehouse_id
+		)
+		return
+	var prop_id: String = str(_set_logistics_pending_prop_ids.pop_front())
+	var setup: Dictionary = _active_film_project.get_current_scene_setup()
+	var scene_prop_ids: Array = setup.get("prop_ids", [])
+	var prop_index: int = scene_prop_ids.find(prop_id)
+	if prop_index < 0:
+		_set_logistics_blocked = true
+		push_error(
+			"StudioBuildingManager: logistics prop %s is not part of the active scene."
+			% prop_id
+		)
+		return
+	_set_logistics_worker_tasks[worker_id] = {
+		"prop_id": prop_id,
+		"prop_index": prop_index,
+		"state": "waiting_for_stage",
+		"last_location": last_location,
+		"remaining_minutes": 0,
+	}
+	_character_manager.call(
+		"set_employee_task",
+		worker_id,
+		"Готовится к доставке декорации «%s»"
+		% SET_CATALOG_SCRIPT.get_prop_definition(prop_id).get("title", prop_id)
+	)
+
+
+
+func _start_route_for_set_logistics_task(
+	worker_id: String,
+	task: Dictionary,
+	actor: Variant,
+	stage_id: String,
+	warehouse_id: String
+) -> void:
+	if _set_logistics_phase == "set_dressing":
+		_start_route_to_warehouse(
+			worker_id,
+			task,
+			actor,
+			stage_id,
+			warehouse_id,
+			false
+		)
+	elif str(task.get("last_location", "")) == "warehouse":
+		_start_route_from_warehouse_to_stage(
+			worker_id,
+			task,
+			actor,
+			stage_id,
+			warehouse_id,
+			"strike"
+		)
+	else:
+		_start_route_within_stage_to_prop(
+			worker_id,
+			task,
+			actor,
+			stage_id
+		)
+
+
+
+func _process_set_logistics_tasks(stage_id: String) -> void:
+	if _set_logistics_blocked:
+		return
+	var warehouse_id: String = _get_prop_warehouse_building_id()
+	for worker_id in _set_logistics_worker_ids:
+		if not _set_logistics_worker_tasks.has(worker_id):
+			continue
+		var task: Dictionary = _set_logistics_worker_tasks[worker_id]
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			worker_id
+		)
+		if actor == null or not is_instance_valid(actor):
+			_set_logistics_blocked = true
+			push_error(
+				"StudioBuildingManager: logistics worker %s has no character actor."
+				% worker_id
+			)
+			return
+		var state: String = str(task.get("state", ""))
+		match state:
+			"waiting_for_stage":
+				var ready: bool = (
+					str(task.get("last_location", "")) == "warehouse"
+					or bool(
+						_character_manager.call(
+							"dispatch_employee_to_workplace",
+						worker_id
+						)
+					)
+				)
+				if ready:
+					_start_route_for_set_logistics_task(
+						worker_id,
+						task,
+						actor,
+						stage_id,
+						warehouse_id
+					)
+			"to_warehouse":
+				if bool(actor.call("is_at_scene_mark")):
+					if _set_logistics_phase == "set_dressing":
+						task["state"] = "picking_up"
+						task["remaining_minutes"] = 1
+						actor.call("set_scene_performance_action", "collecting_prop")
+						_character_manager.call(
+							"set_employee_task",
+							worker_id,
+							"Получает декорацию на складе"
+						)
+					else:
+						task["state"] = "storing"
+						task["remaining_minutes"] = 1
+						actor.call("set_scene_performance_action", "storing_prop")
+						_character_manager.call(
+							"set_employee_task",
+							worker_id,
+							"Возвращает декорацию на склад"
+						)
+			"picking_up":
+				task["remaining_minutes"] = int(task.get("remaining_minutes", 1)) - 1
+				if int(task["remaining_minutes"]) <= 0:
+					var pickup_prop_id: String = str(task.get("prop_id", ""))
+					if not bool(_set_inventory.call(
+						"set_prop_location",
+						pickup_prop_id,
+						"in_transit_to_stage"
+					)):
+						_set_logistics_blocked = true
+						return
+					_refresh_warehouse_inventory_visuals()
+					actor.call("set_carrying_prop", true)
+					task["last_location"] = "warehouse"
+					_start_route_from_warehouse_to_stage(
+						worker_id,
+						task,
+						actor,
+						stage_id,
+						warehouse_id,
+						"delivery"
+					)
+			"to_stage":
+				if bool(actor.call("is_at_scene_mark")):
+					task["state"] = "installing"
+					task["remaining_minutes"] = 1
+					actor.call("set_scene_performance_action", "placing_set_piece")
+					_character_manager.call(
+						"set_employee_task",
+						worker_id,
+						"Устанавливает декорацию на площадке"
+					)
+			"installing":
+				task["remaining_minutes"] = int(task.get("remaining_minutes", 1)) - 1
+				if int(task["remaining_minutes"]) <= 0:
+					var install_prop_id: String = str(task.get("prop_id", ""))
+					if not install_set_prop(stage_id, install_prop_id):
+						_set_logistics_blocked = true
+						push_error("StudioBuildingManager: failed to install %s." % install_prop_id)
+						return
+					if not bool(_set_inventory.call(
+						"set_prop_location",
+						install_prop_id,
+						"on_stage"
+					)):
+						_set_logistics_blocked = true
+						return
+					actor.call("set_carrying_prop", false)
+					task["last_location"] = "stage"
+					_assign_next_set_logistics_task(
+						worker_id,
+						"stage",
+						stage_id,
+						warehouse_id
+					)
+					continue
+			"to_stage_prop":
+				if bool(actor.call("is_at_scene_mark")):
+					task["state"] = "removing"
+					task["remaining_minutes"] = 1
+					actor.call("set_scene_performance_action", "removing_set_piece")
+					_character_manager.call(
+						"set_employee_task",
+						worker_id,
+						"Снимает декорацию со сцены"
+					)
+			"removing":
+				task["remaining_minutes"] = int(task.get("remaining_minutes", 1)) - 1
+				if int(task["remaining_minutes"]) <= 0:
+					var remove_prop_id: String = str(task.get("prop_id", ""))
+					if not remove_set_prop(stage_id, remove_prop_id):
+						_set_logistics_blocked = true
+						push_error("StudioBuildingManager: failed to remove %s." % remove_prop_id)
+						return
+					if not bool(_set_inventory.call(
+						"set_prop_location",
+						remove_prop_id,
+						"in_transit_to_warehouse"
+					)):
+						_set_logistics_blocked = true
+						return
+					actor.call("set_carrying_prop", true)
+					task["last_location"] = "stage"
+					_start_route_to_warehouse(
+						worker_id,
+						task,
+						actor,
+						stage_id,
+						warehouse_id,
+						true
+					)
+			"storing":
+				task["remaining_minutes"] = int(task.get("remaining_minutes", 1)) - 1
+				if int(task["remaining_minutes"]) <= 0:
+					var store_prop_id: String = str(task.get("prop_id", ""))
+					if not bool(_set_inventory.call(
+						"set_prop_location",
+						store_prop_id,
+						"warehouse"
+					)):
+						_set_logistics_blocked = true
+						return
+					_refresh_warehouse_inventory_visuals()
+					actor.call("set_carrying_prop", false)
+					task["last_location"] = "warehouse"
+					_assign_next_set_logistics_task(
+						worker_id,
+						"warehouse",
+						stage_id,
+						warehouse_id
+					)
+					continue
+			"returning_via_warehouse":
+				if bool(actor.call("is_at_scene_mark")):
+					actor.call("return_to_workplace", [])
+					task["state"] = "returning"
+			"returning":
+				if (
+					bool(actor.call("is_at_workplace"))
+					and not bool(actor.call("is_in_scene_performance"))
+					and not bool(actor.call("is_returning_to_workplace"))
+				):
+					task["state"] = "done"
+					_character_manager.call("clear_employee_task", worker_id)
+					_character_manager.call(
+						"set_employee_production_action",
+						worker_id,
+						""
+					)
+		_set_logistics_worker_tasks[worker_id] = task
+
+
+
+func _start_route_to_warehouse(
+	worker_id: String,
+	task: Dictionary,
+	actor: Variant,
+	stage_id: String,
+	warehouse_id: String,
+	for_strike: bool
+) -> void:
+	var prop_index: int = int(task.get("prop_index", 0))
+	var target_position: Vector3 = get_storage_mark(
+		warehouse_id,
+		prop_index
+	)
+	var route: Array[Vector3] = _build_route_stage_to_warehouse(
+		worker_id,
+		stage_id,
+		warehouse_id,
+		prop_index,
+		actor.global_position
+	)
+	if route.is_empty():
+		_set_logistics_blocked = true
+		push_error("StudioBuildingManager: cannot route %s to the prop warehouse." % worker_id)
+		return
+	actor.call(
+		"start_scene_performance",
+		target_position,
+		target_position + Vector3(0.0, 0.0, -1.0),
+		"carrying_prop" if for_strike else "collecting_prop",
+		"",
+		route
+	)
+	task["state"] = "to_warehouse"
+	_character_manager.call(
+		"set_employee_task",
+		worker_id,
+		"Несёт декорацию на склад" if for_strike else "Идёт за декорацией на склад"
+	)
+
+
+
+func _start_route_from_warehouse_to_stage(
+	worker_id: String,
+	task: Dictionary,
+	actor: Variant,
+	stage_id: String,
+	warehouse_id: String,
+	logistics_kind: String
+) -> void:
+	var prop_index: int = int(task.get("prop_index", 0))
+	var target_position: Vector3 = get_set_dressing_mark(
+		stage_id,
+		prop_index
+	)
+	var route: Array[Vector3] = _build_route_warehouse_to_stage(
+		worker_id,
+		stage_id,
+		warehouse_id,
+		prop_index,
+		target_position
+	)
+	if route.is_empty():
+		_set_logistics_blocked = true
+		push_error("StudioBuildingManager: cannot route %s from warehouse to stage." % worker_id)
+		return
+	actor.call(
+		"start_scene_performance",
+		target_position,
+		get_scene_focus_point(stage_id),
+		"carrying_prop" if logistics_kind == "delivery" else "checking_equipment",
+		"",
+		route
+	)
+	task["state"] = "to_stage" if logistics_kind == "delivery" else "to_stage_prop"
+	_character_manager.call(
+		"set_employee_task",
+		worker_id,
+		"Несёт декорацию на съёмочную площадку"
+		if logistics_kind == "delivery"
+		else "Возвращается к следующей декорации"
+	)
+
+
+
+func _start_route_within_stage_to_prop(
+	worker_id: String,
+	task: Dictionary,
+	actor: Variant,
+	stage_id: String
+) -> void:
+	var target_position: Vector3 = get_set_dressing_mark(
+		stage_id,
+		int(task.get("prop_index", 0))
+	)
+	var route: Array[Vector3] = get_scene_path(
+		stage_id,
+		actor.global_position,
+		target_position
+	)
+	if route.is_empty():
+		_set_logistics_blocked = true
+		push_error("StudioBuildingManager: cannot reach a set piece inside the stage.")
+		return
+	actor.call(
+		"start_scene_performance",
+		target_position,
+		get_scene_focus_point(stage_id),
+		"removing_set_piece",
+		"",
+		route
+	)
+	task["state"] = "to_stage_prop"
+	_character_manager.call(
+		"set_employee_task",
+		worker_id,
+		"Подходит к декорации для демонтажа"
+	)
+
+
+
+func _return_set_logistics_worker_to_stage(
+	worker_id: String,
+	last_location: String,
+	stage_id: String,
+	warehouse_id: String
+) -> void:
+	var actor: Variant = _character_manager.call(
+		"get_employee_actor",
+		worker_id
+	)
+	if actor == null or not is_instance_valid(actor):
+		_set_logistics_blocked = true
+		return
+	var task: Dictionary = _set_logistics_worker_tasks.get(worker_id, {})
+	var workplace_position: Vector3 = actor.call("get_workplace_position")
+	if last_location == "warehouse":
+		var prop_index: int = int(task.get("prop_index", 0))
+		var route: Array[Vector3] = _build_route_warehouse_to_stage(
+			worker_id,
+			stage_id,
+			warehouse_id,
+			prop_index,
+			workplace_position
+		)
+		if route.is_empty():
+			_set_logistics_blocked = true
+			return
+		actor.call(
+			"start_scene_performance",
+			workplace_position,
+			get_scene_focus_point(stage_id),
+			"checking_equipment",
+			"",
+			route
+		)
+		task["state"] = "returning_via_warehouse"
+		task["last_location"] = "warehouse"
+		_set_logistics_worker_tasks[worker_id] = task
+		return
+
+	var return_path: Array[Vector3] = get_scene_path(
+		stage_id,
+		actor.global_position,
+		workplace_position
+	)
+	if return_path.is_empty():
+		_set_logistics_blocked = true
+		return
+	actor.call("return_to_workplace", return_path)
+	task["state"] = "returning"
+	_set_logistics_worker_tasks[worker_id] = task
+
+
+
+func _are_set_logistics_tasks_complete() -> bool:
+	if _set_logistics_blocked or not _set_logistics_pending_prop_ids.is_empty():
+		return false
+	for task_value in _set_logistics_worker_tasks.values():
+		if str(task_value.get("state", "")) != "done":
+			return false
+	return true
+
+
+
+func _are_set_logistics_workers_ready() -> bool:
+	if not _are_set_logistics_tasks_complete():
+		return false
+	for worker_id in _set_logistics_worker_ids:
+		var actor: Variant = _character_manager.call(
+			"get_employee_actor",
+			worker_id
+		)
+		if actor == null or not is_instance_valid(actor):
+			return false
+		if (
+			bool(actor.call("is_in_scene_performance"))
+			or bool(actor.call("is_returning_to_workplace"))
+		):
+			return false
+		if not bool(
+			_character_manager.call(
+				"dispatch_employee_to_workplace",
+				worker_id
+			)
+		):
+			return false
+	return true
+
+
+
+func _build_route_stage_to_warehouse(
+	worker_id: String,
+	stage_id: String,
+	warehouse_id: String,
+	prop_index: int,
+	start_position: Vector3
+) -> Array[Vector3]:
+	var stage_workplace_path: Array[Vector3] = _character_manager.call(
+		"get_employee_workplace_path",
+		worker_id
+	)
+	var warehouse_path: Array[Vector3] = get_workplace_path(
+		warehouse_id,
+		posmod(prop_index, 8)
+	)
+	if stage_workplace_path.is_empty() or warehouse_path.is_empty():
+		return []
+	var stage_exit_path: Array[Vector3] = get_scene_path(
+		stage_id,
+		start_position,
+		stage_workplace_path[0]
+	)
+	var outdoor_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		stage_workplace_path[0],
+		warehouse_path[0],
+		_get_building_navigation_obstacles(),
+		0.75,
+		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+	)
+	if stage_exit_path.is_empty() or outdoor_path.is_empty():
+		return []
+	var result: Array[Vector3] = []
+	_append_logistics_path(result, stage_exit_path)
+	_append_logistics_path(result, outdoor_path)
+	_append_logistics_path(result, warehouse_path)
+	return result
+
+
+
+func _build_route_warehouse_to_stage(
+	worker_id: String,
+	stage_id: String,
+	warehouse_id: String,
+	prop_index: int,
+	target_position: Vector3
+) -> Array[Vector3]:
+	var stage_workplace_path: Array[Vector3] = _character_manager.call(
+		"get_employee_workplace_path",
+		worker_id
+	)
+	var warehouse_path: Array[Vector3] = get_workplace_path(
+		warehouse_id,
+		posmod(prop_index, 8)
+	)
+	if stage_workplace_path.is_empty() or warehouse_path.is_empty():
+		return []
+	var warehouse_exit_path: Array[Vector3] = warehouse_path.duplicate()
+	warehouse_exit_path.reverse()
+	var outdoor_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		warehouse_path[0],
+		stage_workplace_path[0],
+		_get_building_navigation_obstacles(),
+		0.75,
+		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+	)
+	var stage_path: Array[Vector3] = get_scene_path(
+		stage_id,
+		stage_workplace_path[0],
+		target_position
+	)
+	if outdoor_path.is_empty() or stage_path.is_empty():
+		return []
+	var result: Array[Vector3] = []
+	_append_logistics_path(result, warehouse_exit_path)
+	_append_logistics_path(result, outdoor_path)
+	_append_logistics_path(result, stage_path)
+	return result
+
+
+
+func _append_logistics_path(
+	target: Array[Vector3],
+	source: Array[Vector3]
+) -> void:
+	for point in source:
+		if target.is_empty() or target.back().distance_to(point) > 0.2:
+			target.append(point)
+
+
+
+func _reset_set_logistics() -> void:
+	_set_logistics_phase = ""
+	_set_logistics_scene_key = ""
+	_set_logistics_pending_prop_ids.clear()
+	_set_logistics_worker_ids.clear()
+	_set_logistics_worker_tasks.clear()
+	_set_logistics_blocked = false
+
+

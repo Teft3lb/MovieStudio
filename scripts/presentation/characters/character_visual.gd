@@ -42,6 +42,7 @@ var _right_arm_pivot: Node3D
 var _left_leg_pivot: Node3D
 var _right_leg_pivot: Node3D
 var _mouth_node: MeshInstance3D
+var _carried_prop_root: Node3D
 
 var _walking: bool = false
 var _working: bool = false
@@ -93,6 +94,11 @@ func set_performance_action(action_id: String) -> void:
 		_mouth_node.scale.y = 1.0
 
 
+func set_carrying_prop(value: bool) -> void:
+	if is_instance_valid(_carried_prop_root):
+		_carried_prop_root.visible = value
+
+
 func is_performing() -> bool:
 	return _performing
 
@@ -108,7 +114,10 @@ func advance_simulation(simulation_delta: float) -> void:
 
 	if _walking:
 		var swing: float = sin(_animation_phase) * 0.55
-		_set_arm_pose(swing, -swing)
+		if is_instance_valid(_carried_prop_root) and _carried_prop_root.visible:
+			_set_arm_pose(0.82 + swing * 0.08, 0.82 - swing * 0.08)
+		else:
+			_set_arm_pose(swing, -swing)
 		_set_leg_pose(-swing, swing)
 	elif _performing:
 		_advance_performance_animation()
@@ -171,9 +180,25 @@ func _advance_performance_animation() -> void:
 			right_arm = -0.12 - motion * 0.12
 			head_motion *= 0.5
 		"placing_set_piece":
-			left_arm = -1.05 + sin(_animation_phase * 2.1) * 0.32
-			right_arm = -1.10 - sin(_animation_phase * 2.1) * 0.32
+			left_arm = 1.05 + sin(_animation_phase * 2.1) * 0.32
+			right_arm = 1.10 - sin(_animation_phase * 2.1) * 0.32
 			body_lean = 0.075 + sin(_animation_phase * 1.4) * 0.035
+		"collecting_prop":
+			left_arm = 0.98 + sin(_animation_phase * 1.8) * 0.16
+			right_arm = 0.98 - sin(_animation_phase * 1.8) * 0.16
+			body_lean = 0.10
+		"carrying_prop":
+			left_arm = 0.82 + sin(_animation_phase * 1.6) * 0.08
+			right_arm = 0.82 - sin(_animation_phase * 1.6) * 0.08
+			body_lean = 0.025
+		"removing_set_piece":
+			left_arm = 1.08 + sin(_animation_phase * 1.9) * 0.18
+			right_arm = 1.02 - sin(_animation_phase * 1.9) * 0.18
+			body_lean = 0.12
+		"storing_prop":
+			left_arm = 0.96 + sin(_animation_phase * 1.7) * 0.12
+			right_arm = 0.96 - sin(_animation_phase * 1.7) * 0.12
+			body_lean = 0.08
 		"directing":
 			left_arm = -0.24 + motion * 0.3
 			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
@@ -382,6 +407,26 @@ func _build_model(character_payload: Dictionary) -> void:
 		_left_leg_pivot, "LeftShoe", Vector3(0.25, 0.13, 0.36),
 		SHOE_COLOR, Vector3(0.0, -0.78, -0.07)
 	)
+
+	_carried_prop_root = Node3D.new()
+	_carried_prop_root.name = "CarriedProp"
+	_carried_prop_root.position = Vector3(0.0, 1.08, -0.48)
+	_body_root.add_child(_carried_prop_root)
+	_create_box(
+		_carried_prop_root,
+		"PropTransportCase",
+		Vector3(0.58, 0.40, 0.34),
+		Color(0.42, 0.29, 0.17),
+		Vector3.ZERO
+	)
+	_create_box(
+		_carried_prop_root,
+		"PropTransportCaseHandle",
+		Vector3(0.24, 0.07, 0.08),
+		Color(0.18, 0.19, 0.19),
+		Vector3(0.0, 0.22, -0.02)
+	)
+	_carried_prop_root.visible = false
 
 	_right_leg_pivot = Node3D.new()
 	_right_leg_pivot.name = "RightLegPivot"

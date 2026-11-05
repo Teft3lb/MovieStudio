@@ -186,6 +186,74 @@ func _run_tests() -> void:
 		inventory.get_owned_prop_ids().size() == 3,
 		"Building scene plans must not consume reusable purchased props."
 	)
+	_expect(
+		inventory.get_props_in_warehouse().size() == 3,
+		"Newly purchased props must physically belong to warehouse stock."
+	)
+	_expect(
+		not bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"on_stage"
+		)),
+		"Inventory must reject skipping the warehouse pickup and transport steps."
+	)
+	_expect(
+		bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"in_transit_to_stage"
+		))
+		and bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"on_stage"
+		)),
+		"A prop must transition from warehouse through transport before appearing on stage."
+	)
+	_expect(
+		inventory.get_props_on_stage() == ["lighthouse_console"]
+		and inventory.get_props_in_warehouse().size() == 2,
+		"Physical stock counts must distinguish warehouse inventory from installed props."
+	)
+	_expect(
+		not bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"warehouse"
+		)),
+		"An installed prop must not teleport directly back to warehouse stock."
+	)
+	var on_stage_round_trip: Variant = SET_INVENTORY_SCRIPT.from_dict(
+		inventory.to_dict()
+	)
+	_expect(
+		on_stage_round_trip.get_prop_location("lighthouse_console") == "on_stage",
+		"Prop location must survive inventory serialization."
+	)
+	_expect(
+		bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"in_transit_to_warehouse"
+		))
+		and bool(inventory.call(
+			"set_prop_location",
+			"lighthouse_console",
+			"warehouse"
+		)),
+		"A removed prop must return through transport to warehouse stock."
+	)
+	var fast_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
+		[scenes[0]],
+		owned_props,
+		"adventure",
+		3
+	)
+	_expect(
+		int(fast_setups[0].get("setup_minutes", 0)) == 3,
+		"Three technicians must reduce a three-prop setup to one parallel installation round plus base preparation."
+	)
 
 	var restored: Variant = SET_INVENTORY_SCRIPT.from_dict(
 		inventory.to_dict()

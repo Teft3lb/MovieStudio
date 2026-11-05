@@ -13,13 +13,13 @@ The player does not manually place every object in this slice. The focus is a vi
 ## Runtime ownership
 
 - **StudioSetCatalog** defines thematic prop groups, item prices, quality bonuses and scene-to-set matching.
-- **StudioSetInventory** owns the prototype prop budget and purchased prop IDs. Purchased props are reusable and are not consumed by production.
-- **FilmProductionSystem** normalizes one setup plan per scripted scene, includes setup time in the production estimate, advances the set-dressing phase and records the used set and props in the completed scene result.
-- **FilmProductionProject** serializes each scene setup plan. A plan can be refreshed during Preparation and until the first Set Dressing minute is processed.
-- **StudioBuildingManager** provides the dedicated Decor Shop workspace, builds scene plans from the current inventory and coordinates technician movement and off-camera crew staging.
-- **StudioBuildingActor** owns the physical set-dressing root, creates prop meshes, progressively reveals installed pieces and provides navigation marks.
-- **StudioNavigationSystem** builds obstacle-aware paths for outdoor workplace travel and movement inside the Sound Stage.
-- **CharacterActor** follows supplied scene paths; **CharacterVisual** provides a distinct set-piece installation pose.
+- **StudioSetInventory** owns the prototype prop budget, purchased prop IDs and each prop's physical location: warehouse, in transit to stage, on stage or in transit back to the warehouse. Purchased props remain reusable.
+- **FilmProductionSystem** normalizes one setup plan per scripted scene, scales installation/strike phase durations by the available technician count, records the set result after shooting and completes the scene only after strike.
+- **FilmProductionProject** serializes each scene setup plan and technician count. A plan can be refreshed during Preparation and before installation starts.
+- **StudioBuildingManager** provides the Decor Shop workspace, maintains warehouse stock visuals, assigns prop trips to available Sound Stage technicians and blocks production phase progress until each logistics task is complete.
+- **StudioBuildingActor** owns the Sound Stage set root and Prop Warehouse interior, creates reusable prop meshes, exposes installation/storage marks and only clears a set after the strike workflow returns all pieces.
+- **StudioNavigationSystem** builds obstacle-aware routes between the Sound Stage, warehouse and employee workstations.
+- **CharacterActor** follows the combined indoor/outdoor routes; **CharacterVisual** shows installation/removal poses and a transport case while a technician carries a prop.
 
 ## The Set Dressing Workshop
 
@@ -47,27 +47,30 @@ Every catalog item in the matched group is a required scene prop. Owned items ar
 
 A scene setup contains its scene ID, matched source group, visible set ID/title, installed prop IDs, required and missing prop IDs, setup duration and set-dressing quality.
 
-The current duration rule is two base minutes plus one minute per installed prop, capped at ten minutes. A neutral scene therefore still has a short two-minute equipment/setup phase. The plan is stored on FilmProductionProject and is not recalculated every game minute. While the scene is in Preparation or Set Dressing has zero elapsed minutes, a successful prop purchase refreshes its installed/missing prop list, setup duration and quality. The plan remains refreshable until the first Set Dressing minute is processed. Props bought after installation progress begins remain reusable and are evaluated for the next scene when its Preparation phase begins.
+The current installation duration is two base minutes plus one parallel work round per batch of props: `2 + ceil(installed_prop_count / technician_count)`. A neutral scene therefore still has a short two-minute equipment/setup phase. Strike uses `1 + ceil(installed_prop_count / technician_count)` minutes, including a one-minute neutral-stage clearance. The plan is stored on FilmProductionProject and is not recalculated every game minute. While the scene is in Preparation, a successful purchase refreshes its installed/missing prop list, setup duration and quality. The current scene's plan is locked once technicians begin collecting props; later purchases are evaluated for the next scene during its Preparation phase.
 
 ## Production phase integration
 
 Each scene follows:
 
 1. **Preparation** — director and camera operator prepare blocking; cast gathers on stage.
-2. **Set Dressing** — the technician moves between installation marks. The next prop appears when the corresponding part of the setup phase is complete.
+2. **Set Dressing** — each assigned technician walks to the warehouse, retrieves a purchased prop, carries it to the Sound Stage and installs it. Multiple technicians can deliver different pieces concurrently.
 3. **Rehearsal** — actors rehearse with visible gestures and partner reactions.
 4. **Shooting** — actors perform their generated action/dialogue; camera rigs track the blocking.
 5. **Review** — the director reviews the take and production quality is calculated.
+6. **Set Strike** — after a scene is accepted, technicians remove each installed piece, carry it back to the warehouse and return it to stock. The next scene cannot begin until the previous set is cleared.
 
-The technician remains a required crew member. Production routes the director, camera operator and technician back to their Sound Stage workstations regardless of shift state; cast members are routed to the stage before moving to their blocking marks. During Set Dressing, the technician may leave the normal workstation to install pieces. Production waits while the technician travels to the current installation mark; this prevents the phase clock from consuming the setup duration while the technician is still walking. During Rehearsal, Shooting and Review, employees assigned to the Sound Stage who are not performing in the current scene move to holding marks behind the camera line. They remain part of the stage roster, receive an explicit off-camera task/status and return to their workstations during the next Preparation phase or when production ends. Manual debug fast-forward snaps off-camera staff to their holding marks, preserving deterministic phase progress.
+The director, camera operator and primary technician remain required crew members. Production routes them to their Sound Stage workstations regardless of shift state; cast members are released during Preparation and Set Dressing. Every additional technician assigned to the Sound Stage joins the logistics pool. During Set Dressing, each worker walks from the stage to the warehouse, retrieves a purchased piece, carries it to an installation mark and installs it. Workers handle separate pieces concurrently; when there are fewer technicians than props, they make additional trips. Production waits until every delivery is complete and the workers have returned to their stage workstations before the rehearsal phase can advance. Set Strike follows the reverse route: technicians remove props, carry them to the warehouse and return them to shelf stock. The phase cannot finish while any piece remains on stage. During Rehearsal, Shooting and Review, employees assigned to the Sound Stage who are not performing in the current scene move to holding marks behind the camera line. They remain part of the stage roster, receive an explicit off-camera task/status and return to their workstations during Set Strike or when production ends. Manual debug fast-forward snaps off-camera staff to their holding marks, preserving deterministic phase progress.
 
 If a scene has no owned props for its location, the technician performs a short equipment/neutral-stage setup. Missing props never block production start: the player may proceed with a neutral or incomplete set, while the scene quality score is reduced for every missing required item. The pre-production panel previews missing catalog items, and the active production panel shows scene coverage and the current set-dressing quality. There is no indefinite rehearsal or setup loop: every phase has a bounded duration and production transitions automatically.
 
 ## Physical presentation
 
-The Sound Stage owns an Interior/SetDressing node. Each scene plan creates child Node3D instances at fixed installation positions on the central set platform, between the internal side walls. The technician marks are placed in front of the rear prop row so the crew can install pieces without standing inside their footprints or crossing the set walls. Their visual meshes are assembled from the existing box, cylinder and sphere primitives, so no external art assets are required for the first playable slice.
+The Sound Stage owns an Interior/SetDressing node. Each scene plan creates hidden child Node3D instances at fixed installation positions on the central set platform. A technician visits the corresponding mark, performs the installation action and makes that individual prop visible. The actor refuses to replace a non-empty set root; the manager can clear it only after every on-stage prop has passed through removal and warehouse return.
 
-Props start hidden. During Set Dressing, the number of visible props follows phase progress. The same scene key prevents unnecessary recreation every game minute. When the scene changes, the old prop roots are replaced with the next scene's planned props.
+The Prop Warehouse is a separate cutaway building with storage racks and a live shelf display. Every owned prop in warehouse stock has a visible shelf representation. When a technician picks up a prop, the shelf instance is removed and a transport case appears in the character's hands. The case remains visible during the trip to the stage; it is hidden after installation. During Set Strike the same case appears while a technician carries a removed piece back to storage. The warehouse pickup marks and Sound Stage installation marks are connected through the employees' existing workplace entrance routes and obstacle-aware outdoor navigation.
+
+Props are not removed when a scene changes. They are hidden one at a time only after the technician reaches the piece and completes the removal action; the stage root is cleared after the inventory confirms that no prop remains on stage.
 
 The current set pieces are stylized primitive meshes. Their purpose is to make the technician's work and the scene's art direction visible; imported production-quality models, lighting variants, wall kits and a player-facing set editor remain future work.
 
@@ -96,17 +99,19 @@ Run from the project root with Godot 4.7.2:
 & $godot --headless --path . --script res://tests/studio_set_inventory_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 ~~~
 
-The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, duplicate/invalid purchases, serialization, scene matching and reusable prop plans. The production test checks the bounded Set Dressing phase, estimates, project serialization and recorded scene props. The interior test checks physical prop creation, progressive visibility and safe off-camera holding marks. The performance test checks speaking mouth motion, plus a stage employee walking behind the camera and returning to the workstation.
+The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, valid/invalid location transitions, location serialization, scene matching and technician-scaled setup duration. The production test checks installation/strike durations, technician scaling, project serialization and recorded scene props. The interior test checks warehouse shelves, pickup marks, carrying visuals and the rule that a new scene cannot replace the old set before explicit strike clearance. The performance test checks speaking mouth motion, plus a stage employee walking behind the camera and returning to the workstation.
 
 ## Explicit limitations
 
 - The prototype uses a separate 3,000-unit set budget; it is not connected to the future Studio Economy ledger.
-- Purchased inventory has serialization methods, but campaign SaveSystem integration does not yet exist.
+- Purchased inventory and prop locations have serialization methods, but campaign SaveSystem integration does not yet exist.
 - Set matching is based on a deterministic Russian-language keyword map with genre fallbacks; more complex screenplay tags and custom set requirements remain future work.
 - All matching owned props are used automatically; there is no per-scene prop picker yet.
 - Prop positions are selected from a fixed layout; the player cannot manually place, rotate or remove set pieces.
 - Visuals use primitive meshes; imported models, production lighting, dressing presets and environment-specific wall kits are future work.
 - Navigation is grid-based and static; crowd avoidance, arbitrary rotated polygons and dynamic obstacles are future work.
+- The production estimate covers phase work rounds; actual walking time between the stage and warehouse is simulated by the world clock and is not included in the displayed remaining-work estimate.

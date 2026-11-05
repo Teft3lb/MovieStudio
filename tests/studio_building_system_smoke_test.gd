@@ -28,11 +28,12 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 3
+		building_ids.size() == 4
 		and building_ids[0] == "editing_suite"
-		and building_ids[1] == "script_department"
-		and building_ids[2] == "sound_stage",
-		"The building catalogue must expose the Editing Suite, Script Department and Sound Stage."
+		and building_ids[1] == "prop_warehouse"
+		and building_ids[2] == "script_department"
+		and building_ids[3] == "sound_stage",
+		"The building catalogue must expose the Editing Suite, Prop Warehouse, Script Department and Sound Stage."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("script_department") == 3,
@@ -45,6 +46,14 @@ func _test_catalogue() -> void:
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("editing_suite") == 3,
 		"The Editing Suite must expose three editor workstations."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("prop_warehouse") == 0
+		and not BUILDING_CATALOG_SCRIPT.accepts_profession(
+			"prop_warehouse",
+			"technician"
+		),
+		"The prop warehouse must be a storage building, not a competing technician workplace."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
@@ -123,6 +132,16 @@ func _test_placement_validation() -> void:
 	_expect(
 		bool(valid_result.get("valid", false)),
 		"Initial script department and sound stage positions must not overlap."
+	)
+	var warehouse_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"prop_warehouse",
+		Vector3(20.0, 0.0, 10.0),
+		0.0,
+		[existing]
+	)
+	_expect(
+		bool(warehouse_result.get("valid", false)),
+		"The initial prop warehouse position must remain clear of buildings and the access road."
 	)
 
 	var overlap_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(

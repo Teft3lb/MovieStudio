@@ -27,6 +27,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
+	_test_prop_warehouse_interior()
 	_test_editing_suite_interior()
 	_test_profession_work_animation()
 	_test_employee_enters_and_leaves_workplace()
@@ -64,6 +65,55 @@ func _test_script_department_interior() -> void:
 	)
 	_assert_workplace_route(actor, 0, 3, 8.0, 6.0)
 	_assert_workplace_route(actor, 2, 3, 8.0, 6.0)
+
+
+func _test_prop_warehouse_interior() -> void:
+	var actor: Node3D = _create_building("prop_warehouse", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/WarehouseFloor") != null
+		and actor.get_node_or_null("Interior/WarehouseInventory") != null,
+		"Prop Warehouse must contain a dedicated interior and inventory display."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/WarehouseShelf_-1_0") != null
+		and actor.get_node_or_null("Interior/WarehouseShelf_1_2") != null,
+		"Prop Warehouse must contain reusable storage shelving."
+	)
+	var workplace_path: Array[Vector3] = actor.call(
+		"get_workplace_path",
+		0
+	)
+	_expect(
+		workplace_path.size() == 4,
+		"Warehouse pickup routes must pass through the building entrance."
+	)
+	var storage_mark: Vector3 = actor.call("get_storage_mark", 3)
+	var local_storage_mark: Vector3 = actor.to_local(storage_mark)
+	_expect(
+		absf(local_storage_mark.x) <= 3.0
+		and local_storage_mark.z >= -2.2
+		and local_storage_mark.z <= 0.6,
+		"Technician pickup marks must be inside the warehouse aisle."
+	)
+	actor.call(
+		"set_warehouse_inventory",
+		["lighthouse_console", "lighthouse_beacon"]
+	)
+	var inventory_root: Node3D = actor.get_node(
+		"Interior/WarehouseInventory"
+	) as Node3D
+	_expect(
+		inventory_root.get_child_count() == 2
+		and inventory_root.get_node_or_null(
+			"StoredProp_lighthouse_console"
+		) != null,
+		"Owned props in warehouse stock must have visible shelf representations."
+	)
+	actor.call("set_warehouse_inventory", [])
+	_expect(
+		inventory_root.get_child_count() == 0,
+		"Picking a prop must remove its stored representation from the warehouse shelves."
+	)
 
 
 func _test_editing_suite_interior() -> void:
@@ -254,6 +304,40 @@ func _test_sound_stage_interior() -> void:
 		and set_path.back().distance_to(set_target) <= 0.1,
 		"Technicians must receive a valid route to each prop installation mark."
 	)
+	var next_setup: Dictionary = setup.duplicate(true)
+	next_setup["scene_id"] = "SCN-SET-02"
+	_expect(
+		not bool(actor.call("prepare_scene_set_dressing", next_setup))
+		and set_dressing_root.get_child_count() == 3,
+		"A new scene must not replace props until technicians have removed the previous set."
+	)
+	_expect(
+		bool(actor.call("remove_set_prop", "lighthouse_console"))
+		and not (set_dressing_root.get_node(
+			"SetProp_lighthouse_console"
+		) as Node3D).visible,
+		"A set piece must be removed explicitly before the warehouse return."
+	)
+	_expect(
+		bool(actor.call("install_set_prop", "lighthouse_console"))
+		and (set_dressing_root.get_node(
+			"SetProp_lighthouse_console"
+		) as Node3D).visible,
+		"A delivered prop must be installable after removal."
+	)
+	for prop_id in setup.get("prop_ids", []):
+		actor.call("remove_set_prop", str(prop_id))
+	actor.call("clear_scene_set_dressing")
+	_expect(
+		set_dressing_root.get_child_count() == 0,
+		"The stage may clear its prop nodes only after the explicit strike operation."
+	)
+	_expect(
+		bool(actor.call("prepare_scene_set_dressing", next_setup))
+		and set_dressing_root.get_child_count() == 3,
+		"A new scene setup must be accepted after the previous props are cleared."
+	)
+	actor.call("clear_scene_set_dressing")
 
 
 
@@ -382,3 +466,30 @@ func _test_profession_work_animation() -> void:
 		not bool(visual.call("is_working")),
 		"Walking animation must replace the working animation."
 	)
+	visual.call("set_carrying_prop", true)
+	visual.call("set_walking", true)
+	visual.call("advance_simulation", 0.5)
+	var carried_case: Node3D = visual.get_node(
+		"BodyRoot/CarriedProp"
+	) as Node3D
+	var carrying_arm: Node3D = visual.get_node(
+		"BodyRoot/LeftArmPivot"
+	) as Node3D
+	_expect(
+		carried_case.visible
+		and carried_case.get_node_or_null("PropTransportCase") != null
+		and carrying_arm.rotation.x > 0.5,
+		"Technicians must visibly carry a transport case while walking."
+	)
+	visual.call("set_carrying_prop", false)
+	_expect(
+		not carried_case.visible,
+		"The transport case must disappear when the prop is installed or stored."
+	)
+	visual.call("set_performance_action", "placing_set_piece")
+	visual.call("advance_simulation", 0.5)
+	_expect(
+		carrying_arm.rotation.x > 0.5,
+		"The installation pose must reach forward toward the set piece."
+	)
+

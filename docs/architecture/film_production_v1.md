@@ -45,14 +45,15 @@ Each scripted scene passes through these states:
 | Phase | Base duration | Visible activity |
 |---|---:|---|
 | Preparation | 2 min | Director stages the scene; camera operator frames the set; technician checks equipment; cast walks around the studio |
-| Set Dressing | 2 min + 1 min per purchased prop | Technician installs reusable props while cast remains free to roam; an empty set uses the neutral setup |
+| Set Dressing | 2 + ceil(installed props / technicians) min | Technicians collect reusable props from the warehouse and install them in parallel; an empty set uses the neutral setup |
 | Rehearsal | 2 + 1 min per performer | Actors rehearse with visible gestures and partner reactions |
 | Shooting | 8 + 1 min per performer | Actors perform dialogue/actions; camera rigs track the cast |
 | Review | 1 min | Director reviews the take; crew changes to review poses |
+| Set Strike | 1 + ceil(installed props / technicians) min | Technicians remove props, return them to warehouse stock and clear the stage |
 
-If a take scores below 58/100, the director requests a retake. A scene can have at most two retakes. A retake uses 16 + 5 minutes per performer, followed by another review.
+If a take scores below 58/100, the director requests a retake. A scene can have at most two retakes. A retake uses 16 + 5 minutes per performer, followed by another review. Once the take is accepted, the scene result is recorded and the project enters Set Strike. The next scene cannot enter Preparation until every installed prop has been removed from the stage and returned to warehouse stock. The film is marked completed only after the final scene's strike is finished.
 
-The simulation advances in GameClock minutes. Starting a film requires assigned roles, not a perfectly timed shift: the director, camera operator and technician are routed to the Sound Stage, while the cast is released to its normal studio roaming routes during Preparation and Set Dressing. When the set is ready, only the actors needed in the current scene are called back and must physically reach their blocking marks before Rehearsal advances. Actors not needed in the current scene remain free to roam. Assigned production participants remain part of the film through lunch and normal shift boundaries. Manual debug fast-forward processes production minutes deterministically, keeping waiting cast outside and snapping called performers to their current blocking marks.
+The simulation advances in GameClock minutes. The project estimate counts production work rounds; walking time between the Sound Stage and warehouse continues in the world simulation but is not included in the displayed remaining-work estimate. Starting a film requires assigned roles, not a perfectly timed shift: the director, camera operator and technician are routed to the Sound Stage, while the cast is released to its normal studio roaming routes during Preparation and Set Dressing. When the set is ready, only the actors needed in the current scene are called back and must physically reach their blocking marks before Rehearsal advances. Actors not needed in the current scene remain free to roam. Assigned production participants remain part of the film through lunch and normal shift boundaries. Manual debug fast-forward processes production minutes deterministically, keeping waiting cast outside and snapping called performers to their current blocking marks.
 
 ## In-world performance
 
@@ -67,7 +68,9 @@ During production:
 - actors reposition between rehearsal, shooting and review blocking;
 - the director gestures while staging and switches to a review pose when inspecting a take;
 - the camera operator performs a camera-operation pose;
-- during set dressing, the technician walks to each planned prop mark and installs the reusable set pieces; during Rehearsal, Shooting and Review, non-performing stage staff move behind the camera to off-camera holding marks;
+- during Set Dressing, every available Sound Stage technician can work on a separate prop: they walk to the warehouse, pick up a purchased piece, carry it to the stage and install it; during Set Strike, they remove pieces and carry them back to storage; the phase clock waits until the logistics workers have returned to their workstations;
+- multiple technicians reduce the installation and strike work-round durations; if fewer technicians are available than props, each technician makes additional trips;
+- during Rehearsal, Shooting and Review, non-performing stage staff move behind the camera to off-camera holding marks;
 - an optional producer performs a coordination pose;
 - the two in-world camera rigs turn toward the current cast blocking;
 - a physical slate displays the active scene and phase.
@@ -121,28 +124,28 @@ Run with Godot 4.7.2 from the project root:
 
 All smoke-test scripts defer their test bodies until the SceneTree is ready. They share `smoke_test_base.gd`, which accumulates failed expectations and exits with code 1 instead of printing a false PASS.
 
-The production domain test covers role resolution, unavailable-crew pauses, project serialization, all phase transitions, retakes, final quality and completion. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers phase-specific blocking marks, camera tracking and the production slate.
+The production domain test covers role resolution, unavailable-crew pauses, technician-scaled installation/strike timing, project serialization, all phase transitions, retakes, final quality and completion. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers the warehouse, prop pickup/return visuals, phase-specific blocking marks, camera tracking and the production slate.
 
 ## Manual verification
 
 1. Complete a script and select the Sound Stage inspector.
-2. Open the Decor Shop from bottom navigation, buy one or more set pieces; confirm the budget decreases and an owned item cannot be bought twice.
-3. Use a lighthouse script scene; confirm the lighthouse props are selected automatically and reused in every matching scene.
+2. Open the Decor Shop from bottom navigation, buy one or more set pieces; confirm the budget decreases, an owned item cannot be bought twice and the pieces appear on the Prop Warehouse shelves.
+3. Use a lighthouse script scene; confirm technicians walk to the warehouse, pick up matching lighthouse props and carry them into the Sound Stage. Assign multiple technicians to the stage and observe concurrent deliveries.
 4. Assign each scripted role to an actor/extra. Confirm the producer is optional.
 5. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The crew is dispatched automatically.
-6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while the technician prepares the set.
+6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while technicians collect and install props.
 7. When Rehearsal begins, confirm only actors needed in the current scene return to the pavilion and take their marks; other cast members keep roaming.
-8. Observe the technician move between prop marks during Set Dressing.
-9. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
-10. During Rehearsal and Shooting, confirm non-performing stage staff walk behind the camera, disappear from the set frame and return during Preparation or after completion.
+8. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
+9. During Rehearsal and Shooting, confirm non-performing stage staff walk behind the camera, disappear from the set frame and return to their workstations after the take.
 10. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
 11. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
 12. Confirm the director, camera operator, technician and producer display their production poses/tasks.
-13. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
-14. Confirm low-quality takes request no more than two retakes.
-15. Confirm each completed scene advances to the next scene and updates the scene counter.
-16. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
-17. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
+13. After the scene is accepted, observe Set Strike: technicians remove the pieces, carry them back to the warehouse and place them on the shelves. Confirm the stage is not cleared before the last prop is returned.
+14. Confirm the next scene does not begin until the previous set is cleared and the technicians return to their workstations.
+15. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
+16. Confirm low-quality takes request no more than two retakes.
+17. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
+18. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
 
 ## Explicit limitations
 
