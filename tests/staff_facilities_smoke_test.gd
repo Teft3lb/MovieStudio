@@ -149,6 +149,11 @@ func _run_tests() -> void:
 		)),
 		"Employees must retain their existing fallback behavior when no cafeteria has been built."
 	)
+	actor.call("snap_outside_workplace")
+	_expect(
+		str(actor.call("get_workplace_building_id")).is_empty(),
+		"The roaming employee must be allowed to visit a facility without an active workplace route."
+	)
 	studio_manager.buildings = [cafeteria, housing]
 
 	_expect(
@@ -199,9 +204,10 @@ func _run_tests() -> void:
 		employee.id
 	)
 	_expect(
-		bool(actor.call("is_returning_to_workplace"))
-		and not bool(actor.call("is_in_facility")),
-		"After lunch an employee must return to their assigned workplace."
+		not bool(actor.call("is_at_workplace"))
+		and not bool(actor.call("is_in_facility"))
+		and str(actor.call("get_workplace_building_id")) == "BLD-WORKPLACE",
+		"After lunch an employee without a cached workplace route must receive a new route to their assigned workplace."
 	)
 	actor.call("snap_to_workplace")
 

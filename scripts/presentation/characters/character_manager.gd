@@ -348,8 +348,6 @@ func _route_employee_to_facility(
 	var source_building_id: String = str(
 		actor.call("get_workplace_building_id")
 	)
-	if source_building_id.is_empty():
-		return false
 	var source_slot_index: int = int(
 		workplace_assignment.get("slot_index", 0)
 	)
