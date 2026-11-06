@@ -86,10 +86,14 @@ func _run_tests() -> void:
 	root.add_child(clock)
 	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(actor)
+	var initial_route: Array[Vector3] = [
+		Vector3.ZERO,
+		Vector3(0.0, 0.0, 1.0),
+	]
 	actor.call(
 		"setup",
 		employee,
-		[Vector3.ZERO, Vector3(0.0, 0.0, 1.0)],
+		initial_route,
 		clock,
 		1.0
 	)
