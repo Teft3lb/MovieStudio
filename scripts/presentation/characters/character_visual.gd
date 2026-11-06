@@ -43,6 +43,7 @@ var _left_leg_pivot: Node3D
 var _right_leg_pivot: Node3D
 var _mouth_node: MeshInstance3D
 var _carried_prop_root: Node3D
+var _body_base_scale: Vector3 = Vector3.ONE
 
 var _walking: bool = false
 var _working: bool = false
@@ -78,6 +79,8 @@ func set_working(value: bool, work_style: String = "") -> void:
 func _reset_upper_body_pose() -> void:
 	if is_instance_valid(_body_root):
 		_body_root.rotation = Vector3.ZERO
+		_body_root.position.y = 0.0
+		_body_root.scale = _body_base_scale
 	if is_instance_valid(_head_root):
 		_head_root.rotation = Vector3.ZERO
 	if is_instance_valid(_mouth_node):
@@ -132,10 +135,26 @@ func advance_simulation(simulation_delta: float) -> void:
 			_head_root.rotation = Vector3.ZERO
 
 	if is_instance_valid(_body_root):
+		var is_eating: bool = _performing and _performance_action == "eating"
+		var is_sleeping: bool = _performing and _performance_action == "sleeping"
+		var pose_offset: float = -0.28 if is_eating else 0.58 if is_sleeping else 0.0
 		var bob_amount: float = (
-			0.022 if _walking else 0.018 if _performing else 0.008 if _working else 0.006
+			0.022 if _walking
+			else 0.004 if is_sleeping
+			else 0.018 if _performing
+			else 0.008 if _working
+			else 0.006
 		)
-		_body_root.position.y = sin(_animation_phase * 2.0) * bob_amount
+		_body_root.position.y = pose_offset + sin(_animation_phase * 2.0) * bob_amount
+		_body_root.scale = (
+			Vector3(
+				_body_base_scale.x,
+				_body_base_scale.y * 0.72,
+				_body_base_scale.z
+			)
+			if is_sleeping
+			else _body_base_scale
+		)
 
 
 func _advance_performance_animation() -> void:
@@ -180,14 +199,16 @@ func _advance_performance_animation() -> void:
 			right_arm = -0.12 - motion * 0.12
 			head_motion *= 0.5
 		"eating":
-			left_arm = -0.48 + sin(_animation_phase * 2.8) * 0.12
-			right_arm = -0.55 + sin(_animation_phase * 2.8 + 1.0) * 0.12
-			head_motion = absf(sin(_animation_phase * 1.4)) * 0.045
+			var eating_cycle: float = sin(_animation_phase * 2.8)
+			left_arm = 0.38 + maxf(eating_cycle, 0.0) * 0.24
+			right_arm = 0.38 + maxf(-eating_cycle, 0.0) * 0.24
+			body_lean = 0.035 + absf(eating_cycle) * 0.025
+			head_motion = 0.045 + absf(eating_cycle) * 0.035
 		"sleeping":
 			left_arm = 0.02
 			right_arm = 0.02
-			body_lean = 0.035
-			head_motion = 0.025 + sin(_animation_phase * 0.55) * 0.018
+			body_lean = 0.0
+			head_motion = sin(_animation_phase * 0.55) * 0.012
 		"placing_set_piece":
 			left_arm = 1.05 + sin(_animation_phase * 2.1) * 0.32
 			right_arm = 1.10 - sin(_animation_phase * 2.1) * 0.32
@@ -212,11 +233,13 @@ func _advance_performance_animation() -> void:
 			left_arm = -0.24 + motion * 0.3
 			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
 		"operating_camera":
-			left_arm = -0.72 + motion * 0.25
-			right_arm = -0.72 - motion * 0.25
+			left_arm = 0.28 + sin(_animation_phase * 1.7) * 0.10
+			right_arm = 0.38 - sin(_animation_phase * 1.7) * 0.10
+			body_lean = 0.035
 		"checking_equipment":
-			left_arm = -0.78 + motion
-			right_arm = -0.82 - motion
+			left_arm = 0.22 + sin(_animation_phase * 1.8) * 0.06
+			right_arm = 0.48 + sin(_animation_phase * 2.7) * 0.12
+			body_lean = 0.055
 		"reviewing":
 			left_arm = -0.30 + motion * 0.2
 			right_arm = -0.30 - motion * 0.2
@@ -229,15 +252,25 @@ func _advance_performance_animation() -> void:
 
 	_set_arm_pose(left_arm, right_arm)
 	if is_instance_valid(_mouth_node):
-		_mouth_node.scale.y = (
-			1.0 + absf(sin(_animation_phase * 7.0)) * 3.2
-			if _performance_action == "speaking"
-			else 1.0
-		)
+		if _performance_action == "speaking":
+			_mouth_node.scale.y = 1.0 + absf(sin(_animation_phase * 7.0)) * 3.2
+		elif _performance_action == "eating":
+			_mouth_node.scale.y = 1.0 + absf(sin(_animation_phase * 5.5)) * 0.35
+		else:
+			_mouth_node.scale.y = 1.0
 	var leg_motion: float = sin(_animation_phase * 2.0) * 0.075
-	_set_leg_pose(leg_motion, -leg_motion)
+	if _performance_action == "eating":
+		_set_leg_pose(0.82 + leg_motion, 0.82 - leg_motion)
+	elif _performance_action == "sleeping":
+		_set_leg_pose(0.0, 0.0)
+	else:
+		_set_leg_pose(leg_motion, -leg_motion)
 	if is_instance_valid(_body_root):
-		_body_root.rotation = Vector3(0.0, 0.0, body_lean)
+		_body_root.rotation = (
+			Vector3(-PI * 0.5, 0.0, 0.0)
+			if _performance_action == "sleeping"
+			else Vector3(0.0, 0.0, body_lean)
+		)
 	if is_instance_valid(_head_root):
 		_head_root.rotation.x = head_motion
 
@@ -311,6 +344,7 @@ func _build_model(character_payload: Dictionary) -> void:
 	_body_root = Node3D.new()
 	_body_root.name = "BodyRoot"
 	_body_root.scale = Vector3(1.0, height_scale, 1.0)
+	_body_base_scale = _body_root.scale
 	add_child(_body_root)
 
 	_create_capsule(

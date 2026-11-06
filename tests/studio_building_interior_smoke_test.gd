@@ -29,7 +29,9 @@ func _run_tests() -> void:
 	_test_sound_stage_interior()
 	_test_prop_warehouse_interior()
 	_test_editing_suite_interior()
+	_test_staff_housing_beds()
 	_test_profession_work_animation()
+	_test_facility_poses()
 	_test_employee_enters_and_leaves_workplace()
 
 	_finish_test("StudioBuildingInteriorSmokeTest")
@@ -192,6 +194,37 @@ func _test_sound_stage_interior() -> void:
 		actor.get_node_or_null("Interior/TechnicalEquipmentRack") != null,
 		"Sound Stage must contain a technician equipment station."
 	)
+	var camera_workplace: Vector3 = actor.to_local(
+		actor.call("get_workplace_position", 3)
+	)
+	var director_workplace: Vector3 = actor.to_local(
+		actor.call("get_workplace_position", 2)
+	)
+	var technician_workplace: Vector3 = actor.to_local(
+		actor.call("get_workplace_position", 5)
+	)
+	var director_desk: Node3D = actor.get_node(
+		"Interior/DirectorMonitorDesk"
+	) as Node3D
+	var equipment_rack: Node3D = actor.get_node(
+		"Interior/TechnicalEquipmentRack"
+	) as Node3D
+	_expect(
+		camera_workplace.distance_to(Vector3(-5.0, 0.0, 0.8)) < 0.25,
+		"The camera operator workstation must sit directly behind the primary camera rig."
+	)
+	_expect(
+		director_workplace.distance_to(
+			actor.to_local(director_desk.global_position)
+		) < 1.2,
+		"The director workstation must be beside the production monitor."
+	)
+	_expect(
+		technician_workplace.distance_to(
+			actor.to_local(equipment_rack.global_position)
+		) < 1.5,
+		"The technician workstation must be beside the equipment rack."
+	)
 	_assert_workplace_route(actor, 0, 8, 14.0, 12.0)
 	_assert_workplace_route(actor, 7, 8, 14.0, 12.0)
 
@@ -260,6 +293,16 @@ func _test_sound_stage_interior() -> void:
 		set_dressing_root.get_child_count() == 3,
 		"Each purchased set piece must create its own physical prop instance."
 	)
+	var first_prop: Node3D = set_dressing_root.get_node(
+		"SetProp_lighthouse_console"
+	) as Node3D
+	var first_prop_mark: Vector3 = actor.to_local(
+		actor.call("get_set_dressing_mark", 0)
+	)
+	_expect(
+		actor.to_local(first_prop.global_position).distance_to(first_prop_mark) < 0.01,
+		"Technician installation marks must exactly match the physical prop positions."
+	)
 	if set_dressing_root.get_child_count() > 0:
 		_expect(
 			not (set_dressing_root.get_child(0) as Node3D).visible,
@@ -303,6 +346,15 @@ func _test_sound_stage_interior() -> void:
 		and set_path.front().distance_to(set_start) <= 0.1
 		and set_path.back().distance_to(set_target) <= 0.1,
 		"Technicians must receive a valid route to each prop installation mark."
+	)
+	var technician_return_path: Array[Vector3] = actor.call(
+		"get_scene_path",
+		set_target,
+		actor.call("get_workplace_position", 5)
+	)
+	_expect(
+		technician_return_path.size() >= 2,
+		"A technician standing at an installed prop must be able to route back to the workstation without treating that prop as an impassable start obstacle."
 	)
 	var next_setup: Dictionary = setup.duplicate(true)
 	next_setup["scene_id"] = "SCN-SET-02"
@@ -382,6 +434,53 @@ func _assert_workplace_route(
 		slot_index >= 0 and slot_index < capacity,
 		"Test slot must fit the building workplace capacity."
 	)
+
+
+func _test_staff_housing_beds() -> void:
+	var actor: Node3D = _create_building("staff_housing", 0.0)
+	var first_bed_path: Array[Vector3] = actor.call("get_workplace_path", 0)
+	var last_bed_path: Array[Vector3] = actor.call("get_workplace_path", 7)
+	var first_bed: Vector3 = actor.to_local(first_bed_path.back())
+	var last_bed: Vector3 = actor.to_local(last_bed_path.back())
+	_expect(
+		first_bed.distance_to(Vector3(-5.15, 0.0, -2.75)) < 0.01
+		and last_bed.distance_to(Vector3(5.15, 0.0, 4.25)) < 0.01,
+		"Staff housing slots must align with the centers of the eight beds without arbitrary lateral offsets."
+	)
+
+
+func _test_facility_poses() -> void:
+	var visual: Node3D = CHARACTER_VISUAL_SCRIPT.new()
+	root.add_child(visual)
+	visual.call("setup", {"appearance": {}})
+	visual.call("set_performance_action", "eating")
+	var body_root: Node3D = visual.get_node("BodyRoot") as Node3D
+	var left_leg: Node3D = visual.get_node("BodyRoot/LeftLegPivot") as Node3D
+	var left_arm: Node3D = visual.get_node("BodyRoot/LeftArmPivot") as Node3D
+	var minimum_arm_angle: float = INF
+	var maximum_arm_angle: float = -INF
+	for _step in range(12):
+		visual.call("advance_simulation", 0.1)
+		minimum_arm_angle = minf(minimum_arm_angle, left_arm.rotation.x)
+		maximum_arm_angle = maxf(maximum_arm_angle, left_arm.rotation.x)
+	_expect(
+		body_root.position.y < -0.2
+		and left_leg.rotation.x > 0.65,
+		"Eating must lower the torso and bend the legs into a seated chair pose."
+	)
+	_expect(
+		maximum_arm_angle - minimum_arm_angle > 0.08,
+		"Eating must animate alternating hand movement instead of holding a static pose."
+	)
+	visual.call("set_performance_action", "sleeping")
+	visual.call("advance_simulation", 0.25)
+	_expect(
+		absf(body_root.rotation.x + PI * 0.5) < 0.1
+		and body_root.position.y > 0.5
+		and body_root.scale.y < 0.9,
+		"Sleeping must place a scaled-down character horizontally on the bed with subtle breathing."
+	)
+	visual.free()
 
 
 func _test_employee_enters_and_leaves_workplace() -> void:

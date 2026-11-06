@@ -58,6 +58,19 @@ class StubFacilityManager extends Node:
 			Vector3(2.0, 0.0, 0.0),
 		]
 
+	func get_workplace_path(
+		building_id: String,
+		_slot_index: int
+	) -> Array[Vector3]:
+		if building_id == "BLD-HOUSING":
+			return [
+				Vector3(3.0, 0.0, -3.0),
+				Vector3(3.0, 0.0, -2.0),
+				Vector3(3.0, 0.0, -1.0),
+				Vector3(3.0, 0.0, 0.0),
+			]
+		return []
+
 
 func _initialize() -> void:
 	call_deferred("_run_tests")
@@ -174,9 +187,21 @@ func _run_tests() -> void:
 		"Facility occupancy must distinguish travelling employees from arrived employees."
 	)
 	actor.call("snap_to_facility")
+	actor.call("_advance_visual", 0.25)
+	var eating_body: Node3D = actor.get_node(
+		"CharacterVisual/BodyRoot"
+	) as Node3D
+	var eating_left_leg: Node3D = actor.get_node(
+		"CharacterVisual/BodyRoot/LeftLegPivot"
+	) as Node3D
 	_expect(
 		bool(actor.call("is_at_facility", "cafeteria")),
 		"An employee must arrive at the assigned cafeteria seat."
+	)
+	_expect(
+		eating_body.position.y < -0.2
+		and eating_left_leg.rotation.x > 0.65,
+		"Cafeteria arrival must switch the employee into a lowered seated eating pose."
 	)
 	_expect(
 		character_manager.call(
@@ -224,6 +249,11 @@ func _run_tests() -> void:
 		"An assigned employee must receive a route to staff housing after the shift."
 	)
 	actor.call("snap_to_facility")
+	actor.call("_advance_visual", 0.25)
+	var sleeping_body: Node3D = actor.get_node(
+		"CharacterVisual/BodyRoot"
+	) as Node3D
+	var sleeping_name_tag: Label3D = actor.get_node("NameTag") as Label3D
 	_expect(
 		bool(actor.call("is_at_facility", "staff_housing"))
 		and character_manager.call(
@@ -231,6 +261,13 @@ func _run_tests() -> void:
 			"BLD-HOUSING"
 		).size() == 1,
 		"Staff housing must register the employee at their assigned bed."
+	)
+	_expect(
+		absf(sleeping_body.rotation.x + PI * 0.5) < 0.1
+		and sleeping_body.position.y > 0.5
+		and absf(actor.rotation.y) < 0.1
+		and not sleeping_name_tag.visible,
+		"Staff housing arrival must place the employee lying on the bed, facing the headboard, and hide the floating name tag."
 	)
 
 	character_manager.call(
@@ -283,8 +320,44 @@ func _run_tests() -> void:
 		"Once production ends, an off-duty employee must be allowed to go to staff housing."
 	)
 
+	var unassigned_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(unassigned_actor)
+	unassigned_actor.call(
+		"setup",
+		second_employee,
+		[],
+		clock,
+		1.0
+	)
+	character_manager.set("employees", [employee, second_employee])
+	character_manager.set("_employee_actors", {
+		employee.id: actor,
+		second_employee.id: unassigned_actor,
+	})
+	_expect(
+		bool(character_manager.call(
+			"_route_employee_to_facility",
+			second_employee.id,
+			"staff_housing"
+		))
+		and bool(unassigned_actor.call("is_at_facility", "staff_housing")),
+		"Free-roaming employees without a workplace assignment must still be able to use staff housing."
+	)
+	_expect(
+		bool(character_manager.call(
+			"dispatch_employee_to_workplace",
+			second_employee.id
+		))
+		and not bool(unassigned_actor.call("is_in_facility"))
+		and unassigned_actor.global_position.is_equal_approx(
+			Vector3(3.0, 0.0, -3.0)
+		),
+		"Unassigned employees must exit staff housing through its entrance and resume free roaming."
+	)
+
 	character_manager.free()
 	actor.free()
+	unassigned_actor.free()
 	studio_manager.free()
 	clock.free()
 	_finish_test("StaffFacilitiesSmokeTest")

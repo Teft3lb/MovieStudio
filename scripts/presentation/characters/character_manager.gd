@@ -143,6 +143,35 @@ func _is_active_production_participant(employee_id: String) -> bool:
 	)
 
 
+func _is_active_editing_participant(employee_id: String) -> bool:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _studio_building_manager.has_method("is_employee_in_active_editing")
+	):
+		return false
+	return bool(
+		_studio_building_manager.call(
+			"is_employee_in_active_editing",
+			employee_id
+		)
+	)
+
+
+func _should_auto_dispatch_to_workplace(
+	employee_id: String,
+	assignment: Dictionary
+) -> bool:
+	if assignment.is_empty():
+		return false
+	match str(assignment.get("building_type_id", "")):
+		"sound_stage":
+			return _is_active_production_participant(employee_id)
+		"editing_suite":
+			return _is_active_editing_participant(employee_id)
+		_:
+			return true
+
+
 func _is_employee_off_camera(employee_id: String) -> bool:
 	if (
 		not is_instance_valid(_studio_building_manager)
@@ -319,10 +348,7 @@ func _route_employee_to_facility(
 	employee_id: String,
 	facility_type_id: String
 ) -> bool:
-	if (
-		not is_instance_valid(_studio_building_manager)
-		or not _workplace_assignments.has(employee_id)
-	):
+	if not is_instance_valid(_studio_building_manager):
 		return false
 	var actor: Node3D = get_employee_actor(employee_id) as Node3D
 	if actor == null:
@@ -453,13 +479,44 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		employee_id,
 		{}
 	)
-	if assignment.is_empty():
-		return false
 	var actor: Node3D = get_employee_actor(employee_id) as Node3D
 	if actor == null:
 		return false
 	var employee: Variant = _find_employee(employee_id)
 	if employee == null:
+		return false
+	var manual_fast_forward: bool = (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+	)
+	if assignment.is_empty():
+		if (
+			not bool(actor.call("is_in_facility"))
+			or not bool(actor.call("is_at_facility"))
+		):
+			return false
+		var facility_building_id: String = str(
+			actor.call("get_facility_building_id")
+		)
+		var facility_slot_index: int = int(
+			actor.call("get_facility_slot_index")
+		)
+		var exit_route: Array[Vector3] = _studio_building_manager.call(
+			"get_workplace_path",
+			facility_building_id,
+			facility_slot_index
+		)
+		if exit_route.is_empty():
+			return false
+		exit_route.reverse()
+		if exit_route.front().distance_to(actor.global_position) > 0.2:
+			exit_route.insert(0, actor.global_position)
+		if not bool(actor.call("leave_facility", exit_route)):
+			return false
+		facility_usage_changed.emit()
+		if manual_fast_forward:
+			actor.call("snap_outside_facility")
+			return true
 		return false
 
 	var building_id: String = str(assignment.get("building_id", ""))
@@ -467,10 +524,6 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		return false
 	var slot_index: int = int(assignment.get("slot_index", 0))
 	var profession_id: String = str(employee.profession_id)
-	var manual_fast_forward: bool = (
-		is_instance_valid(_game_clock)
-		and bool(_game_clock.is_manual_fast_forward)
-	)
 	if bool(actor.call("is_in_facility")):
 		if not bool(actor.call("is_at_facility")):
 			return false
@@ -616,6 +669,13 @@ func _refresh_workplace_assignments() -> void:
 		var current_building_id: String = str(
 			actor.call("get_workplace_building_id")
 		)
+		if not _should_auto_dispatch_to_workplace(employee_id, assignment):
+			if (
+				not current_building_id.is_empty()
+				and not bool(actor.call("is_leaving_workplace"))
+			):
+				actor.call("leave_workplace")
+			continue
 		if current_building_id != building_id:
 			if not current_building_id.is_empty():
 				if not bool(actor.call("is_leaving_workplace")):
@@ -1210,10 +1270,18 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 
 		if bool(actor.call("is_in_facility")):
 			if not bool(actor.call("is_at_facility")):
-				employee.current_task = "Завершает путь в здание"
+				employee.current_task = "Выходит из бытового помещения"
 				continue
+			var has_workplace_assignment: bool = not _workplace_assignments.get(
+				employee_id,
+				{}
+			).is_empty()
 			dispatch_employee_to_workplace(employee_id)
-			employee.current_task = "Возвращается на рабочее место"
+			employee.current_task = (
+				"Возвращается на рабочее место"
+				if has_workplace_assignment
+				else "Покидает бытовое помещение"
+			)
 			continue
 
 		var assignment: Dictionary = _workplace_assignments.get(
@@ -1232,6 +1300,19 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		var current_building_id: String = str(
 			actor.call("get_workplace_building_id")
 		)
+		if not _should_auto_dispatch_to_workplace(employee_id, assignment):
+			if (
+				not current_building_id.is_empty()
+				and not bool(actor.call("is_leaving_workplace"))
+			):
+				actor.call("leave_workplace")
+			if str(employee.work_state) == "working":
+				employee.current_task = (
+					"Ожидает вызова на съёмки"
+					if str(assignment.get("building_type_id", "")) == "sound_stage"
+					else "Ожидает фильм для монтажа"
+				)
+			continue
 		if (
 			current_building_id != building_id
 			and is_instance_valid(_studio_building_manager)

@@ -66,9 +66,11 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		return path
 
 	var normalized_slot: int = clampi(slot_index, 0, _workplace_points.size() - 1)
-	var slot_offset: float = (
-		float(normalized_slot) - float(_workplace_points.size() - 1) * 0.5
-	) * 0.22
+	var slot_offset: float = 0.0
+	if str(building_data.building_type_id) not in ["cafeteria", "staff_housing"]:
+		slot_offset = (
+			float(normalized_slot) - float(_workplace_points.size() - 1) * 0.5
+		) * 0.22
 	var outside: Vector3 = _entrance_outside + Vector3(slot_offset, 0.0, 0.0)
 	var inside: Vector3 = _entrance_inside + Vector3(slot_offset, 0.0, 0.0)
 	var corridor: Vector3 = Vector3(
@@ -101,6 +103,10 @@ func get_scene_path(
 		result.append(target_world_position)
 		return result
 
+	var local_start: Vector3 = to_local(start_world_position)
+	var local_target: Vector3 = to_local(target_world_position)
+	var local_start_2d: Vector2 = Vector2(local_start.x, local_start.z)
+	var local_target_2d: Vector2 = Vector2(local_target.x, local_target.z)
 	var obstacles: Array[Dictionary] = [
 		{
 			"center": Vector2(-3.9, -2.3),
@@ -123,14 +129,30 @@ func get_scene_path(
 			var prop: Node3D = prop_node as Node3D
 			if not is_instance_valid(prop) or not prop.visible:
 				continue
+			var prop_center: Vector2 = Vector2(prop.position.x, prop.position.z)
+			var prop_half_extents: Vector2 = Vector2(0.98, 0.55)
+			var prop_clearance: float = 0.18
+			if (
+				_is_point_inside_bounds(
+					local_start_2d,
+					prop_center,
+					prop_half_extents,
+					prop_clearance
+				)
+				or _is_point_inside_bounds(
+					local_target_2d,
+					prop_center,
+					prop_half_extents,
+					prop_clearance
+				)
+			):
+				continue
 			obstacles.append({
-				"center": Vector2(prop.position.x, prop.position.z),
-				"half_extents": Vector2(0.98, 0.55),
-				"clearance": 0.18,
+				"center": prop_center,
+				"half_extents": prop_half_extents,
+				"clearance": prop_clearance,
 			})
 
-	var local_start: Vector3 = to_local(start_world_position)
-	var local_target: Vector3 = to_local(target_world_position)
 	var local_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
@@ -144,6 +166,18 @@ func get_scene_path(
 	return result
 
 
+func _is_point_inside_bounds(
+	point: Vector2,
+	center: Vector2,
+	half_extents: Vector2,
+	clearance: float
+) -> bool:
+	return (
+		absf(point.x - center.x) <= half_extents.x + clearance
+		and absf(point.y - center.y) <= half_extents.y + clearance
+	)
+
+
 func get_set_dressing_prop_count() -> int:
 	if not is_instance_valid(_set_dressing_root):
 		return 0
@@ -151,14 +185,18 @@ func get_set_dressing_prop_count() -> int:
 
 
 func get_set_dressing_mark(prop_index: int) -> Vector3:
-	var positions: Array[Vector3] = [
-		Vector3(-3.2, 0.0, -3.0),
-		Vector3(0.0, 0.0, -3.0),
-		Vector3(3.2, 0.0, -3.0),
-		Vector3(0.0, 0.0, -1.0),
-	]
+	var positions: Array[Vector3] = _get_set_dressing_positions()
 	var index: int = clampi(prop_index, 0, positions.size() - 1)
 	return to_global(positions[index])
+
+
+func _get_set_dressing_positions() -> Array[Vector3]:
+	return [
+		Vector3(-2.65, 0.0, -4.0),
+		Vector3(0.0, 0.0, -4.0),
+		Vector3(2.65, 0.0, -4.0),
+		Vector3(0.0, 0.0, -2.0),
+	]
 
 
 func prepare_scene_set_dressing(setup: Dictionary) -> bool:
@@ -186,12 +224,7 @@ func prepare_scene_set_dressing(setup: Dictionary) -> bool:
 		)
 		return false
 	_active_set_scene_key = scene_key
-	var positions: Array[Vector3] = [
-		Vector3(-2.65, 0.0, -4.0),
-		Vector3(0.0, 0.0, -4.0),
-		Vector3(2.65, 0.0, -4.0),
-		Vector3(0.0, 0.0, -2.0),
-	]
+	var positions: Array[Vector3] = _get_set_dressing_positions()
 	for prop_index in range(mini(prop_ids.size(), positions.size())):
 		var prop_id: String = str(prop_ids[prop_index])
 		var prop_root := Node3D.new()
@@ -670,10 +703,10 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
 		Vector3(1.8, 0.0, -1.6),
-		Vector3(0.0, 0.0, 1.4),
-		Vector3(-4.2, 0.0, 0.0),
-		Vector3(-4.8, 0.0, 3.4),
-		Vector3(4.8, 0.0, 3.4),
+		Vector3(-5.8, 0.0, 4.3),
+		Vector3(-5.0, 0.0, 0.8),
+		Vector3(-3.7, 0.0, 4.3),
+		Vector3(4.9, 0.0, 4.7),
 		Vector3(-4.2, 0.0, 1.8),
 		Vector3(4.2, 0.0, 1.8),
 	]
@@ -1101,12 +1134,15 @@ func _build_cafeteria(
 				Color(0.23, 0.27, 0.27),
 				seat_position + Vector3(0.0, 0.48, 0.0)
 			)
+			var chair_back_side: float = (
+				-1.0 if seat_position.x < center_x else 1.0
+			)
 			_create_box(
 				_interior_root,
 				"CafeteriaChairBack_%d_%d" % [table_index, seat_index],
-				Vector3(0.58, 0.62, 0.12),
+				Vector3(0.12, 0.62, 0.58),
 				Color(0.23, 0.27, 0.27),
-				seat_position + Vector3(0.0, 0.80, 0.34)
+				seat_position + Vector3(chair_back_side * 0.34, 0.80, 0.0)
 			)
 	_workplace_points = seat_positions
 
@@ -1220,7 +1256,7 @@ func _build_staff_housing(
 				bed_position + Vector3(0.0, 0.58, -0.95)
 			)
 			sleeping_positions.append(
-				Vector3(side * 3.55, 0.0, bed_z)
+				Vector3(bed_position.x, 0.0, bed_z + 0.75)
 			)
 		_create_box(
 			_interior_root,

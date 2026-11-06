@@ -2534,6 +2534,20 @@ func _release_cast_for_scene_preparation(
 	_active_scene_performer_ids.clear()
 
 
+func _should_move_stage_employee_off_camera(
+	employee_id: String,
+	performer_ids: Array,
+	cast_ids: Array,
+	crew_ids: Array
+) -> bool:
+	return (
+		not employee_id.is_empty()
+		and not performer_ids.has(employee_id)
+		and not cast_ids.has(employee_id)
+		and not crew_ids.has(employee_id)
+	)
+
+
 func _move_stage_bystanders_off_camera(
 	stage_id: String,
 	performer_ids: Array
@@ -2547,14 +2561,11 @@ func _move_stage_bystanders_off_camera(
 	var crew_ids: Array = _active_film_project.crew_assignments.values()
 	for employee in _get_assigned_staff(stage_id):
 		var employee_id: String = str(employee.id)
-		var is_cast_only: bool = (
-			cast_ids.has(employee_id)
-			and not crew_ids.has(employee_id)
-		)
-		if (
-			employee_id.is_empty()
-			or performer_ids.has(employee_id)
-			or is_cast_only
+		if not _should_move_stage_employee_off_camera(
+			employee_id,
+			performer_ids,
+			cast_ids,
+			crew_ids
 		):
 			continue
 		var actor: Variant = _character_manager.call(
@@ -3668,6 +3679,16 @@ func is_employee_in_active_production(employee_id: String) -> bool:
 		if str(assigned_id) == employee_id:
 			return true
 	return false
+
+
+func is_employee_in_active_editing(employee_id: String) -> bool:
+	if (
+		_active_editing_project == null
+		or employee_id.is_empty()
+		or str(_active_editing_project.status) not in ["draft", "in_editing"]
+	):
+		return false
+	return str(_active_editing_project.editor_id) == employee_id
 
 
 func is_employee_waiting_for_scene(employee_id: String) -> bool:

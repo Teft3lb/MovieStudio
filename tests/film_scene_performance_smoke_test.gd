@@ -12,6 +12,12 @@ const CHARACTER_ACTOR_SCRIPT = preload(
 const CHARACTER_MANAGER_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_manager.gd"
 )
+const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_needs_system.gd"
+)
+const STUDIO_BUILDING_MANAGER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_manager.gd"
+)
 
 
 func _initialize() -> void:
@@ -20,6 +26,14 @@ func _initialize() -> void:
 
 class FakeWorkplaceManager extends Node:
 	var workplace_position: Vector3 = Vector3(0.0, 0.0, -3.0)
+	var active_production_employee_id: String = ""
+	var active_editing_employee_id: String = ""
+
+	func is_employee_in_active_production(employee_id: String) -> bool:
+		return employee_id == active_production_employee_id
+
+	func is_employee_in_active_editing(employee_id: String) -> bool:
+		return employee_id == active_editing_employee_id
 
 	func get_workplace_path_from(
 		_building_id: String,
@@ -48,6 +62,8 @@ func _run_tests() -> void:
 	_test_character_moves_and_performs_scene()
 	_test_off_shift_crew_returns_to_stage()
 	_test_stage_bystander_moves_off_camera_and_returns()
+	_test_idle_production_staff_roam_until_dispatched()
+	_test_camera_crew_remains_at_workstations()
 	_finish_test("FilmScenePerformanceSmokeTest")
 
 
@@ -258,6 +274,131 @@ func _test_stage_bystander_moves_off_camera_and_returns() -> void:
 	)
 	actor.free()
 	clock.free()
+
+
+func _test_idle_production_staff_roam_until_dispatched() -> void:
+	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 889900
+	var employee: Variant = generator.call(
+		"generate",
+		rng,
+		"EMP-IDLE-DIRECTOR",
+		"director"
+	)
+	employee.shift_start_hour = 8
+	employee.shift_end_hour = 17
+	employee.break_start_hour = 12
+	employee.break_end_hour = 13
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+	clock.set("is_manual_fast_forward", true)
+	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(actor)
+	actor.call("setup", employee, [], clock, 1.5)
+	var workplace_manager := FakeWorkplaceManager.new()
+	root.add_child(workplace_manager)
+	var character_manager: Node = CHARACTER_MANAGER_SCRIPT.new()
+	character_manager.set("employees", [employee])
+	character_manager.set("_employee_actors", {
+		str(employee.id): actor,
+	})
+	character_manager.set("_workplace_assignments", {
+		str(employee.id): {
+			"building_id": "BLD-TEST-STAGE",
+			"building_type_id": "sound_stage",
+			"slot_index": 2,
+		},
+	})
+	character_manager.set("_studio_building_manager", workplace_manager)
+	character_manager.set("_game_clock", clock)
+	character_manager.set(
+		"_needs_system",
+		CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
+	)
+
+	character_manager.call("_on_game_minute_advanced", 1, 9, 0)
+	_expect(
+		str(actor.call("get_workplace_building_id")).is_empty()
+		and not bool(actor.call("is_at_workplace")),
+		"An idle director must remain on the studio roaming route instead of being sent to an empty Sound Stage."
+	)
+	_expect(
+		bool(character_manager.call(
+			"dispatch_employee_to_workplace",
+			str(employee.id)
+		))
+		and bool(actor.call("is_at_workplace")),
+		"An idle production employee must still be dispatchable when a rehearsal or shoot explicitly calls them."
+	)
+
+	workplace_manager.active_production_employee_id = str(employee.id)
+	character_manager.call("_on_game_minute_advanced", 1, 9, 1)
+	_expect(
+		bool(actor.call("is_at_workplace")),
+		"An employee assigned to the active production must remain at the Sound Stage."
+	)
+	workplace_manager.active_production_employee_id = ""
+	character_manager.call("_on_game_minute_advanced", 1, 9, 2)
+	_expect(
+		bool(actor.call("is_leaving_workplace")),
+		"Once production releases the employee, an idle director must leave the Sound Stage again."
+	)
+	actor.call("snap_outside_workplace")
+	_expect(
+		str(actor.call("get_workplace_building_id")).is_empty(),
+		"A released production employee must return to free roaming."
+	)
+
+	character_manager.free()
+	actor.free()
+	workplace_manager.free()
+	clock.free()
+
+
+func _test_camera_crew_remains_at_workstations() -> void:
+	var studio_manager: Node = STUDIO_BUILDING_MANAGER_SCRIPT.new()
+	_expect(
+		not bool(studio_manager.call(
+			"_should_move_stage_employee_off_camera",
+			"EMP-CAMERA",
+			[],
+			[],
+			["EMP-CAMERA"]
+		)),
+		"The camera operator must remain at the camera rig instead of being moved to a generic holding mark."
+	)
+	_expect(
+		not bool(studio_manager.call(
+			"_should_move_stage_employee_off_camera",
+			"EMP-DIRECTOR",
+			[],
+			[],
+			["EMP-DIRECTOR"]
+		)),
+		"The director must remain at the production monitor during the take."
+	)
+	_expect(
+		not bool(studio_manager.call(
+			"_should_move_stage_employee_off_camera",
+			"EMP-CAST",
+			[],
+			["EMP-CAST"],
+			[]
+		)),
+		"Cast members must not be treated as generic stage bystanders."
+	)
+	_expect(
+		bool(studio_manager.call(
+			"_should_move_stage_employee_off_camera",
+			"EMP-BYSTANDER",
+			[],
+			[],
+			[]
+		)),
+		"Only non-cast, non-crew bystanders should be moved behind the camera line."
+	)
+	studio_manager.free()
 
 
 func _test_character_moves_and_performs_scene() -> void:

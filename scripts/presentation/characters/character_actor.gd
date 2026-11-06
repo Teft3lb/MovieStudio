@@ -12,6 +12,7 @@ var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
 var _selection_ring: MeshInstance3D
+var _name_tag: Label3D
 var _scene_dialogue_label: Label3D
 var _scene_path: Array[Vector3] = []
 var _scene_path_index: int = 0
@@ -34,6 +35,7 @@ var _is_at_workplace: bool = false
 var _is_leaving_workplace: bool = false
 var _facility_active: bool = false
 var _facility_is_moving: bool = false
+var _facility_is_leaving: bool = false
 var _facility_building_id: String = ""
 var _facility_type_id: String = ""
 var _facility_slot_index: int = -1
@@ -127,8 +129,12 @@ func _process_facility_movement(simulation_delta: float) -> void:
 			global_position = _facility_route.back()
 			_facility_is_moving = false
 			_set_walking(false)
-			if is_instance_valid(_visual):
-				_visual.call("set_performance_action", _facility_action_id)
+			if _facility_is_leaving:
+				_finish_facility_leave()
+			else:
+				_face_facility()
+				if is_instance_valid(_visual):
+					_visual.call("set_performance_action", _facility_action_id)
 			_advance_visual(simulation_delta)
 			return
 
@@ -554,6 +560,7 @@ func assign_facility_route(
 		return false
 	if (
 		_facility_active
+		and not _facility_is_leaving
 		and _facility_building_id == building_id
 		and _facility_type_id == facility_type_id
 	):
@@ -561,6 +568,7 @@ func assign_facility_route(
 
 	_clear_facility_route()
 	_facility_active = true
+	_facility_is_leaving = false
 	_facility_building_id = building_id
 	_facility_type_id = facility_type_id
 	_facility_slot_index = slot_index
@@ -596,10 +604,76 @@ func snap_to_facility() -> void:
 	global_position = _facility_route.back()
 	_facility_route_index = _facility_route.size()
 	_facility_is_moving = false
+	_facility_is_leaving = false
 	_is_at_workplace = false
 	_set_walking(false)
+	_face_facility()
 	if is_instance_valid(_visual):
 		_visual.call("set_performance_action", _facility_action_id)
+	_update_name_tag_visibility()
+
+
+func leave_facility(route: Array[Vector3]) -> bool:
+	if (
+		not _facility_active
+		or _facility_is_moving
+		or route.is_empty()
+	):
+		return false
+	_facility_route = route.duplicate()
+	_facility_route_index = 0
+	_facility_is_leaving = true
+	_facility_action_id = ""
+	while (
+		_facility_route_index < _facility_route.size()
+		and global_position.distance_to(
+			_facility_route[_facility_route_index]
+		) <= 0.18
+	):
+		_facility_route_index += 1
+	_facility_is_moving = _facility_route_index < _facility_route.size()
+	_set_working(false)
+	if _facility_is_moving:
+		_set_walking(true)
+	else:
+		global_position = _facility_route.back()
+		_finish_facility_leave()
+	return true
+
+
+func snap_outside_facility() -> void:
+	if not _facility_active or _facility_route.is_empty():
+		return
+	global_position = _facility_route.back()
+	_finish_facility_leave()
+
+
+func _finish_facility_leave() -> void:
+	_facility_active = false
+	_facility_is_moving = false
+	_facility_is_leaving = false
+	_facility_building_id = ""
+	_facility_type_id = ""
+	_facility_slot_index = -1
+	_facility_route.clear()
+	_facility_route_index = 0
+	_facility_action_id = ""
+	_is_at_workplace = false
+	_set_walking(false)
+	_set_working(false)
+	_update_name_tag_visibility()
+
+
+func _face_facility() -> void:
+	match _facility_type_id:
+		"cafeteria":
+			var seat_side: int = posmod(_facility_slot_index, 4)
+			var facing_direction: Vector3 = (
+				Vector3.RIGHT if seat_side < 2 else Vector3.LEFT
+			)
+			look_at(global_position + facing_direction, Vector3.UP)
+		"staff_housing":
+			rotation.y = 0.0
 
 
 func is_in_facility() -> bool:
@@ -634,6 +708,7 @@ func _clear_facility_route() -> void:
 		return
 	_facility_active = false
 	_facility_is_moving = false
+	_facility_is_leaving = false
 	_facility_building_id = ""
 	_facility_type_id = ""
 	_facility_slot_index = -1
@@ -782,6 +857,12 @@ func set_selected(value: bool) -> void:
 func _advance_visual(simulation_delta: float) -> void:
 	if is_instance_valid(_visual):
 		_visual.call("advance_simulation", simulation_delta)
+	_update_name_tag_visibility()
+
+
+func _update_name_tag_visibility() -> void:
+	if is_instance_valid(_name_tag):
+		_name_tag.visible = not bool(is_at_facility("staff_housing"))
 
 
 func _set_walking(value: bool) -> void:
@@ -807,6 +888,7 @@ func _create_name_tag() -> void:
 
 	var label := Label3D.new()
 	label.name = "NameTag"
+	_name_tag = label
 	label.text = str(summary.get("full_name", "Employee"))
 	label.position = Vector3(0.0, 2.58, 0.0)
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED

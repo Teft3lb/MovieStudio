@@ -15,7 +15,7 @@ This slice deliberately stops when principal photography is complete. Editing, r
 - \`FilmProductionSystem\` owns deterministic production rules and phase transitions.
 - \`FilmProductionProject\` owns the runtime project state and its serializable representation.
 - \`StudioBuildingManager\` coordinates the active script, crew/cast selection, GameClock updates, production UI, stage presentation and off-camera crew staging.
-- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production readiness accepts an assigned crew member at their workstation, active scene mark or off-camera holding mark; it does not try to pull an actor out of an active scene route.
+- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production roles keep their workplace assignment for later dispatch, but do not automatically occupy an idle Sound Stage; active production explicitly recalls its crew and cast. An editor is dispatched only for an active draft/in-progress editing project.
 - \`CharacterActor\` handles movement between the assigned workplace and a scene blocking mark.
 - \`CharacterVisual\` plays procedural acting and crew poses using the existing Character System v2 model.
 - \`StudioBuildingActor\` owns the physical scene marks, production slate and camera rigs.
@@ -61,7 +61,7 @@ The Sound Stage has eight reusable scene marks on its set platform. The marks ch
 
 During production:
 - while the director, operator and technician prepare the set, cast members walk along their existing studio routes outside the Sound Stage;
-- during Rehearsal, Shooting and Review, stage employees who are not part of the current scene walk to holding marks behind the camera line and are kept out of the visible set; they return to their workstations when the next Preparation phase begins or when the film is completed;
+- during Rehearsal, Shooting and Review, only generic non-cast, non-crew stage bystanders walk to holding marks behind the camera line; required crew remain at their workstations and are not incorrectly removed from the camera station or monitor;
 - when Rehearsal begins, only the actors assigned to the current scene return to the Sound Stage and move to scene marks;
 - the speaking actor plays a speaking gesture, animates a simple mouth shape and displays the current line above the character;
 - other performers play reaction or dramatic poses;
@@ -70,9 +70,9 @@ During production:
 - the camera operator performs a camera-operation pose;
 - during Set Dressing, every available Sound Stage technician can work on a separate prop: they walk to the warehouse, pick up a purchased piece, carry it to the stage and install it; during Set Strike, they remove pieces and carry them back to storage; the phase clock waits until the logistics workers have returned to their workstations;
 - multiple technicians reduce the installation and strike work-round durations; if fewer technicians are available than props, each technician makes additional trips;
-- during Rehearsal, Shooting and Review, non-performing stage staff move behind the camera to off-camera holding marks;
+- during Rehearsal, Shooting and Review, generic bystanders who are neither cast nor crew move behind the camera to off-camera holding marks; the director, camera operator and technician remain at their dedicated stations unless a logistics task moves the technician;
 - an optional producer performs a coordination pose;
-- the two in-world camera rigs turn toward the current cast blocking;
+- the two in-world camera rigs turn toward the current cast blocking; the primary camera operator stands behind the active rig and performs a hands-on camera pose;
 - a physical slate displays the active scene and phase.
 
 When the film is completed, actors return to their assigned workstations, crew poses reset and the slate reports that the film is ready for editing.
@@ -136,7 +136,7 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while technicians collect and install props.
 7. When Rehearsal begins, confirm only actors needed in the current scene return to the pavilion and take their marks; other cast members keep roaming.
 8. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
-9. During Rehearsal and Shooting, confirm non-performing stage staff walk behind the camera, disappear from the set frame and return to their workstations after the take.
+9. During Rehearsal and Shooting, confirm only generic bystanders walk behind the camera; the camera operator stays at the rig and the director stays beside the monitor.
 10. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
 11. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
 12. Confirm the director, camera operator, technician and producer display their production poses/tasks.
@@ -154,7 +154,7 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 - No full timeline editor or manual scene/blocking authoring yet.
 - No full skeletal animation, facial animation, lip sync, voice acting or recorded sound.
 - Scene actions are generated from the existing beat/action/dialogue fields and mapped to a small procedural animation library.
-- Camera rigs rotate to follow the cast; the player cannot yet operate camera tracks, lenses or shot framing.
+- Camera rigs rotate to follow the cast and the operator occupies the primary rig; a live SubViewport/video-feed panel and player-operated camera tracks, lenses or shot framing are not implemented yet.
 - No retake-specific dialogue variation or actor memory of previous takes.
 - No editing, montage, export, release, marketing, distribution, audience reception or box-office results.
 - Set Dressing Workshop currently uses its own prototype budget and is not connected to the future Studio Economy ledger.
