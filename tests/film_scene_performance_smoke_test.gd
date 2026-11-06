@@ -332,10 +332,11 @@ func _test_idle_production_staff_roam_until_dispatched() -> void:
 		and bool(actor.call("is_at_workplace")),
 		"An idle production employee must be dispatchable to the Sound Stage by an explicit rehearsal call."
 	)
-	employee.shift_end_hour = 9
+	employee.shift_end_hour = 8
 	character_manager.call("_on_game_minute_advanced", 1, 9, 1)
 	_expect(
-		bool(actor.call("is_at_workplace"))
+		str(employee.work_state) == "off_duty"
+		and bool(actor.call("is_at_workplace"))
 		and character_manager.get("_manual_workplace_dispatches").has(
 			str(employee.id)
 		),
