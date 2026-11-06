@@ -364,7 +364,6 @@ func _test_camera_crew_remains_at_workstations() -> void:
 			"_should_move_stage_employee_off_camera",
 			"EMP-CAMERA",
 			[],
-			[],
 			["EMP-CAMERA"]
 		)),
 		"The camera operator must remain at the camera rig instead of being moved to a generic holding mark."
@@ -374,26 +373,32 @@ func _test_camera_crew_remains_at_workstations() -> void:
 			"_should_move_stage_employee_off_camera",
 			"EMP-DIRECTOR",
 			[],
-			[],
 			["EMP-DIRECTOR"]
 		)),
 		"The director must remain at the production monitor during the take."
 	)
 	_expect(
-		not bool(studio_manager.call(
+		bool(studio_manager.call(
 			"_should_move_stage_employee_off_camera",
 			"EMP-CAST",
 			[],
-			["EMP-CAST"],
 			[]
 		)),
-		"Cast members must not be treated as generic stage bystanders."
+		"Cast members who are not in the current scene must move behind the camera."
+	)
+	_expect(
+		not bool(studio_manager.call(
+			"_should_move_stage_employee_off_camera",
+			"EMP-PERFORMER",
+			["EMP-PERFORMER"],
+			[]
+		)),
+		"A performer in the current scene must remain in the camera frame."
 	)
 	_expect(
 		bool(studio_manager.call(
 			"_should_move_stage_employee_off_camera",
 			"EMP-BYSTANDER",
-			[],
 			[],
 			[]
 		)),

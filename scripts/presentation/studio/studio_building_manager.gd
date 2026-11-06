@@ -2537,13 +2537,11 @@ func _release_cast_for_scene_preparation(
 func _should_move_stage_employee_off_camera(
 	employee_id: String,
 	performer_ids: Array,
-	cast_ids: Array,
 	crew_ids: Array
 ) -> bool:
 	return (
 		not employee_id.is_empty()
 		and not performer_ids.has(employee_id)
-		and not cast_ids.has(employee_id)
 		and not crew_ids.has(employee_id)
 	)
 
@@ -2557,14 +2555,12 @@ func _move_stage_bystanders_off_camera(
 	var all_clear: bool = true
 	var current_off_camera_ids: Array[String] = []
 	var hold_slot: int = 0
-	var cast_ids: Array = _active_film_project.cast_assignments.values()
 	var crew_ids: Array = _active_film_project.crew_assignments.values()
 	for employee in _get_assigned_staff(stage_id):
 		var employee_id: String = str(employee.id)
 		if not _should_move_stage_employee_off_camera(
 			employee_id,
 			performer_ids,
-			cast_ids,
 			crew_ids
 		):
 			continue
