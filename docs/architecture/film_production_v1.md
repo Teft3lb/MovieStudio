@@ -15,12 +15,12 @@ This slice deliberately stops when principal photography is complete. Editing, r
 - \`FilmProductionSystem\` owns deterministic production rules and phase transitions.
 - \`FilmProductionProject\` owns the runtime project state and its serializable representation.
 - \`StudioBuildingManager\` coordinates the active script, crew/cast selection, GameClock updates, production UI, stage presentation and off-camera crew staging.
-- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production roles keep their workplace assignment for later dispatch, but do not automatically occupy an idle Sound Stage; active production explicitly recalls its crew and cast. An editor is dispatched only for an active draft/in-progress editing project.
+- \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production roles keep their workplace assignment for later dispatch, but do not automatically occupy an idle Sound Stage; the employee inspector can manually call an assigned employee to the stage or editing suite and release them again. Active production takes precedence over manual calls. An editor is auto-dispatched only for an active draft/in-progress editing project.
 - \`CharacterActor\` handles movement between the assigned workplace and a scene blocking mark.
 - \`CharacterVisual\` plays procedural acting and crew poses using the existing Character System v2 model.
 - \`StudioBuildingActor\` owns the physical scene marks, production slate and camera rigs.
 
-The film system does not own or duplicate employee data. Projects store stable employee IDs for crew and cast assignments.
+The film system does not own or duplicate employee data. Projects store stable employee IDs for crew and cast assignments. Outside an active film, the player can select an assigned employee and use the inspector's stage-call or editing-room button; that manual assignment persists across shift boundaries until the player releases the employee. This is a workplace call/hold control, not yet a separate free-form rehearsal session or skill-training loop.
 
 ## Start conditions and casting
 
@@ -131,7 +131,7 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 1. Complete a script and select the Sound Stage inspector.
 2. Open the Decor Shop from bottom navigation, buy one or more set pieces; confirm the budget decreases, an owned item cannot be bought twice and the pieces appear on the Prop Warehouse shelves.
 3. Use a lighthouse script scene; confirm technicians walk to the warehouse, pick up matching lighthouse props and carry them into the Sound Stage. Assign multiple technicians to the stage and observe concurrent deliveries.
-4. Assign each scripted role to an actor/extra. Confirm the producer is optional.
+4. Assign each scripted role to an actor/extra. Confirm the producer is optional. Select an actor or director in the employee inspector and call them to the stage; confirm the call remains active across a shift boundary, then release them back to roaming. Use the same control for an assigned editor to send them to the editing suite.
 5. Assign the director, camera operator, technician and cast to the Sound Stage, then start filming. The crew is dispatched automatically.
 6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while technicians collect and install props.
 7. When Rehearsal begins, confirm only actors needed in the current scene return to the pavilion and take their marks; other cast members keep roaming.

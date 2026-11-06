@@ -326,26 +326,39 @@ func _test_idle_production_staff_roam_until_dispatched() -> void:
 	)
 	_expect(
 		bool(character_manager.call(
-			"dispatch_employee_to_workplace",
+			"dispatch_employee_to_workplace_manually",
 			str(employee.id)
 		))
 		and bool(actor.call("is_at_workplace")),
-		"An idle production employee must still be dispatchable when a rehearsal or shoot explicitly calls them."
+		"An idle production employee must be dispatchable to the Sound Stage by an explicit rehearsal call."
 	)
-
-	workplace_manager.active_production_employee_id = str(employee.id)
+	employee.shift_end_hour = 9
 	character_manager.call("_on_game_minute_advanced", 1, 9, 1)
 	_expect(
-		bool(actor.call("is_at_workplace")),
-		"An employee assigned to the active production must remain at the Sound Stage."
+		bool(actor.call("is_at_workplace"))
+		and character_manager.get("_manual_workplace_dispatches").has(
+			str(employee.id)
+		),
+		"A manual stage call must override the normal shift-end housing schedule until released."
 	)
-	workplace_manager.active_production_employee_id = ""
-	character_manager.call("_on_game_minute_advanced", 1, 9, 2)
+	character_manager.call(
+		"release_employee_from_workplace_manually",
+		str(employee.id)
+	)
 	_expect(
 		bool(actor.call("is_leaving_workplace")),
-		"Once production releases the employee, an idle director must leave the Sound Stage again."
+		"Releasing a manual rehearsal call must send the employee back to free roaming."
 	)
 	actor.call("snap_outside_workplace")
+	workplace_manager.active_production_employee_id = str(employee.id)
+	_expect(
+		not bool(character_manager.call(
+			"dispatch_employee_to_workplace_manually",
+			str(employee.id)
+		)),
+		"Manual dispatch must not override an active film production."
+	)
+	workplace_manager.active_production_employee_id = ""
 	_expect(
 		str(actor.call("get_workplace_building_id")).is_empty(),
 		"A released production employee must return to free roaming."

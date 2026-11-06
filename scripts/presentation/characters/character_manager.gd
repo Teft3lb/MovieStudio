@@ -46,6 +46,7 @@ var _workplace_system: RefCounted
 var _studio_building_manager: Node
 var _workplace_assignments: Dictionary = {}
 var _employee_task_overrides: Dictionary = {}
+var _manual_workplace_dispatches: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _roster_buttons: Dictionary = {}
@@ -64,6 +65,7 @@ var _detail_contract_label: Label
 var _contract_type_option: OptionButton
 var _hire_button: Button
 var _dismiss_button: Button
+var _workplace_dispatch_button: Button
 var _dismiss_dialog: ConfirmationDialog
 
 var _detail_name_label: Label
@@ -163,6 +165,8 @@ func _should_auto_dispatch_to_workplace(
 ) -> bool:
 	if assignment.is_empty():
 		return false
+	if _manual_workplace_dispatches.has(employee_id):
+		return true
 	match str(assignment.get("building_type_id", "")):
 		"sound_stage":
 			return _is_active_production_participant(employee_id)
@@ -626,6 +630,77 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		return true
 	return false
 
+func dispatch_employee_to_workplace_manually(employee_id: String) -> bool:
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	var building_type_id: String = str(
+		assignment.get("building_type_id", "")
+	)
+	if (
+		assignment.is_empty()
+		or building_type_id not in ["sound_stage", "editing_suite"]
+		or _is_active_production_participant(employee_id)
+		or _is_active_editing_participant(employee_id)
+	):
+		return false
+	var actor: Node3D = get_employee_actor(employee_id) as Node3D
+	if actor == null:
+		return false
+	if (
+		bool(actor.call("is_in_facility"))
+		and not bool(actor.call("is_at_facility"))
+	):
+		return false
+
+	_manual_workplace_dispatches[employee_id] = true
+	dispatch_employee_to_workplace(employee_id)
+	var target_building_id: String = str(assignment.get("building_id", ""))
+	if (
+		bool(actor.call("is_in_facility"))
+		or str(actor.call("get_workplace_building_id")) != target_building_id
+	):
+		_manual_workplace_dispatches.erase(employee_id)
+		return false
+
+	var is_at_workplace: bool = bool(actor.call("is_at_workplace"))
+	var task_title: String = ""
+	if building_type_id == "sound_stage":
+		task_title = (
+			"На площадке по вызову"
+			if is_at_workplace
+			else "Идёт на площадку по вызову"
+		)
+	else:
+		task_title = (
+			"Работает в монтажной"
+			if is_at_workplace
+			else "Идёт в монтажную"
+		)
+	set_employee_task(employee_id, task_title)
+	return true
+
+
+func release_employee_from_workplace_manually(employee_id: String) -> void:
+	_manual_workplace_dispatches.erase(employee_id)
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	var actor: Node3D = get_employee_actor(employee_id) as Node3D
+	if (
+		actor != null
+		and not _is_active_production_participant(employee_id)
+		and not assignment.is_empty()
+		and str(actor.call("get_workplace_building_id"))
+			== str(assignment.get("building_id", ""))
+		and not bool(actor.call("is_leaving_workplace"))
+	):
+		actor.call("leave_workplace")
+	clear_employee_task(employee_id)
+
+
 func _refresh_workplace_assignments() -> void:
 	if (
 		_workplace_system == null
@@ -645,17 +720,39 @@ func _refresh_workplace_assignments() -> void:
 		var actor: Variant = _employee_actors.get(employee_id)
 		if actor == null or not is_instance_valid(actor):
 			continue
-		if (
-			bool(actor.call("is_in_facility"))
-			or bool(actor.call("is_returning_to_workplace"))
-		):
-			continue
 
 		var assignment: Dictionary = _workplace_assignments.get(
 			employee_id,
 			{}
 		)
 		if _is_active_production_participant(employee_id):
+			_manual_workplace_dispatches.erase(employee_id)
+			continue
+		if _manual_workplace_dispatches.has(employee_id):
+			if (
+				assignment.is_empty()
+				or str(assignment.get("building_type_id", ""))
+					not in ["sound_stage", "editing_suite"]
+			):
+				_manual_workplace_dispatches.erase(employee_id)
+			else:
+				var manual_building_id: String = str(
+					assignment.get("building_id", "")
+				)
+				var current_manual_building_id: String = str(
+					actor.call("get_workplace_building_id")
+				)
+				if (
+					current_manual_building_id != manual_building_id
+					or bool(actor.call("is_in_facility"))
+					or bool(actor.call("is_leaving_workplace"))
+				):
+					dispatch_employee_to_workplace(employee_id)
+				continue
+		if (
+			bool(actor.call("is_in_facility"))
+			or bool(actor.call("is_returning_to_workplace"))
+		):
 			continue
 		if _should_leave_workplace(
 			employee_id,
@@ -749,6 +846,7 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 
 func _remove_employee_actor(employee_id: String) -> void:
 	_employee_task_overrides.erase(employee_id)
+	_manual_workplace_dispatches.erase(employee_id)
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor != null and is_instance_valid(actor):
 		actor.queue_free()
@@ -1082,6 +1180,14 @@ func _build_detail_panel() -> void:
 	_detail_task_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_detail_task_label)
 
+	_workplace_dispatch_button = Button.new()
+	_workplace_dispatch_button.text = "ВЫЗВАТЬ НА ПЛОЩАДКУ"
+	_workplace_dispatch_button.pressed.connect(
+		_on_workplace_dispatch_button_pressed
+	)
+	_workplace_dispatch_button.visible = false
+	layout.add_child(_workplace_dispatch_button)
+
 	_detail_schedule_label = Label.new()
 	_detail_schedule_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_detail_schedule_label)
@@ -1231,7 +1337,50 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		if actor == null or not is_instance_valid(actor):
 			continue
 		if _is_active_production_participant(employee_id):
+			_manual_workplace_dispatches.erase(employee_id)
 			continue
+		if _manual_workplace_dispatches.has(employee_id):
+			var manual_assignment: Dictionary = _workplace_assignments.get(
+				employee_id,
+				{}
+			)
+			var manual_building_type: String = str(
+				manual_assignment.get("building_type_id", "")
+			)
+			if (
+				manual_assignment.is_empty()
+				or manual_building_type not in ["sound_stage", "editing_suite"]
+			):
+				_manual_workplace_dispatches.erase(employee_id)
+			else:
+				var manual_building_id: String = str(
+					manual_assignment.get("building_id", "")
+				)
+				var current_manual_building_id: String = str(
+					actor.call("get_workplace_building_id")
+				)
+				if (
+					current_manual_building_id != manual_building_id
+					or bool(actor.call("is_in_facility"))
+					or bool(actor.call("is_leaving_workplace"))
+				):
+					dispatch_employee_to_workplace(employee_id)
+				var at_manual_workplace: bool = bool(
+					actor.call("is_at_workplace")
+				)
+				if manual_building_type == "sound_stage":
+					employee.current_task = (
+						"На площадке по вызову"
+						if at_manual_workplace
+						else "Идёт на площадку по вызову"
+					)
+				else:
+					employee.current_task = (
+						"Работает в монтажной"
+						if at_manual_workplace
+						else "Идёт в монтажную"
+					)
+				continue
 		if bool(actor.call("is_returning_to_workplace")):
 			employee.current_task = "Возвращается на рабочее место"
 			continue
@@ -1663,6 +1812,8 @@ func _refresh_detail_panel() -> void:
 		_contract_type_option.visible = false
 		_hire_button.visible = false
 		_dismiss_button.visible = false
+		if is_instance_valid(_workplace_dispatch_button):
+			_workplace_dispatch_button.visible = false
 		return
 
 	var needs: Dictionary = employee.needs
@@ -1711,6 +1862,7 @@ func _refresh_detail_panel() -> void:
 		_contract_type_option.visible = true
 		_hire_button.visible = true
 		_dismiss_button.visible = false
+		_workplace_dispatch_button.visible = false
 	else:
 		_detail_stats_label.text = (
 			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОплата: %d усл. ед. / день\nЦель: %s"
@@ -1767,6 +1919,7 @@ func _refresh_detail_panel() -> void:
 		_contract_type_option.visible = false
 		_hire_button.visible = false
 		_dismiss_button.visible = true
+		_refresh_workplace_dispatch_button(str(employee.id))
 
 	var energy: float = float(needs.get("energy", 1.0)) * 100.0
 	var morale: float = float(needs.get("morale", 0.75)) * 100.0
@@ -1801,6 +1954,55 @@ func _refresh_detail_panel() -> void:
 			roundi(float(personality.get("creativity", 0.5)) * 100.0),
 		]
 	)
+
+
+func _refresh_workplace_dispatch_button(employee_id: String) -> void:
+	if not is_instance_valid(_workplace_dispatch_button):
+		return
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	var building_type_id: String = str(
+		assignment.get("building_type_id", "")
+	)
+	if (
+		assignment.is_empty()
+		or building_type_id not in ["sound_stage", "editing_suite"]
+		or _is_active_production_participant(employee_id)
+		or _is_active_editing_participant(employee_id)
+	):
+		_workplace_dispatch_button.visible = false
+		return
+
+	_workplace_dispatch_button.visible = true
+	var is_manual: bool = _manual_workplace_dispatches.has(employee_id)
+	if building_type_id == "sound_stage":
+		_workplace_dispatch_button.text = (
+			"ОТПУСТИТЬ С ПЛОЩАДКИ"
+			if is_manual
+			else "ВЫЗВАТЬ НА ПЛОЩАДКУ"
+		)
+	else:
+		_workplace_dispatch_button.text = (
+			"ОТПУСТИТЬ ИЗ МОНТАЖНОЙ"
+			if is_manual
+			else "ОТПРАВИТЬ В МОНТАЖНУЮ"
+		)
+
+
+func _on_workplace_dispatch_button_pressed() -> void:
+	var employee_id: String = _selected_employee_id
+	if employee_id.is_empty():
+		return
+	if _manual_workplace_dispatches.has(employee_id):
+		release_employee_from_workplace_manually(employee_id)
+	elif not dispatch_employee_to_workplace_manually(employee_id):
+		_show_employee_message(
+			"Не удалось направить сотрудника на выбранное рабочее место."
+		)
+	_refresh_detail_panel()
+	_refresh_roster()
 
 
 func _on_contract_type_selected(_index: int) -> void:
