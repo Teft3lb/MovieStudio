@@ -2,6 +2,7 @@ extends RefCounted
 class_name StudioSetInventory
 
 const STARTING_BUDGET: int = 3000
+const MAX_BUDGET: int = 999999999
 const LOCATION_WAREHOUSE: String = "warehouse"
 const LOCATION_IN_TRANSIT_TO_STAGE: String = "in_transit_to_stage"
 const LOCATION_ON_STAGE: String = "on_stage"
@@ -34,6 +35,13 @@ func purchase(prop_id: String, price: int) -> bool:
 	budget -= price
 	_owned_prop_ids[prop_id] = true
 	_prop_locations[prop_id] = LOCATION_WAREHOUSE
+	return true
+
+
+func add_funds(amount: int) -> bool:
+	if amount <= 0 or budget >= MAX_BUDGET:
+		return false
+	budget = mini(budget + amount, MAX_BUDGET)
 	return true
 
 

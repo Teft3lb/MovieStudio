@@ -486,6 +486,10 @@ func _build_visual() -> void:
 			_build_editing_suite(footprint, height, definition)
 		"prop_warehouse":
 			_build_prop_warehouse(footprint, height, definition)
+		"cafeteria":
+			_build_cafeteria(footprint, height, definition)
+		"staff_housing":
+			_build_staff_housing(footprint, height, definition)
 		_:
 			_build_script_department(footprint, height, definition)
 
@@ -955,6 +959,277 @@ func _build_prop_warehouse(
 	_warehouse_inventory_root = Node3D.new()
 	_warehouse_inventory_root.name = "WarehouseInventory"
 	_interior_root.add_child(_warehouse_inventory_root)
+
+
+func _build_cafeteria(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	var wall_color: Color = Color(0.69, 0.61, 0.48)
+	var roof_color: Color = Color(0.29, 0.25, 0.21)
+	var trim_color: Color = Color(0.31, 0.24, 0.17)
+	var accent_color: Color = definition.get(
+		"accent_color",
+		Color(0.66, 0.48, 0.28)
+	)
+
+	_create_floor(footprint, Color(0.49, 0.42, 0.32), "CafeteriaFloor")
+	_create_perimeter_walls(
+		width,
+		depth,
+		wall_height,
+		wall_color,
+		2.6,
+		2.7
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"CafeteriaRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		roof_color,
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		self,
+		"CafeteriaBaseTrim",
+		Vector3(width + 0.12, 0.28, depth + 0.12),
+		trim_color,
+		Vector3(0.0, 0.14, 0.0)
+	)
+	_create_box(
+		self,
+		"CafeteriaSign",
+		Vector3(4.0, 0.62, 0.16),
+		accent_color,
+		Vector3(0.0, 3.05, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		self,
+		"CafeteriaSignText",
+		"СТОЛОВАЯ",
+		Vector3(0.0, 3.05, depth * 0.5 + 0.32),
+		20
+	)
+	_create_box(
+		_wall_groups["front"],
+		"CafeteriaWindowLeft",
+		Vector3(1.8, 1.2, 0.12),
+		Color(0.22, 0.39, 0.43),
+		Vector3(-4.5, 3.25, depth * 0.5 + 0.22)
+	)
+	_create_box(
+		_wall_groups["front"],
+		"CafeteriaWindowRight",
+		Vector3(1.8, 1.2, 0.12),
+		Color(0.22, 0.39, 0.43),
+		Vector3(4.5, 3.25, depth * 0.5 + 0.22)
+	)
+
+	var counter_color: Color = Color(0.35, 0.25, 0.18)
+	var counter_top_color: Color = Color(0.72, 0.65, 0.48)
+	_create_box(
+		_interior_root,
+		"ServingCounter",
+		Vector3(7.4, 0.95, 1.0),
+		counter_color,
+		Vector3(0.0, 0.55, -4.45)
+	)
+	_create_box(
+		_interior_root,
+		"ServingCounterTop",
+		Vector3(7.7, 0.16, 1.12),
+		counter_top_color,
+		Vector3(0.0, 1.08, -4.45)
+	)
+	_create_box(
+		_interior_root,
+		"KitchenPass",
+		Vector3(3.4, 1.0, 0.12),
+		Color(0.16, 0.22, 0.24),
+		Vector3(0.0, 2.0, -5.75)
+	)
+	for tray_index in range(4):
+		var tray_x: float = -2.7 + float(tray_index) * 1.8
+		_create_cylinder(
+			_interior_root,
+			"ServingTray_%d" % tray_index,
+			0.28,
+			0.06,
+			Color(0.73, 0.72, 0.63),
+			Vector3(tray_x, 1.2, -4.45)
+		)
+
+	var seat_positions: Array[Vector3] = []
+	var table_centers: Array[float] = [-4.0, 0.0, 4.0]
+	for table_index in range(table_centers.size()):
+		var center_x: float = table_centers[table_index]
+		_create_box(
+			_interior_root,
+			"CafeteriaTable_%d" % table_index,
+			Vector3(2.1, 0.16, 1.25),
+			Color(0.42, 0.29, 0.19),
+			Vector3(center_x, 0.82, 0.35)
+		)
+		_create_box(
+			_interior_root,
+			"CafeteriaTableLeg_%d" % table_index,
+			Vector3(0.16, 0.72, 0.16),
+			trim_color,
+			Vector3(center_x, 0.40, 0.35)
+		)
+		var table_seats: Array[Vector3] = [
+			Vector3(center_x - 1.35, 0.0, -0.65),
+			Vector3(center_x - 1.35, 0.0, 1.35),
+			Vector3(center_x + 1.35, 0.0, -0.65),
+			Vector3(center_x + 1.35, 0.0, 1.35),
+		]
+		for seat_index in range(table_seats.size()):
+			var seat_position: Vector3 = table_seats[seat_index]
+			seat_positions.append(seat_position)
+			_create_cylinder(
+				_interior_root,
+				"CafeteriaChairSeat_%d_%d" % [table_index, seat_index],
+				0.30,
+				0.12,
+				Color(0.23, 0.27, 0.27),
+				seat_position + Vector3(0.0, 0.48, 0.0)
+			)
+			_create_box(
+				_interior_root,
+				"CafeteriaChairBack_%d_%d" % [table_index, seat_index],
+				Vector3(0.58, 0.62, 0.12),
+				Color(0.23, 0.27, 0.27),
+				seat_position + Vector3(0.0, 0.80, 0.34)
+			)
+	_workplace_points = seat_positions
+
+
+func _build_staff_housing(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	var wall_color: Color = Color(0.53, 0.48, 0.39)
+	var roof_color: Color = Color(0.24, 0.29, 0.24)
+	var trim_color: Color = Color(0.25, 0.29, 0.23)
+	var accent_color: Color = definition.get(
+		"accent_color",
+		Color(0.42, 0.56, 0.43)
+	)
+
+	_create_floor(footprint, Color(0.38, 0.34, 0.27), "StaffHousingFloor")
+	_create_perimeter_walls(
+		width,
+		depth,
+		wall_height,
+		wall_color,
+		2.5,
+		2.6
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"StaffHousingRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		roof_color,
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		self,
+		"StaffHousingBaseTrim",
+		Vector3(width + 0.12, 0.28, depth + 0.12),
+		trim_color,
+		Vector3(0.0, 0.14, 0.0)
+	)
+	_create_box(
+		self,
+		"StaffHousingSign",
+		Vector3(5.0, 0.62, 0.16),
+		accent_color,
+		Vector3(0.0, 3.0, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		self,
+		"StaffHousingSignText",
+		"ДОМИК ПЕРСОНАЛА",
+		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
+		18
+	)
+	_create_box(
+		_wall_groups["front"],
+		"StaffHousingWindowLeft",
+		Vector3(1.7, 1.15, 0.12),
+		Color(0.20, 0.34, 0.37),
+		Vector3(-4.7, 3.2, depth * 0.5 + 0.22)
+	)
+	_create_box(
+		_wall_groups["front"],
+		"StaffHousingWindowRight",
+		Vector3(1.7, 1.15, 0.12),
+		Color(0.20, 0.34, 0.37),
+		Vector3(4.7, 3.2, depth * 0.5 + 0.22)
+	)
+
+	var bed_frame_color: Color = Color(0.28, 0.20, 0.15)
+	var mattress_color: Color = Color(0.68, 0.65, 0.56)
+	var locker_color: Color = Color(0.24, 0.29, 0.28)
+	var bed_z_positions: Array[float] = [-3.5, -1.2, 1.2, 3.5]
+	var sleeping_positions: Array[Vector3] = []
+	for side in [-1.0, 1.0]:
+		for bed_index in range(bed_z_positions.size()):
+			var bed_z: float = bed_z_positions[bed_index]
+			var bed_position := Vector3(side * 5.15, 0.0, bed_z)
+			_create_box(
+				_interior_root,
+				"StaffBedFrame_%d_%d" % [int(side), bed_index],
+				Vector3(1.55, 0.20, 1.95),
+				bed_frame_color,
+				bed_position + Vector3(0.0, 0.20, 0.0)
+			)
+			_create_box(
+				_interior_root,
+				"StaffBedMattress_%d_%d" % [int(side), bed_index],
+				Vector3(1.42, 0.20, 1.82),
+				mattress_color,
+				bed_position + Vector3(0.0, 0.40, 0.0)
+			)
+			_create_box(
+				_interior_root,
+				"StaffBedPillow_%d_%d" % [int(side), bed_index],
+				Vector3(0.78, 0.15, 0.46),
+				Color(0.83, 0.82, 0.74),
+				bed_position + Vector3(0.0, 0.56, -0.55)
+			)
+			_create_box(
+				_interior_root,
+				"StaffBedHeadboard_%d_%d" % [int(side), bed_index],
+				Vector3(1.55, 0.82, 0.12),
+				bed_frame_color,
+				bed_position + Vector3(0.0, 0.58, -0.95)
+			)
+			sleeping_positions.append(
+				Vector3(side * 3.55, 0.0, bed_z)
+			)
+		_create_box(
+			_interior_root,
+			"StaffLocker_%d" % int(side),
+			Vector3(0.78, 1.9, 1.0),
+			locker_color,
+			Vector3(side * 5.5, 0.95, 0.0)
+		)
+	_workplace_points = sleeping_positions
 
 
 func _build_script_department(

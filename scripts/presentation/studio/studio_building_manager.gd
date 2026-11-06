@@ -137,6 +137,37 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
 	_set_inventory = SET_INVENTORY_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
+
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	if (
+		studio_hud != null
+		and studio_hud.has_signal("developer_funds_requested")
+	):
+		var funds_callback := Callable(
+			self,
+			"_on_developer_funds_requested"
+		)
+		if not studio_hud.is_connected(
+			"developer_funds_requested",
+			funds_callback
+		):
+			studio_hud.connect(
+				"developer_funds_requested",
+			funds_callback
+			)
+	if _character_manager.has_signal("facility_usage_changed"):
+		var facility_callback := Callable(
+			self,
+			"_on_facility_usage_changed"
+		)
+		if not _character_manager.is_connected(
+			"facility_usage_changed",
+			facility_callback
+		):
+			_character_manager.connect(
+				"facility_usage_changed",
+				facility_callback
+			)
 	if _character_manager.has_signal("employees_changed"):
 		var roster_callback: Callable = Callable(
 			self,
@@ -148,12 +179,47 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 		):
 			_character_manager.connect(
 				"employees_changed",
-				roster_callback
+			roster_callback
 			)
 
 	_spawn_initial_buildings()
 	_build_ui()
+	if studio_hud != null:
+		studio_hud.call(
+			"set_developer_funds_status",
+			"Бюджет декораций: %d." % int(_set_inventory.budget)
+		)
 	_refresh_build_status()
+
+func _on_developer_funds_requested(amount: int) -> void:
+	if _set_inventory == null:
+		return
+	if not bool(_set_inventory.call("add_funds", amount)):
+		var studio_hud: Node = get_node_or_null("../StudioHUD")
+		if studio_hud != null:
+			studio_hud.call(
+				"set_developer_funds_status",
+				"Не удалось пополнить бюджет декораций."
+			)
+		return
+	_refresh_decor_shop_panel()
+	var hud: Node = get_node_or_null("../StudioHUD")
+	if hud != null:
+		hud.call(
+			"set_developer_funds_status",
+			"Добавлено %d. Бюджет декораций: %d."
+			% [amount, int(_set_inventory.budget)]
+		)
+
+
+func _on_facility_usage_changed() -> void:
+	var building: Variant = _find_building(_selected_building_id)
+	if building == null:
+		return
+	if BUILDING_CATALOG_SCRIPT.get_facility_capacity(
+		str(building.building_type_id)
+	) > 0:
+		_refresh_building_detail()
 
 
 func _on_employee_roster_changed() -> void:
@@ -191,7 +257,9 @@ func get_workplace_path(
 func get_workplace_path_from(
 	building_id: String,
 	slot_index: int,
-	start_position: Vector3
+	start_position: Vector3,
+	source_building_id: String = "",
+	source_slot_index: int = 0
 ) -> Array[Vector3]:
 	var workplace_path: Array[Vector3] = get_workplace_path(
 		building_id,
@@ -199,9 +267,50 @@ func get_workplace_path_from(
 	)
 	if workplace_path.is_empty():
 		return []
+
+	var path_start: Vector3 = start_position
+	var source_exit_path: Array[Vector3] = []
+	if not source_building_id.is_empty():
+		var source_path: Array[Vector3] = get_workplace_path(
+			source_building_id,
+			source_slot_index
+		)
+		var source_actor: Variant = _building_actors.get(
+			source_building_id
+		)
+		if (
+			source_path.size() > 1
+			and source_actor != null
+			and is_instance_valid(source_actor)
+		):
+			var local_start: Vector3 = source_actor.to_local(start_position)
+			var source_definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
+				str(source_actor.building_data.building_type_id)
+			)
+			var source_footprint: Vector2 = source_definition.get(
+				"footprint",
+				Vector2.ZERO
+			)
+			var is_inside_source: bool = (
+				absf(local_start.x) <= source_footprint.x * 0.5 + 0.7
+				and absf(local_start.z) <= source_footprint.y * 0.5 + 0.7
+			)
+			if is_inside_source:
+				source_exit_path.append(start_position)
+				if start_position.distance_to(source_path.back()) > 0.2:
+					source_exit_path.append(source_path.back())
+				for index in range(source_path.size() - 2, -1, -1):
+					var exit_point: Vector3 = source_path[index]
+					if (
+						source_exit_path.is_empty()
+						or source_exit_path.back().distance_to(exit_point) > 0.2
+					):
+						source_exit_path.append(exit_point)
+				path_start = source_path[0]
+
 	var travel_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
-		start_position,
+		path_start,
 		workplace_path[0],
 		_get_building_navigation_obstacles(),
 		0.75,
@@ -209,7 +318,11 @@ func get_workplace_path_from(
 	)
 	if travel_path.is_empty():
 		return []
+
 	var result: Array[Vector3] = []
+	for point in source_exit_path:
+		if result.is_empty() or result.back().distance_to(point) > 0.2:
+			result.append(point)
 	for point in travel_path:
 		if result.is_empty() or result.back().distance_to(point) > 0.2:
 			result.append(point)
@@ -218,6 +331,21 @@ func get_workplace_path_from(
 			result.append(workplace_path[index])
 	return result
 
+
+func get_facility_path_from(
+	building_id: String,
+	slot_index: int,
+	start_position: Vector3,
+	source_building_id: String = "",
+	source_slot_index: int = 0
+) -> Array[Vector3]:
+	return get_workplace_path_from(
+		building_id,
+		slot_index,
+		start_position,
+		source_building_id,
+		source_slot_index
+	)
 
 func _get_building_navigation_obstacles() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -494,6 +622,26 @@ func _build_ui() -> void:
 		_begin_placement.bind("editing_suite")
 	)
 	build_layout.add_child(editing_button)
+
+	var cafeteria_button := Button.new()
+	cafeteria_button.text = "＋ Столовая"
+	cafeteria_button.tooltip_text = "Построить столовую для обеденных перерывов персонала"
+	cafeteria_button.custom_minimum_size = Vector2(0.0, 42.0)
+	cafeteria_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cafeteria_button.pressed.connect(
+		_begin_placement.bind("cafeteria")
+	)
+	build_layout.add_child(cafeteria_button)
+
+	var housing_button := Button.new()
+	housing_button.text = "＋ Домик персонала"
+	housing_button.tooltip_text = "Построить жилой домик для отдыха сотрудников после смены"
+	housing_button.custom_minimum_size = Vector2(0.0, 42.0)
+	housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	housing_button.pressed.connect(
+		_begin_placement.bind("staff_housing")
+	)
+	build_layout.add_child(housing_button)
 
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -800,6 +948,10 @@ func _refresh_building_detail() -> void:
 		child.queue_free()
 
 	_building_detail_panel.visible = true
+	var building_type_id: String = str(building.building_type_id)
+	var is_facility: bool = (
+		BUILDING_CATALOG_SCRIPT.get_facility_capacity(building_type_id) > 0
+	)
 	var title := Label.new()
 	title.text = str(building.display_name).to_upper()
 	title.add_theme_font_size_override("font_size", 18)
@@ -811,7 +963,7 @@ func _refresh_building_detail() -> void:
 
 	var description := Label.new()
 	description.text = BUILDING_CATALOG_SCRIPT.get_description(
-		str(building.building_type_id)
+		building_type_id
 	)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.add_theme_font_size_override("font_size", 12)
@@ -822,16 +974,27 @@ func _refresh_building_detail() -> void:
 	_building_detail_layout.add_child(description)
 
 	var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
-		str(building.building_type_id),
+		building_type_id,
 		float(building.rotation_degrees)
 	)
-	var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity(
-		str(building.building_type_id)
+	var capacity: int = (
+		BUILDING_CATALOG_SCRIPT.get_facility_capacity(building_type_id)
+		if is_facility
+		else BUILDING_CATALOG_SCRIPT.get_workplace_capacity(building_type_id)
 	)
-	var eligible_staff: Array = _get_eligible_staff(
-		str(building.building_type_id)
+	var eligible_staff: Array = (
+		[]
+		if is_facility
+		else _get_eligible_staff(building_type_id)
 	)
-	var assigned_staff: Array = _get_assigned_staff(str(building.id))
+	var assigned_staff: Array = (
+		_character_manager.call(
+			"get_employees_using_facility",
+			str(building.id)
+		)
+		if is_facility
+		else _get_assigned_staff(str(building.id))
+	)
 	var assigned_names: Array[String] = []
 	for employee in assigned_staff:
 		assigned_names.append(
@@ -849,14 +1012,14 @@ func _refresh_building_detail() -> void:
 	_building_detail_layout.add_child(stats_grid)
 	stats_grid.add_child(
 		_create_building_stat_card(
-			"РАБОЧИЕ МЕСТА",
+			"МЕСТА" if is_facility else "РАБОЧИЕ МЕСТА",
 			str(capacity),
 			Color(0.50, 0.86, 0.73, 1.0)
 		)
 	)
 	stats_grid.add_child(
 		_create_building_stat_card(
-			"НАЗНАЧЕНО",
+			"ЗАНЯТО" if is_facility else "НАЗНАЧЕНО",
 			"%d / %d" % [assigned_staff.size(), capacity],
 			Color(0.50, 0.78, 0.90, 1.0)
 		)
@@ -870,7 +1033,11 @@ func _refresh_building_detail() -> void:
 	)
 
 	var crew_heading := Label.new()
-	crew_heading.text = "КОМАНДА · %d" % assigned_staff.size()
+	crew_heading.text = (
+		"ПЕРСОНАЛ В ЗДАНИИ · %d" % assigned_staff.size()
+		if is_facility
+		else "КОМАНДА · %d" % assigned_staff.size()
+	)
 	crew_heading.add_theme_font_size_override("font_size", 11)
 	crew_heading.add_theme_color_override(
 		"font_color",
@@ -882,10 +1049,36 @@ func _refresh_building_detail() -> void:
 	staff_summary.text = (
 		"\n".join(assigned_names)
 		if not assigned_names.is_empty()
-		else "Пока никто не назначен."
+		else (
+			"Сейчас здесь никого нет."
+			if is_facility
+			else "Пока никто не назначен."
+		)
 	)
 	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
+
+	if is_facility:
+		var facility_note := Label.new()
+		facility_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		facility_note.add_theme_font_size_override("font_size", 11)
+		facility_note.add_theme_color_override(
+			"font_color",
+			Color(0.60, 0.80, 0.78, 1.0)
+		)
+		if building_type_id == "cafeteria":
+			facility_note.text = (
+				"Сотрудники приходят сюда в свой обеденный перерыв. "
+				+ "Во время еды энергия восстанавливается быстрее, а стресс снижается."
+			)
+		else:
+			facility_note.text = (
+				"После окончания смены сотрудники занимают свободные спальные места. "
+				+ "Сон ускоряет восстановление энергии и снижает стресс."
+			)
+		_building_detail_layout.add_child(facility_note)
+		_apply_inspector_width_constraints(_building_detail_layout)
+		return
 
 	var eligible_summary := Label.new()
 	eligible_summary.text = (
@@ -898,15 +1091,14 @@ func _refresh_building_detail() -> void:
 	)
 	_building_detail_layout.add_child(eligible_summary)
 
-	if str(building.building_type_id) == "script_department":
+	if building_type_id == "script_department":
 		_build_script_department_detail(assigned_staff)
-	elif str(building.building_type_id) == "sound_stage":
+	elif building_type_id == "sound_stage":
 		_build_sound_stage_detail(assigned_staff)
-	elif str(building.building_type_id) == "editing_suite":
+	elif building_type_id == "editing_suite":
 		_build_film_editing_detail(assigned_staff)
 
 	_apply_inspector_width_constraints(_building_detail_layout)
-
 
 func _apply_inspector_width_constraints(node: Node) -> void:
 	for child in node.get_children():

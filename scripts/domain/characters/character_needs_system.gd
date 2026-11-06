@@ -30,7 +30,12 @@ func refresh_work_state(character: Variant, hour: int) -> void:
 		)
 
 
-func advance_minute(character: Variant, hour: int) -> void:
+func advance_minute(
+	character: Variant,
+	hour: int,
+	at_cafeteria: bool = false,
+	at_staff_housing: bool = false
+) -> void:
 	refresh_work_state(character, hour)
 
 	var needs: Dictionary = character.needs
@@ -43,11 +48,22 @@ func advance_minute(character: Variant, hour: int) -> void:
 			energy -= 0.0005
 			stress += 0.00055
 		"break":
-			energy += 0.001
-			stress -= 0.001
+			if at_cafeteria:
+				energy += 0.0022
+				stress -= 0.0018
+			else:
+				energy += 0.001
+				stress -= 0.001
 		"resting":
 			energy += 0.0007
 			stress += 0.0001
+		"off_duty":
+			if at_staff_housing:
+				energy += 0.0011
+				stress -= 0.0012
+			else:
+				energy += 0.00025
+				stress -= 0.0003
 		_:
 			energy += 0.00025
 			stress -= 0.0003
@@ -63,3 +79,4 @@ func advance_minute(character: Variant, hour: int) -> void:
 	character.needs = needs
 
 	refresh_work_state(character, hour)
+

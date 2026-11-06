@@ -2,7 +2,11 @@ extends Node3D
 class_name CharacterManager
 
 signal employees_changed
+signal facility_usage_changed
 
+const BUILDING_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_building_catalog.gd"
+)
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
@@ -251,6 +255,138 @@ func get_employees_assigned_to_building(building_id: String) -> Array:
 	return result
 
 
+func get_employees_using_facility(building_id: String) -> Array:
+	var result: Array = []
+	for employee in employees:
+		var actor: Node = get_employee_actor(str(employee.id))
+		if actor == null or not bool(actor.call("is_in_facility")):
+			continue
+		if str(actor.call("get_facility_building_id")) == building_id:
+			result.append(employee)
+	return result
+
+
+func _get_facility_assignment(
+	employee_id: String,
+	facility_type_id: String
+) -> Dictionary:
+	if not is_instance_valid(_studio_building_manager):
+		return {}
+	var buildings: Array = _studio_building_manager.call("get_buildings")
+	var facility_slots: Array[Dictionary] = []
+	for building in buildings:
+		if (
+			str(building.building_type_id) != facility_type_id
+			or not bool(building.is_operational)
+		):
+			continue
+		var capacity: int = BUILDING_CATALOG_SCRIPT.get_facility_capacity(
+			facility_type_id
+		)
+		for slot_index in range(capacity):
+			facility_slots.append({
+				"building_id": str(building.id),
+				"slot_index": slot_index,
+			})
+
+	if facility_slots.is_empty():
+		return {}
+
+	var reserved_slots: Dictionary = {}
+	for employee in employees:
+		var actor: Node = get_employee_actor(str(employee.id))
+		if actor == null or not bool(actor.call("is_in_facility")):
+			continue
+		if str(actor.call("get_facility_type_id")) != facility_type_id:
+			continue
+		var reserved_key: String = "%s:%d" % [
+				str(actor.call("get_facility_building_id")),
+				int(actor.call("get_facility_slot_index")),
+			]
+		reserved_slots[reserved_key] = true
+
+	for facility_slot in facility_slots:
+		var slot_key: String = "%s:%d" % [
+			str(facility_slot.get("building_id", "")),
+			int(facility_slot.get("slot_index", -1)),
+		]
+		if not reserved_slots.has(slot_key):
+			return facility_slot
+
+	return {}
+
+func _route_employee_to_facility(
+	employee_id: String,
+	facility_type_id: String
+) -> bool:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _workplace_assignments.has(employee_id)
+	):
+		return false
+	var actor: Node3D = get_employee_actor(employee_id) as Node3D
+	if actor == null:
+		return false
+	if bool(actor.call("is_in_facility")):
+		return str(actor.call("get_facility_type_id")) == facility_type_id
+	if (
+		bool(actor.call("is_in_scene_performance"))
+		or bool(actor.call("is_returning_to_workplace"))
+	):
+		return false
+	var facility_assignment: Dictionary = _get_facility_assignment(
+		employee_id,
+		facility_type_id
+	)
+	if facility_assignment.is_empty():
+		return false
+
+	var workplace_assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	var source_building_id: String = str(
+		actor.call("get_workplace_building_id")
+	)
+	if source_building_id.is_empty():
+		return false
+	var source_slot_index: int = int(
+		workplace_assignment.get("slot_index", 0)
+	)
+	var route: Array[Vector3] = _studio_building_manager.call(
+		"get_facility_path_from",
+		str(facility_assignment.get("building_id", "")),
+		int(facility_assignment.get("slot_index", 0)),
+		actor.global_position,
+		source_building_id,
+		source_slot_index
+	)
+	if route.is_empty():
+		return false
+
+	var action_id: String = (
+		"eating"
+		if facility_type_id == "cafeteria"
+		else "sleeping"
+	)
+	if not bool(actor.call(
+		"assign_facility_route",
+		str(facility_assignment.get("building_id", "")),
+		facility_type_id,
+		int(facility_assignment.get("slot_index", 0)),
+		route,
+		action_id
+	)):
+		return false
+	if (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+	):
+		actor.call("snap_to_facility")
+	facility_usage_changed.emit()
+	return true
+
+
 func is_employee_at_workplace(
 	employee_id: String,
 	building_type_id: String = ""
@@ -337,6 +473,40 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		is_instance_valid(_game_clock)
 		and bool(_game_clock.is_manual_fast_forward)
 	)
+	if bool(actor.call("is_in_facility")):
+		if not bool(actor.call("is_at_facility")):
+			return false
+		var source_building_id: String = str(
+			actor.call("get_facility_building_id")
+		)
+		var source_slot_index: int = int(
+			actor.call("get_facility_slot_index")
+		)
+		var return_route: Array[Vector3] = _studio_building_manager.call(
+			"get_workplace_path_from",
+			building_id,
+			slot_index,
+			actor.global_position,
+			source_building_id,
+			source_slot_index
+		)
+		if return_route.is_empty():
+			return false
+		if str(actor.call("get_workplace_building_id")) != building_id:
+			actor.call(
+				"assign_workplace_route",
+				building_id,
+				return_route,
+				profession_id
+			)
+		else:
+			actor.call("return_to_workplace", return_route)
+		facility_usage_changed.emit()
+		if manual_fast_forward:
+			actor.call("snap_to_workplace")
+			return true
+		return false
+
 	var current_building_id: String = str(
 		actor.call("get_workplace_building_id")
 	)
@@ -405,7 +575,6 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		return true
 	return false
 
-
 func _refresh_workplace_assignments() -> void:
 	if (
 		_workplace_system == null
@@ -424,6 +593,11 @@ func _refresh_workplace_assignments() -> void:
 		var employee_id: String = str(employee.id)
 		var actor: Variant = _employee_actors.get(employee_id)
 		if actor == null or not is_instance_valid(actor):
+			continue
+		if (
+			bool(actor.call("is_in_facility"))
+			or bool(actor.call("is_returning_to_workplace"))
+		):
 			continue
 
 		var assignment: Dictionary = _workplace_assignments.get(
@@ -469,7 +643,6 @@ func _refresh_workplace_assignments() -> void:
 	if is_instance_valid(_roster_header):
 		_refresh_roster()
 		_refresh_detail_panel()
-
 
 func _spawn_initial_roster() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -977,19 +1150,78 @@ func _on_roster_employee_pressed(employee_id: String) -> void:
 
 func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
-		_needs_system.call("advance_minute", employee, hour)
-
 		var employee_id: String = str(employee.id)
 		var actor: Variant = _employee_actors.get(employee_id)
+		var at_cafeteria: bool = (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_at_facility", "cafeteria"))
+		)
+		var at_staff_housing: bool = (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_at_facility", "staff_housing"))
+		)
+		_needs_system.call(
+			"advance_minute",
+			employee,
+			hour,
+			at_cafeteria,
+			at_staff_housing
+		)
+
+		if actor == null or not is_instance_valid(actor):
+			continue
+		if _is_active_production_participant(employee_id):
+			continue
+		if bool(actor.call("is_returning_to_workplace")):
+			employee.current_task = "Возвращается на рабочее место"
+			continue
+
+		var target_facility_type: String = ""
+		match str(employee.work_state):
+			"break":
+				target_facility_type = "cafeteria"
+			"off_duty":
+				target_facility_type = "staff_housing"
+
+		if not target_facility_type.is_empty():
+			if _route_employee_to_facility(
+				employee_id,
+				target_facility_type
+			):
+				var is_at_facility: bool = bool(
+					actor.call(
+						"is_at_facility",
+						target_facility_type
+					)
+				)
+				if target_facility_type == "cafeteria":
+					employee.current_task = (
+						"Обедает в столовой"
+						if is_at_facility
+						else "Идёт в столовую"
+					)
+				else:
+					employee.current_task = (
+						"Отдыхает в домике"
+					if is_at_facility
+					else "Идёт в домик персонала"
+				)
+				continue
+
+		if bool(actor.call("is_in_facility")):
+			if not bool(actor.call("is_at_facility")):
+				employee.current_task = "Завершает путь в здание"
+				continue
+			dispatch_employee_to_workplace(employee_id)
+			employee.current_task = "Возвращается на рабочее место"
+			continue
+
 		var assignment: Dictionary = _workplace_assignments.get(
 			employee_id,
 			{}
 		)
-		if actor == null or not is_instance_valid(actor):
-			continue
-
-		if _is_active_production_participant(employee_id):
-			continue
 		if _should_leave_workplace(
 			employee_id,
 			str(employee.work_state),
@@ -1053,7 +1285,6 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
-
 
 func _on_game_day_advanced(day: int) -> void:
 	var result: Dictionary = _employment_system.call("advance_day", day)

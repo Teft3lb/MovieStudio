@@ -145,9 +145,9 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 15. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
 16. Let the clock pass the end of the normal shift and reach 00:15 while a film is in progress. Confirm active crew at their production marks remain ready and the phase clock continues.
 17. Let the clock reach the next workday without restarting the film. Confirm the same scene, phase and set-logistics task continue, with no duplicated props or reset progress.
-16. Confirm low-quality takes request no more than two retakes.
-17. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
-18. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
+18. Confirm low-quality takes request no more than two retakes.
+19. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
+20. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
 
 ## Explicit limitations
 
@@ -163,4 +163,4 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 - Navigation uses grid-based obstacle avoidance for the current studio scale; it is not a full NavMesh or dynamic crowd-avoidance system.
 - Film projects and completed results are serializable domain objects but are not yet connected to campaign save/load.
 - Only one film production project is active at a time.
-- Staff housing is not implemented yet. Active production participants remain available at the Sound Stage outside normal shift hours; the future housing system will route them away from the stage, at which point production will wait for the required crew and cast to return.
+- Cafeteria and staff housing are optional facilities. Employees outside active production use them for scheduled lunch and off-duty recovery; assigned active-production participants remain at the Sound Stage across lunch and shift boundaries.

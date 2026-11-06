@@ -2,6 +2,17 @@ extends RefCounted
 class_name StudioBuildingCatalog
 
 const BUILDINGS: Dictionary = {
+	"cafeteria": {
+		"title": "Столовая",
+		"description": "Общая столовая студии: сотрудники приходят сюда во время личного обеденного перерыва, чтобы поесть и восстановить силы.",
+		"footprint": Vector2(14.0, 12.0),
+		"building_height": 5.8,
+		"workplace_capacity": 0,
+		"facility_capacity": 12,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.66, 0.48, 0.28),
+	},
 	"script_department": {
 		"title": "Сценарный отдел",
 		"description": "Рабочее пространство сценаристов для разработки историй и подготовки сценариев.",
@@ -33,6 +44,17 @@ const BUILDINGS: Dictionary = {
 		"accepted_professions": [],
 		"primary_profession": "",
 		"accent_color": Color(0.48, 0.38, 0.25),
+	},
+	"staff_housing": {
+		"title": "Домик персонала",
+		"description": "Жилой корпус с отдельными спальными местами. После смены сотрудники приходят сюда отдыхать и восстанавливать энергию.",
+		"footprint": Vector2(14.0, 12.0),
+		"building_height": 5.8,
+		"workplace_capacity": 0,
+		"facility_capacity": 8,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.42, 0.56, 0.43),
 	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",
@@ -88,6 +110,11 @@ static func get_footprint(building_type_id: String, rotation_degrees: float = 0.
 static func get_workplace_capacity(building_type_id: String) -> int:
 	var definition: Dictionary = get_definition(building_type_id)
 	return maxi(int(definition.get("workplace_capacity", 0)), 0)
+
+
+static func get_facility_capacity(building_type_id: String) -> int:
+	var definition: Dictionary = get_definition(building_type_id)
+	return maxi(int(definition.get("facility_capacity", 0)), 0)
 
 
 static func get_accepted_professions(building_type_id: String) -> Array[String]:

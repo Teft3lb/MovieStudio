@@ -32,6 +32,14 @@ var _production_action_id: String = ""
 var _has_workplace_destination: bool = false
 var _is_at_workplace: bool = false
 var _is_leaving_workplace: bool = false
+var _facility_active: bool = false
+var _facility_is_moving: bool = false
+var _facility_building_id: String = ""
+var _facility_type_id: String = ""
+var _facility_slot_index: int = -1
+var _facility_route: Array[Vector3] = []
+var _facility_route_index: int = 0
+var _facility_action_id: String = ""
 
 
 func setup(
@@ -71,6 +79,10 @@ func _process(delta: float) -> void:
 	if is_zero_approx(simulation_delta):
 		return
 
+	if _facility_active:
+		_process_facility_movement(simulation_delta)
+		return
+
 	if _scene_performance_active:
 		_process_scene_performance(simulation_delta)
 		return
@@ -98,6 +110,45 @@ func _process(delta: float) -> void:
 	global_position += direction * _move_speed * simulation_delta
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
+	_advance_visual(simulation_delta)
+
+
+func _process_facility_movement(simulation_delta: float) -> void:
+	if _facility_is_moving:
+		while (
+			_facility_route_index < _facility_route.size()
+			and global_position.distance_to(
+				_facility_route[_facility_route_index]
+			) <= 0.18
+		):
+			_facility_route_index += 1
+
+		if _facility_route_index >= _facility_route.size():
+			global_position = _facility_route.back()
+			_facility_is_moving = false
+			_set_walking(false)
+			if is_instance_valid(_visual):
+				_visual.call("set_performance_action", _facility_action_id)
+			_advance_visual(simulation_delta)
+			return
+
+		var target: Vector3 = _facility_route[_facility_route_index]
+		var direction: Vector3 = target - global_position
+		direction.y = 0.0
+		if direction.length_squared() > 0.001:
+			direction = direction.normalized()
+			global_position = global_position.move_toward(
+				target,
+				_move_speed * simulation_delta
+			)
+			look_at(global_position + direction, Vector3.UP)
+		_set_walking(true)
+		_advance_visual(simulation_delta)
+		return
+
+	_set_walking(false)
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", _facility_action_id)
 	_advance_visual(simulation_delta)
 
 
@@ -144,6 +195,7 @@ func start_scene_performance(
 	dialogue_text: String = "",
 	movement_path: Array[Vector3] = []
 ) -> void:
+	_clear_facility_route()
 	if not _has_workplace_destination:
 		return
 
@@ -203,6 +255,7 @@ func move_to_scene_hold(
 	target_position: Vector3,
 	movement_path: Array[Vector3] = []
 ) -> void:
+	_clear_facility_route()
 	if not _has_workplace_destination:
 		return
 	if (
@@ -263,6 +316,8 @@ func is_at_scene_hold_mark() -> bool:
 
 func set_production_action(action_id: String) -> void:
 	_production_action_id = action_id
+	if _facility_active:
+		return
 	if not is_instance_valid(_visual):
 		return
 	if _scene_performance_active:
@@ -278,6 +333,7 @@ func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
 	if not _has_workplace_destination or _workplace_commute_path.is_empty():
 		_cancel_scene_performance()
 		return
+	_clear_facility_route()
 	if _scene_returning_to_workplace:
 		return
 
@@ -305,7 +361,6 @@ func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
 		_finish_scene_return()
 	else:
 		_set_walking(true)
-
 
 func snap_to_scene_mark() -> void:
 	if (
@@ -407,7 +462,13 @@ func _finish_scene_return() -> void:
 	_is_at_workplace = true
 	_set_scene_dialogue("")
 	_face_workplace()
-	_set_working(true)
+	if (
+		not _production_action_id.is_empty()
+		and is_instance_valid(_visual)
+	):
+		_visual.call("set_performance_action", _production_action_id)
+	else:
+		_set_working(true)
 
 
 func _face_scene_focus() -> void:
@@ -482,11 +543,113 @@ func get_character_id() -> String:
 	return str(character_data.id)
 
 
+func assign_facility_route(
+	building_id: String,
+	facility_type_id: String,
+	slot_index: int,
+	route: Array[Vector3],
+	action_id: String
+) -> bool:
+	if route.is_empty() or _scene_performance_active:
+		return false
+	if (
+		_facility_active
+		and _facility_building_id == building_id
+		and _facility_type_id == facility_type_id
+	):
+		return true
+
+	_clear_facility_route()
+	_facility_active = true
+	_facility_building_id = building_id
+	_facility_type_id = facility_type_id
+	_facility_slot_index = slot_index
+	_facility_route = route.duplicate()
+	_facility_route_index = 0
+	_facility_action_id = action_id
+	while (
+		_facility_route_index < _facility_route.size()
+		and global_position.distance_to(
+			_facility_route[_facility_route_index]
+		) <= 0.18
+	):
+		_facility_route_index += 1
+	_facility_is_moving = (
+		_facility_route_index < _facility_route.size()
+	)
+	_is_at_workplace = false
+	_is_leaving_workplace = false
+	_set_working(false)
+	if _facility_is_moving:
+		_set_walking(true)
+	else:
+		global_position = _facility_route.back()
+		_set_walking(false)
+		if is_instance_valid(_visual):
+			_visual.call("set_performance_action", _facility_action_id)
+	return true
+
+
+func snap_to_facility() -> void:
+	if not _facility_active or _facility_route.is_empty():
+		return
+	global_position = _facility_route.back()
+	_facility_route_index = _facility_route.size()
+	_facility_is_moving = false
+	_is_at_workplace = false
+	_set_walking(false)
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", _facility_action_id)
+
+
+func is_in_facility() -> bool:
+	return _facility_active
+
+
+func is_at_facility(facility_type_id: String = "") -> bool:
+	return (
+		_facility_active
+		and not _facility_is_moving
+		and (
+			facility_type_id.is_empty()
+			or _facility_type_id == facility_type_id
+		)
+	)
+
+
+func get_facility_building_id() -> String:
+	return _facility_building_id
+
+
+func get_facility_type_id() -> String:
+	return _facility_type_id
+
+
+func get_facility_slot_index() -> int:
+	return _facility_slot_index
+
+
+func _clear_facility_route() -> void:
+	if not _facility_active:
+		return
+	_facility_active = false
+	_facility_is_moving = false
+	_facility_building_id = ""
+	_facility_type_id = ""
+	_facility_slot_index = -1
+	_facility_route.clear()
+	_facility_route_index = 0
+	_facility_action_id = ""
+	if is_instance_valid(_visual):
+		_visual.call("set_performance_action", "")
+
+
 func assign_workplace_route(
 	building_id: String,
 	route: Array[Vector3],
 	work_style: String
 ) -> void:
+	_clear_facility_route()
 	if route.is_empty():
 		clear_workplace()
 		return
@@ -516,6 +679,7 @@ func assign_workplace(building_id: String, destination: Vector3) -> void:
 
 
 func leave_workplace() -> void:
+	_clear_facility_route()
 	_cancel_scene_performance()
 	if _is_leaving_workplace:
 		return
@@ -539,6 +703,7 @@ func leave_workplace() -> void:
 
 
 func clear_workplace() -> void:
+	_clear_facility_route()
 	_cancel_scene_performance()
 	_workplace_building_id = ""
 	_workplace_path.clear()
@@ -552,6 +717,7 @@ func clear_workplace() -> void:
 
 
 func snap_to_workplace() -> void:
+	_clear_facility_route()
 	_cancel_scene_performance()
 	if not _has_workplace_destination or _workplace_commute_path.is_empty():
 		return

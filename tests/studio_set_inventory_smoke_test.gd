@@ -255,6 +255,18 @@ func _run_tests() -> void:
 		"Three technicians must reduce a three-prop setup to one parallel installation round plus base preparation."
 	)
 
+	var budget_before_dev_grant: int = int(inventory.budget)
+	_expect(
+		bool(inventory.call("add_funds", 10000))
+		and int(inventory.budget) == budget_before_dev_grant + 10000,
+		"Developer funds must increase the reusable decor budget by the requested amount."
+	)
+	_expect(
+		not bool(inventory.call("add_funds", 0))
+		and not bool(inventory.call("add_funds", -500)),
+		"Developer funds must reject zero and negative grants."
+	)
+
 	var restored: Variant = SET_INVENTORY_SCRIPT.from_dict(
 		inventory.to_dict()
 	)

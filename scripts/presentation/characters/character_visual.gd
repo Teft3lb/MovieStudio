@@ -179,6 +179,15 @@ func _advance_performance_animation() -> void:
 			left_arm = -0.12 + motion * 0.12
 			right_arm = -0.12 - motion * 0.12
 			head_motion *= 0.5
+		"eating":
+			left_arm = -0.48 + sin(_animation_phase * 2.8) * 0.12
+			right_arm = -0.55 + sin(_animation_phase * 2.8 + 1.0) * 0.12
+			head_motion = absf(sin(_animation_phase * 1.4)) * 0.045
+		"sleeping":
+			left_arm = 0.02
+			right_arm = 0.02
+			body_lean = 0.035
+			head_motion = 0.025 + sin(_animation_phase * 0.55) * 0.018
 		"placing_set_piece":
 			left_arm = 1.05 + sin(_animation_phase * 2.1) * 0.32
 			right_arm = 1.10 - sin(_animation_phase * 2.1) * 0.32

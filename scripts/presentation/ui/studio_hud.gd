@@ -1,5 +1,8 @@
 extends CanvasLayer
 
+signal developer_funds_requested(amount: int)
+
+const DEVELOPER_FUNDS_GRANT: int = 10000
 const SECTION_ORDER: Array[String] = [
 	"studio",
 	"decor_shop",
@@ -19,6 +22,7 @@ var _inspector_content: VBoxContainer
 var _clock_label: Label
 var _speed_label: Label
 var _fast_forward_status_label: Label
+var _developer_funds_status_label: Label
 
 var _workspace_panels: Dictionary = {}
 var _workspace_titles: Dictionary = {}
@@ -284,6 +288,21 @@ func _build_developer_panel() -> void:
 	description.add_theme_font_size_override("font_size", 11)
 	layout.add_child(description)
 
+	var funds_button := Button.new()
+	funds_button.name = "DeveloperFundsButton"
+	funds_button.text = "DEV · +10 000"
+	funds_button.tooltip_text = "Добавить 10 000 единиц в бюджет магазина декораций"
+	funds_button.custom_minimum_size = Vector2(0.0, 38.0)
+	funds_button.pressed.connect(_on_developer_funds_pressed)
+	layout.add_child(funds_button)
+
+	_developer_funds_status_label = Label.new()
+	_developer_funds_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_developer_funds_status_label.add_theme_font_size_override("font_size", 11)
+	_developer_funds_status_label.modulate = Color(0.72, 0.84, 0.76, 1.0)
+	_developer_funds_status_label.text = "Бюджет магазина пополняется через DEV."
+	layout.add_child(_developer_funds_status_label)
+
 	var fast_forward_buttons := HBoxContainer.new()
 	fast_forward_buttons.add_theme_constant_override("separation", 6)
 	layout.add_child(fast_forward_buttons)
@@ -447,6 +466,15 @@ func _on_navigation_button_pressed(section_id: String) -> void:
 
 func _on_close_inspector_pressed() -> void:
 	show_inspector_panel("", false)
+
+
+func _on_developer_funds_pressed() -> void:
+	set_developer_funds_status("Пополняем бюджет декораций...")
+	developer_funds_requested.emit(DEVELOPER_FUNDS_GRANT)
+
+func set_developer_funds_status(message: String) -> void:
+	if is_instance_valid(_developer_funds_status_label):
+		_developer_funds_status_label.text = message
 
 
 func _add_speed_button(

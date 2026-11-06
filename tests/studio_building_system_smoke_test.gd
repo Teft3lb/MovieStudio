@@ -9,6 +9,15 @@ const BUILDING_DATA_SCRIPT = preload(
 const PLACEMENT_RULES_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_placement_rules.gd"
 )
+const BUILDING_ACTOR_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_actor.gd"
+)
+const STUDIO_BUILDING_MANAGER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_manager.gd"
+)
+const NAVIGATION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_navigation_system.gd"
+)
 
 
 func _initialize() -> void:
@@ -18,6 +27,8 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_catalogue()
 	_test_building_serialization()
+	_test_facility_buildings()
+	_test_facility_navigation()
 	_test_placement_validation()
 
 	_finish_test("StudioBuildingSystemSmokeTest")
@@ -28,12 +39,14 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 4
-		and building_ids[0] == "editing_suite"
-		and building_ids[1] == "prop_warehouse"
-		and building_ids[2] == "script_department"
-		and building_ids[3] == "sound_stage",
-		"The building catalogue must expose the Editing Suite, Prop Warehouse, Script Department and Sound Stage."
+		building_ids.size() == 6
+		and building_ids[0] == "cafeteria"
+		and building_ids[1] == "editing_suite"
+		and building_ids[2] == "prop_warehouse"
+		and building_ids[3] == "script_department"
+		and building_ids[4] == "sound_stage"
+		and building_ids[5] == "staff_housing",
+		"The building catalogue must expose all production and staff facility buildings."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("script_department") == 3,
@@ -54,6 +67,24 @@ func _test_catalogue() -> void:
 			"technician"
 		),
 		"The prop warehouse must be a storage building, not a competing technician workplace."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("cafeteria") == 0
+		and BUILDING_CATALOG_SCRIPT.get_facility_capacity("cafeteria") == 12
+		and not BUILDING_CATALOG_SCRIPT.accepts_profession(
+			"cafeteria",
+			"actor"
+		),
+		"The cafeteria must provide twelve visitor places without becoming a staff workplace."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("staff_housing") == 0
+		and BUILDING_CATALOG_SCRIPT.get_facility_capacity("staff_housing") == 8
+		and not BUILDING_CATALOG_SCRIPT.accepts_profession(
+			"staff_housing",
+			"actor"
+		),
+		"Staff housing must provide eight beds without becoming a staff workplace."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
@@ -91,7 +122,6 @@ func _test_catalogue() -> void:
 		"The Editing Suite must reject unrelated production roles."
 	)
 
-
 func _test_building_serialization() -> void:
 	var building: Variant = BUILDING_DATA_SCRIPT.new()
 	building.id = "BLD-TEST-01"
@@ -115,6 +145,83 @@ func _test_building_serialization() -> void:
 		is_equal_approx(restored.rotation_degrees, 90.0),
 		"Building rotation must survive serialization."
 	)
+
+
+func _test_facility_buildings() -> void:
+	for building_type_id in ["cafeteria", "staff_housing"]:
+		var building: Variant = BUILDING_DATA_SCRIPT.new()
+		building.id = "BLD-%s" % building_type_id.to_upper()
+		building.building_type_id = building_type_id
+		building.display_name = BUILDING_CATALOG_SCRIPT.get_title(
+			building_type_id
+		)
+		building.position = Vector3.ZERO
+		var actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
+		root.add_child(actor)
+		actor.call("setup", building)
+		var facility_path: Array[Vector3] = actor.call(
+			"get_workplace_path",
+			0
+		)
+		_expect(
+			facility_path.size() == 4,
+			"%s must expose an entrance route and an interior facility point."
+			% building_type_id
+		)
+		actor.free()
+
+
+func _test_facility_navigation() -> void:
+	var source_building: Variant = BUILDING_DATA_SCRIPT.new()
+	source_building.id = "BLD-FACILITY-SOURCE"
+	source_building.building_type_id = "script_department"
+	source_building.position = Vector3(-16.0, 0.0, -16.0)
+	var target_building: Variant = BUILDING_DATA_SCRIPT.new()
+	target_building.id = "BLD-FACILITY-TARGET"
+	target_building.building_type_id = "cafeteria"
+	target_building.position = Vector3(-32.0, 0.0, -16.0)
+
+	var source_actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
+	var target_actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
+	root.add_child(source_actor)
+	root.add_child(target_actor)
+	source_actor.call("setup", source_building)
+	target_actor.call("setup", target_building)
+
+	var manager: Node3D = STUDIO_BUILDING_MANAGER_SCRIPT.new()
+	root.add_child(manager)
+	manager.set("_navigation_system", NAVIGATION_SYSTEM_SCRIPT.new())
+	manager.set("_buildings", [source_building, target_building])
+	manager.set("_building_actors", {
+		source_building.id: source_actor,
+		target_building.id: target_actor,
+	})
+	var start_position: Vector3 = source_actor.call(
+		"get_workplace_position",
+		0
+	)
+	var target_position: Vector3 = target_actor.call(
+		"get_workplace_position",
+		0
+	)
+	var facility_route: Array[Vector3] = manager.call(
+		"get_facility_path_from",
+		target_building.id,
+		0,
+		start_position,
+		source_building.id,
+		0
+	)
+	_expect(
+		facility_route.size() > 6
+		and facility_route.front().is_equal_approx(start_position)
+		and facility_route.back().is_equal_approx(target_position),
+		"Facility navigation must exit the source building, use outdoor pathfinding and enter the destination."
+	)
+
+	manager.free()
+	source_actor.free()
+	target_actor.free()
 
 
 func _test_placement_validation() -> void:
@@ -142,6 +249,24 @@ func _test_placement_validation() -> void:
 	_expect(
 		bool(warehouse_result.get("valid", false)),
 		"The initial prop warehouse position must remain clear of buildings and the access road."
+	)
+
+	var cafeteria_placement: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"cafeteria",
+		Vector3(-30.0, 0.0, 20.0),
+		0.0,
+		[]
+	)
+	var housing_placement: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"staff_housing",
+		Vector3(30.0, 0.0, 20.0),
+		0.0,
+		[]
+	)
+	_expect(
+		bool(cafeteria_placement.get("valid", false))
+		and bool(housing_placement.get("valid", false)),
+		"Staff facilities must use the standard plot and road placement rules."
 	)
 
 	var overlap_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(

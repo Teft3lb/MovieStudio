@@ -34,6 +34,7 @@ func _run_tests() -> void:
 
 	_test_serialization(employee)
 	_test_needs_and_schedule(employee)
+	_test_facility_recovery(employee)
 	_test_selection_marker(employee)
 
 	_finish_test("CharacterSystemV2SmokeTest")
@@ -108,6 +109,57 @@ func _test_needs_and_schedule(employee: Variant) -> void:
 	)
 
 
+func _test_facility_recovery(employee: Variant) -> void:
+	var needs_system: RefCounted = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
+	var regular_lunch: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		employee.to_dict()
+	)
+	var cafeteria_lunch: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		employee.to_dict()
+	)
+	var lunch_needs: Dictionary = regular_lunch.needs.duplicate(true)
+	lunch_needs["energy"] = 0.5
+	lunch_needs["stress"] = 0.6
+	regular_lunch.needs = lunch_needs.duplicate(true)
+	cafeteria_lunch.needs = lunch_needs.duplicate(true)
+	var lunch_energy_before: float = 0.5
+	needs_system.call("advance_minute", regular_lunch, 12)
+	needs_system.call("advance_minute", cafeteria_lunch, 12, true, false)
+	_expect(
+		float(cafeteria_lunch.needs.energy) - lunch_energy_before
+		> float(regular_lunch.needs.energy) - lunch_energy_before,
+		"Dining in the cafeteria must restore more energy than an ordinary lunch break."
+	)
+	_expect(
+		float(cafeteria_lunch.needs.stress) < float(regular_lunch.needs.stress),
+		"Dining in the cafeteria must reduce more stress than an ordinary lunch break."
+	)
+
+	var regular_night: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		employee.to_dict()
+	)
+	var housing_night: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		employee.to_dict()
+	)
+	var night_needs: Dictionary = regular_night.needs.duplicate(true)
+	night_needs["energy"] = 0.5
+	night_needs["stress"] = 0.6
+	regular_night.needs = night_needs.duplicate(true)
+	housing_night.needs = night_needs.duplicate(true)
+	var night_energy_before: float = 0.5
+	needs_system.call("advance_minute", regular_night, 20)
+	needs_system.call("advance_minute", housing_night, 20, false, true)
+	_expect(
+		float(housing_night.needs.energy) - night_energy_before
+		> float(regular_night.needs.energy) - night_energy_before,
+		"Sleeping in staff housing must restore more energy than ordinary off-duty time."
+	)
+	_expect(
+		float(housing_night.needs.stress) < float(regular_night.needs.stress),
+		"Sleeping in staff housing must reduce more stress than ordinary off-duty time."
+	)
+
+
 func _test_selection_marker(employee: Variant) -> void:
 	var clock: Node = GAME_CLOCK_SCRIPT.new()
 	root.add_child(clock)
@@ -128,6 +180,58 @@ func _test_selection_marker(employee: Variant) -> void:
 	_expect(
 		actor.get_node_or_null("SelectionHitbox") != null,
 		"Employee actor must have a raycast hitbox."
+	)
+
+	var workplace_path: Array[Vector3] = [
+		Vector3.ZERO,
+		Vector3(1.0, 0.0, 0.0),
+		Vector3(2.0, 0.0, 0.0),
+	]
+	actor.call(
+		"assign_workplace_route",
+		"BLD-WORKPLACE",
+		workplace_path,
+		"actor"
+	)
+	actor.call("snap_to_workplace")
+	var facility_path: Array[Vector3] = [
+		Vector3(2.0, 0.0, 0.0),
+		Vector3(3.0, 0.0, 0.0),
+		Vector3(4.0, 0.0, 0.0),
+	]
+	_expect(
+		bool(actor.call(
+			"assign_facility_route",
+			"BLD-HOUSING",
+			"staff_housing",
+			0,
+			facility_path,
+			"sleeping"
+		)),
+		"An employee must accept a separate facility route without losing the assigned workplace."
+	)
+	_expect(
+		bool(actor.call("is_in_facility"))
+		and not bool(actor.call("is_at_facility", "staff_housing")),
+		"An employee travelling to housing must be tracked as en route, not already resting."
+	)
+	actor.call("snap_to_facility")
+	_expect(
+		bool(actor.call("is_at_facility", "staff_housing"))
+		and str(actor.call("get_workplace_building_id")) == "BLD-WORKPLACE",
+		"Arriving at staff housing must preserve the original workplace assignment."
+	)
+	actor.call("return_to_workplace", workplace_path)
+	_expect(
+		bool(actor.call("is_returning_to_workplace"))
+		and not bool(actor.call("is_in_facility")),
+		"Returning from housing must clear the facility visit and start the return route."
+	)
+	actor.call("snap_to_workplace")
+	_expect(
+		bool(actor.call("is_at_workplace"))
+		and not bool(actor.call("is_in_facility")),
+		"An employee must return to the original workplace after the facility visit."
 	)
 
 	var ring := actor.get_node("SelectionRing") as MeshInstance3D
