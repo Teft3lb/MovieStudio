@@ -322,10 +322,11 @@ func _run_tests() -> void:
 
 	var unassigned_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(unassigned_actor)
+	var unassigned_route: Array[Vector3] = []
 	unassigned_actor.call(
 		"setup",
 		second_employee,
-		[],
+		unassigned_route,
 		clock,
 		1.0
 	)

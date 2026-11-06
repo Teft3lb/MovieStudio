@@ -295,7 +295,8 @@ func _test_idle_production_staff_roam_until_dispatched() -> void:
 	clock.set("is_manual_fast_forward", true)
 	var actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(actor)
-	actor.call("setup", employee, [], clock, 1.5)
+	var initial_route: Array[Vector3] = []
+	actor.call("setup", employee, initial_route, clock, 1.5)
 	var workplace_manager := FakeWorkplaceManager.new()
 	root.add_child(workplace_manager)
 	var character_manager: Node = CHARACTER_MANAGER_SCRIPT.new()
