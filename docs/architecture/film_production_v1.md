@@ -61,7 +61,7 @@ The Sound Stage has eight reusable scene marks on its set platform. The marks ch
 
 During production:
 - while the director, operator and technician prepare the set, cast members walk along their existing studio routes outside the Sound Stage;
-- during Rehearsal, Shooting and Review, only generic non-cast, non-crew stage bystanders walk to holding marks behind the camera line; required crew remain at their workstations and are not incorrectly removed from the camera station or monitor;
+- during Rehearsal, Shooting and Review, cast members and other staff who are not in the current shot walk to holding marks behind the camera line; required crew remain at their workstations and are not incorrectly removed from the camera station or monitor;
 - when Rehearsal begins, only the actors assigned to the current scene return to the Sound Stage and move to scene marks;
 - the speaking actor plays a speaking gesture, animates a simple mouth shape and displays the current line above the character;
 - other performers play reaction or dramatic poses;
@@ -70,7 +70,7 @@ During production:
 - the camera operator performs a camera-operation pose;
 - during Set Dressing, every available Sound Stage technician can work on a separate prop: they walk to the warehouse, pick up a purchased piece, carry it to the stage and install it; during Set Strike, they remove pieces and carry them back to storage; the phase clock waits until the logistics workers have returned to their workstations;
 - multiple technicians reduce the installation and strike work-round durations; if fewer technicians are available than props, each technician makes additional trips;
-- during Rehearsal, Shooting and Review, generic bystanders who are neither cast nor crew move behind the camera to off-camera holding marks; the director, camera operator and technician remain at their dedicated stations unless a logistics task moves the technician;
+- during Rehearsal, Shooting and Review, cast members and other staff who are not performing in the current scene move behind the camera to off-camera holding marks; the director, camera operator and technician remain at their dedicated stations unless a logistics task moves the technician;
 - an optional producer performs a coordination pose;
 - the two in-world camera rigs turn toward the current cast blocking; the primary camera operator stands behind the active rig and performs a hands-on camera pose;
 - a physical slate displays the active scene and phase.
@@ -136,7 +136,7 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 6. During Preparation and Set Dressing, confirm cast members leave the pavilion and walk around the studio while technicians collect and install props.
 7. When Rehearsal begins, confirm only actors needed in the current scene return to the pavilion and take their marks; other cast members keep roaming.
 8. Observe rehearsal gestures, actor repositioning, speaking dialogue and reaction poses.
-9. During Rehearsal and Shooting, confirm only generic bystanders walk behind the camera; the camera operator stays at the rig and the director stays beside the monitor.
+9. During Rehearsal and Shooting, confirm non-performing cast and staff walk behind the camera; the camera operator stays at the rig and the director stays beside the monitor.
 10. Confirm the dialogue bubble appears only for the speaking character and the speaking mouth visibly animates.
 11. Confirm camera rigs turn toward the current blocking and the slate updates scene/phase.
 12. Confirm the director, camera operator, technician and producer display their production poses/tasks.
