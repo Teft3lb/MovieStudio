@@ -9,14 +9,23 @@ const SHIFT_START_HOUR: int = 8
 const SHIFT_END_HOUR: int = 17
 const BREAK_START_HOUR: int = 12
 const BREAK_END_HOUR: int = 13
+const BEDTIME_HOUR: int = 22
+
 
 func refresh_work_state(character: Variant, hour: int) -> void:
 	var needs: Dictionary = character.needs
 	var energy: float = float(needs.get("energy", 1.0))
 
-	if hour < character.shift_start_hour or hour >= character.shift_end_hour:
+	if hour < character.shift_start_hour:
 		character.work_state = "off_duty"
 		character.current_task = "Вне рабочей смены"
+	elif hour >= character.shift_end_hour:
+		if hour < BEDTIME_HOUR:
+			character.work_state = "free_time"
+			character.current_task = "Свободное время"
+		else:
+			character.work_state = "off_duty"
+			character.current_task = "Вне рабочей смены"
 	elif hour >= character.break_start_hour and hour < character.break_end_hour:
 		character.work_state = "break"
 		character.current_task = "Обеденный перерыв"
@@ -57,6 +66,9 @@ func advance_minute(
 		"resting":
 			energy += 0.0007
 			stress += 0.0001
+		"free_time":
+			energy += 0.00035
+			stress -= 0.00055
 		"off_duty":
 			if at_staff_housing:
 				energy += 0.0011

@@ -1312,6 +1312,52 @@ func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
 
 
+func _release_employee_to_free_roam(actor: Variant) -> void:
+	if bool(actor.call("is_in_facility")):
+		if (
+			not bool(actor.call("is_at_facility"))
+			or not is_instance_valid(_studio_building_manager)
+		):
+			return
+		var facility_building_id: String = str(
+			actor.call("get_facility_building_id")
+		)
+		var facility_slot_index: int = int(
+			actor.call("get_facility_slot_index")
+		)
+		var exit_route: Array[Vector3] = _studio_building_manager.call(
+			"get_workplace_path",
+			facility_building_id,
+			facility_slot_index
+		)
+		if exit_route.is_empty():
+			return
+		exit_route.reverse()
+		if exit_route.front().distance_to(actor.global_position) > 0.2:
+			exit_route.insert(0, actor.global_position)
+		if not bool(actor.call("leave_facility", exit_route)):
+			return
+		facility_usage_changed.emit()
+		if (
+			is_instance_valid(_game_clock)
+			and bool(_game_clock.is_manual_fast_forward)
+		):
+			actor.call("snap_outside_facility")
+		return
+
+	if (
+		str(actor.call("get_workplace_building_id")).is_empty()
+		or bool(actor.call("is_leaving_workplace"))
+	):
+		return
+	actor.call("leave_workplace")
+	if (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+	):
+		actor.call("snap_outside_workplace")
+
+
 func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
 		var employee_id: String = str(employee.id)
@@ -1381,6 +1427,10 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 						else "Идёт в монтажную"
 					)
 				continue
+		if str(employee.work_state) == "free_time":
+			_release_employee_to_free_roam(actor)
+			employee.current_task = "Свободное время"
+			continue
 		if bool(actor.call("is_returning_to_workplace")):
 			employee.current_task = "Возвращается на рабочее место"
 			continue

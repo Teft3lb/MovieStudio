@@ -103,7 +103,7 @@ Run from the project root with Godot 4.7.2:
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 ~~~
 
-The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, valid/invalid location transitions, location serialization, scene matching and technician-scaled setup duration. The production test checks installation/strike durations, technician scaling, project serialization and recorded scene props. The interior test checks warehouse shelves, pickup marks, carrying visuals and the rule that a new scene cannot replace the old set before explicit strike clearance. The performance test checks speaking mouth motion, plus a stage employee walking behind the camera and returning to the workstation.
+The navigation test checks detours around outdoor building footprints and Sound Stage walls. The inventory test checks purchases, valid/invalid location transitions, location serialization, scene matching and technician-scaled setup duration. The production test checks installation/strike durations, technician scaling, project serialization and recorded scene props. The interior test checks warehouse shelves, pickup marks, carrying visuals and cafeteria seating geometry. The performance test also verifies that Set Strike assigns every installed prop before the next scene can proceed, in addition to speaking mouth motion and off-camera employee routing.
 
 ## Explicit limitations
 

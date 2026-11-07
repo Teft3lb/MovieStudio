@@ -203,6 +203,11 @@ func _run_tests() -> void:
 		and eating_left_leg.rotation.x > 0.65,
 		"Cafeteria arrival must switch the employee into a lowered seated eating pose."
 	)
+	var cafeteria_facing: Vector3 = -actor.global_transform.basis.z
+	_expect(
+		cafeteria_facing.dot(Vector3.BACK) > 0.9,
+		"Employees in the front cafeteria row must face inward toward the table."
+	)
 	_expect(
 		character_manager.call(
 			"get_employees_using_facility",
@@ -296,9 +301,18 @@ func _run_tests() -> void:
 	)
 	character_manager.call("_on_game_minute_advanced", 1, 17, 0)
 	_expect(
-		bool(actor.call("is_at_facility", "staff_housing"))
+		str(employee.work_state) == "free_time"
+		and str(employee.current_task) == "Свободное время"
+		and not bool(actor.call("is_in_facility"))
+		and str(actor.call("get_workplace_building_id")).is_empty(),
+		"Employees must leave work and roam during evening free time instead of going straight to bed."
+	)
+	character_manager.call("_on_game_minute_advanced", 1, 22, 0)
+	_expect(
+		str(employee.work_state) == "off_duty"
+		and bool(actor.call("is_at_facility", "staff_housing"))
 		and str(employee.current_task) == "Отдыхает в домике",
-		"Employees must move into staff housing after their shift ends."
+		"Employees must enter staff housing at bedtime rather than at the end of the work shift."
 	)
 	character_manager.call("_on_game_minute_advanced", 2, 8, 0)
 	_expect(
@@ -316,8 +330,15 @@ func _run_tests() -> void:
 	studio_manager.active_production_employee_id = ""
 	character_manager.call("_on_game_minute_advanced", 2, 17, 1)
 	_expect(
+		str(employee.work_state) == "free_time"
+		and not bool(actor.call("is_in_facility"))
+		and str(actor.call("get_workplace_building_id")).is_empty(),
+		"Once production ends before bedtime, the employee must return to evening free time."
+	)
+	character_manager.call("_on_game_minute_advanced", 2, 22, 0)
+	_expect(
 		bool(actor.call("is_at_facility", "staff_housing")),
-		"Once production ends, an off-duty employee must be allowed to go to staff housing."
+		"Once bedtime begins, an employee released from production must be allowed to go to staff housing."
 	)
 
 	var unassigned_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()

@@ -58,12 +58,39 @@ class FakeWorkplaceManager extends Node:
 		return route
 
 
+class FakeLogisticsBuilding extends RefCounted:
+	var id: String = "BLD-TEST-WAREHOUSE"
+	var building_type_id: String = "prop_warehouse"
+
+
+class FakeSetInventory extends RefCounted:
+	var stage_prop_ids: Array[String] = []
+
+	func get_props_on_stage() -> Array[String]:
+		return stage_prop_ids.duplicate()
+
+
+class FakeProductionProject extends RefCounted:
+	var scene_setup: Dictionary = {}
+
+	func get_current_scene_setup() -> Dictionary:
+		return scene_setup.duplicate(true)
+
+
+class FakeLogisticsCharacterManager extends Node:
+	var employee_tasks: Dictionary = {}
+
+	func set_employee_task(employee_id: String, task_title: String) -> void:
+		employee_tasks[employee_id] = task_title
+
+
 func _run_tests() -> void:
 	_test_character_moves_and_performs_scene()
 	_test_off_shift_crew_returns_to_stage()
 	_test_stage_bystander_moves_off_camera_and_returns()
 	_test_idle_production_staff_roam_until_dispatched()
 	_test_camera_crew_remains_at_workstations()
+	_test_set_strike_assigns_every_installed_prop()
 	_finish_test("FilmScenePerformanceSmokeTest")
 
 
@@ -419,6 +446,72 @@ func _test_camera_crew_remains_at_workstations() -> void:
 		"Only non-cast, non-crew bystanders should be moved behind the camera line."
 	)
 	studio_manager.free()
+
+
+func _test_set_strike_assigns_every_installed_prop() -> void:
+	var manager: Node3D = STUDIO_BUILDING_MANAGER_SCRIPT.new()
+	root.add_child(manager)
+	var warehouse := FakeLogisticsBuilding.new()
+	var inventory := FakeSetInventory.new()
+	var project := FakeProductionProject.new()
+	var character_manager := FakeLogisticsCharacterManager.new()
+	root.add_child(character_manager)
+
+	var expected_prop_ids: Array[String] = [
+		"industrial_crates",
+		"industrial_pipes",
+		"industrial_work_light",
+	]
+	inventory.stage_prop_ids = expected_prop_ids.duplicate()
+	project.scene_setup = {
+		"scene_id": "SCENE-02",
+		"set_id": "industrial_port",
+		"prop_ids": expected_prop_ids.duplicate(),
+	}
+	var technician_ids: Array[String] = [
+		"EMP-TECH-01",
+		"EMP-TECH-02",
+		"EMP-TECH-03",
+	]
+	manager.set("_buildings", [warehouse])
+	manager.set("_set_inventory", inventory)
+	manager.set("_active_film_project", project)
+	manager.set("_active_production_technician_ids", technician_ids)
+	manager.set("_character_manager", character_manager)
+
+	manager.call(
+		"_begin_set_logistics",
+		"set_strike",
+		project.scene_setup,
+		"BLD-TEST-STAGE",
+		"set_strike:SCENE-02"
+	)
+	var worker_tasks: Dictionary = manager.get("_set_logistics_worker_tasks")
+	var pending_prop_ids: Array = manager.get("_set_logistics_pending_prop_ids")
+	var assigned_prop_ids: Array[String] = []
+	for task_value in worker_tasks.values():
+		var task: Dictionary = task_value
+		assigned_prop_ids.append(str(task.get("prop_id", "")))
+	assigned_prop_ids.sort()
+	expected_prop_ids.sort()
+
+	_expect(
+		not bool(manager.get("_set_logistics_blocked")),
+		"Matching props already installed on stage must not block the strike phase."
+	)
+	_expect(
+		worker_tasks.size() == expected_prop_ids.size()
+		and assigned_prop_ids == expected_prop_ids
+		and pending_prop_ids.is_empty(),
+		"Set strike must assign every installed prop to a technician instead of returning after the first item."
+	)
+	_expect(
+		character_manager.employee_tasks.size() == expected_prop_ids.size()
+		and not bool(manager.call("_are_set_logistics_tasks_complete")),
+		"Production must remain paused until every assigned strike task has actually returned its prop."
+	)
+	manager.free()
+	character_manager.free()
 
 
 func _test_character_moves_and_performs_scene() -> void:

@@ -667,9 +667,9 @@ func _finish_facility_leave() -> void:
 func _face_facility() -> void:
 	match _facility_type_id:
 		"cafeteria":
-			var seat_side: int = posmod(_facility_slot_index, 4)
+			var is_front_row: bool = posmod(_facility_slot_index, 4) < 2
 			var facing_direction: Vector3 = (
-				Vector3.RIGHT if seat_side < 2 else Vector3.LEFT
+				Vector3.BACK if is_front_row else Vector3.FORWARD
 			)
 			look_at(global_position + facing_direction, Vector3.UP)
 		"staff_housing":

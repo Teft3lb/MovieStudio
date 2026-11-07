@@ -1101,6 +1101,7 @@ func _build_cafeteria(
 
 	var seat_positions: Array[Vector3] = []
 	var table_centers: Array[float] = [-4.0, 0.0, 4.0]
+	var table_center_z: float = 0.35
 	for table_index in range(table_centers.size()):
 		var center_x: float = table_centers[table_index]
 		_create_box(
@@ -1108,7 +1109,7 @@ func _build_cafeteria(
 			"CafeteriaTable_%d" % table_index,
 			Vector3(2.1, 0.16, 1.25),
 			Color(0.42, 0.29, 0.19),
-			Vector3(center_x, 0.82, 0.35)
+			Vector3(center_x, 0.82, table_center_z)
 		)
 		_create_box(
 			_interior_root,
@@ -1118,10 +1119,10 @@ func _build_cafeteria(
 			Vector3(center_x, 0.40, 0.35)
 		)
 		var table_seats: Array[Vector3] = [
-			Vector3(center_x - 1.35, 0.0, -0.65),
-			Vector3(center_x - 1.35, 0.0, 1.35),
-			Vector3(center_x + 1.35, 0.0, -0.65),
-			Vector3(center_x + 1.35, 0.0, 1.35),
+			Vector3(center_x - 0.55, 0.0, table_center_z - 1.0),
+			Vector3(center_x + 0.55, 0.0, table_center_z - 1.0),
+			Vector3(center_x - 0.55, 0.0, table_center_z + 1.0),
+			Vector3(center_x + 0.55, 0.0, table_center_z + 1.0),
 		]
 		for seat_index in range(table_seats.size()):
 			var seat_position: Vector3 = table_seats[seat_index]
@@ -1135,14 +1136,14 @@ func _build_cafeteria(
 				seat_position + Vector3(0.0, 0.48, 0.0)
 			)
 			var chair_back_side: float = (
-				-1.0 if seat_position.x < center_x else 1.0
+				-1.0 if seat_position.z < table_center_z else 1.0
 			)
 			_create_box(
 				_interior_root,
 				"CafeteriaChairBack_%d_%d" % [table_index, seat_index],
 				Vector3(0.12, 0.62, 0.58),
 				Color(0.23, 0.27, 0.27),
-				seat_position + Vector3(chair_back_side * 0.34, 0.80, 0.0)
+				seat_position + Vector3(0.0, 0.80, chair_back_side * 0.34)
 			)
 	_workplace_points = seat_positions
 

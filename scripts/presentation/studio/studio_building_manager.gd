@@ -3944,7 +3944,7 @@ func _begin_set_logistics(
 						"StudioBuildingManager: unexpected prop %s remains on stage."
 						% prop_id
 					)
-				return
+					return
 				_set_logistics_pending_prop_ids.append(prop_id)
 		if _set_logistics_pending_prop_ids.is_empty():
 			clear_scene_set_dressing(stage_id)

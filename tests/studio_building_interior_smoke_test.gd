@@ -27,6 +27,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
+	_test_cafeteria_seating_layout()
 	_test_prop_warehouse_interior()
 	_test_editing_suite_interior()
 	_test_staff_housing_beds()
@@ -433,6 +434,42 @@ func _assert_workplace_route(
 	_expect(
 		slot_index >= 0 and slot_index < capacity,
 		"Test slot must fit the building workplace capacity."
+	)
+
+
+func _test_cafeteria_seating_layout() -> void:
+	var actor: Node3D = _create_building("cafeteria", 0.0)
+	var first_front_path: Array[Vector3] = actor.call("get_workplace_path", 0)
+	var second_front_path: Array[Vector3] = actor.call("get_workplace_path", 1)
+	var first_back_path: Array[Vector3] = actor.call("get_workplace_path", 2)
+	var second_back_path: Array[Vector3] = actor.call("get_workplace_path", 3)
+	var first_front_seat: Vector3 = actor.to_local(first_front_path.back())
+	var second_front_seat: Vector3 = actor.to_local(second_front_path.back())
+	var first_back_seat: Vector3 = actor.to_local(first_back_path.back())
+	var second_back_seat: Vector3 = actor.to_local(second_back_path.back())
+	_expect(
+		absf(first_front_seat.z - second_front_seat.z) < 0.01
+		and absf(first_back_seat.z - second_back_seat.z) < 0.01
+		and first_front_seat.z < first_back_seat.z
+		and absf(first_front_seat.x - second_front_seat.x) > 0.8,
+		"Cafeteria must place two chairs along each long side of the table instead of clustering seats at the corners."
+	)
+	var front_chair_back: Node3D = actor.get_node(
+		"Interior/CafeteriaChairBack_0_0"
+	) as Node3D
+	var back_chair_back: Node3D = actor.get_node(
+		"Interior/CafeteriaChairBack_0_2"
+	) as Node3D
+	var front_back_position: Vector3 = actor.to_local(
+		front_chair_back.global_position
+	)
+	var back_back_position: Vector3 = actor.to_local(
+		back_chair_back.global_position
+	)
+	_expect(
+		front_back_position.z < first_front_seat.z
+		and back_back_position.z > first_back_seat.z,
+		"Cafeteria chair backs must sit behind the employee on both sides of the table."
 	)
 
 
