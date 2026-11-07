@@ -54,9 +54,9 @@ The facility tests cover building capacities and interior route points, facility
 6. Advance to the end of the shift (17:00 by default). Confirm employees leave their workstations and roam the studio instead of immediately entering beds.
 7. Advance to 22:00. Confirm employees enter housing, lie down and display the resting task without a floating name tag.
 8. Advance to the next shift. Confirm employees leave housing and return to their assigned workstations.
-8. Start a film production and cross a lunch or shift boundary. Confirm active production participants stay with the shoot and are not pulled into facilities.
-9. Open Developer Tools, press `+10,000`, and confirm the decor shop budget increases by exactly 10,000 and the updated balance is shown.
-10. Recheck navigation around building footprints, the access road, sound-stage walls, manual fast-forward and pause behavior.
+9. Start a film production and cross a lunch or shift boundary. Confirm active production participants stay with the shoot and are not pulled into facilities.
+10. Open Developer Tools, press `+10,000`, and confirm the decor shop budget increases by exactly 10,000 and the updated balance is shown.
+11. Recheck navigation around building footprints, the access road, sound-stage walls, manual fast-forward and pause behavior.
 
 ## Limitations
 
