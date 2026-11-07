@@ -42,6 +42,7 @@ var _facility_slot_index: int = -1
 var _facility_route: Array[Vector3] = []
 var _facility_route_index: int = 0
 var _facility_action_id: String = ""
+var _clear_workplace_after_facility_leave: bool = false
 
 
 func setup(
@@ -613,7 +614,10 @@ func snap_to_facility() -> void:
 	_update_name_tag_visibility()
 
 
-func leave_facility(route: Array[Vector3]) -> bool:
+func leave_facility(
+	route: Array[Vector3],
+	clear_workplace_after_leave: bool = false
+) -> bool:
 	if (
 		not _facility_active
 		or _facility_is_moving
@@ -623,6 +627,7 @@ func leave_facility(route: Array[Vector3]) -> bool:
 	_facility_route = route.duplicate()
 	_facility_route_index = 0
 	_facility_is_leaving = true
+	_clear_workplace_after_facility_leave = clear_workplace_after_leave
 	_facility_action_id = ""
 	while (
 		_facility_route_index < _facility_route.size()
@@ -649,6 +654,8 @@ func snap_outside_facility() -> void:
 
 
 func _finish_facility_leave() -> void:
+	var should_clear_workplace: bool = _clear_workplace_after_facility_leave
+	_clear_workplace_after_facility_leave = false
 	_facility_active = false
 	_facility_is_moving = false
 	_facility_is_leaving = false
@@ -662,6 +669,8 @@ func _finish_facility_leave() -> void:
 	_set_walking(false)
 	_set_working(false)
 	_update_name_tag_visibility()
+	if should_clear_workplace:
+		clear_workplace()
 
 
 func _face_facility() -> void:
@@ -706,6 +715,7 @@ func get_facility_slot_index() -> int:
 func _clear_facility_route() -> void:
 	if not _facility_active:
 		return
+	_clear_workplace_after_facility_leave = false
 	_facility_active = false
 	_facility_is_moving = false
 	_facility_is_leaving = false

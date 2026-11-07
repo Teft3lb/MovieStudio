@@ -340,6 +340,18 @@ func _run_tests() -> void:
 		bool(actor.call("is_at_facility", "staff_housing")),
 		"Once bedtime begins, an employee released from production must be allowed to go to staff housing."
 	)
+	character_manager.call("_on_game_minute_advanced", 3, 17, 0)
+	_expect(
+		str(employee.work_state) == "free_time"
+		and not bool(actor.call("is_in_facility"))
+		and str(actor.call("get_workplace_building_id")).is_empty(),
+		"An employee leaving housing for evening free time must resume roaming instead of returning to a stale workplace route."
+	)
+	character_manager.call("_on_game_minute_advanced", 3, 22, 0)
+	_expect(
+		bool(actor.call("is_at_facility", "staff_housing")),
+		"Employees must be able to return to their bed at the next bedtime."
+	)
 
 	var unassigned_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
 	root.add_child(unassigned_actor)

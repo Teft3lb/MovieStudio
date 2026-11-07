@@ -1335,7 +1335,7 @@ func _release_employee_to_free_roam(actor: Variant) -> void:
 		exit_route.reverse()
 		if exit_route.front().distance_to(actor.global_position) > 0.2:
 			exit_route.insert(0, actor.global_position)
-		if not bool(actor.call("leave_facility", exit_route)):
+		if not bool(actor.call("leave_facility", exit_route, true)):
 			return
 		facility_usage_changed.emit()
 		if (
