@@ -77,3 +77,15 @@ Not part of v2:
 - save-game migration framework.
 
 The current six-person roster remains a deterministic prototype roster. Salary is displayed but is not yet charged to the studio economy.
+
+## Skill progression and aging
+
+CharacterData schema version 6 stores:
+- `skill_xp`: per-skill accumulated experience toward the next mastery point;
+- `age_days`: days elapsed since the employee's last birthday.
+
+The starting six-person roster is generated as junior staff: primary skills begin at 18–40, specialization skills at 16–38 and professional experience at 0–5 years. The employee market continues to generate a broader range of candidates, including experienced specialists.
+
+CharacterSkillProgressionSystem converts work and production activity into skill experience. A skill remains capped at 100; each next point requires more experience than the previous one. Employees gain experience through normal work, rehearsals, shooting, set dressing and review according to their profession and assigned production role. Character cards show both mastery and progress toward the next point.
+
+CharacterAgingSystem advances each employee's birthday counter once per GameClock day. After 365 in-game days the employee gains one year. CharacterVisual gradually greys hair from the mid-forties onward. Age currently modifies the rate of learning; it does not automatically reduce existing mastery or force retirement. Age progress and skill experience are serialized with CharacterData.

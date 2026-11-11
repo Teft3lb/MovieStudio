@@ -32,7 +32,7 @@ Required positions:
 - one technician;
 - an actor or extra assigned to every scripted role.
 
-A producer is optional. When present, the producer coordinates the production and contributes to the team's condition snapshot.
+A producer is optional. When present, the producer coordinates the production and contributes management mastery to film quality. Optional crew positions also include lighting, sound and equipment technicians, up to two additional technicians, a production designer, costume designer and makeup artist. The player explicitly assigns these positions; the selected employees are stored by stable employee ID and included in production readiness checks.
 
 Each script role receives an \`OptionButton\` assignment. Initial assignments distribute roles across available actors/extras in roster order. The player can change these assignments before filming. One employee may play multiple roles across the film; if two such roles appear in the same scene, the employee is represented once in the physical blocking.
 
@@ -81,16 +81,19 @@ The current character animation is procedural and uses existing arm, leg, torso 
 
 ## Quality and results
 
-Each scene's take quality is based on:
-- actor acting skill (30%);
-- director directing skill (20%);
-- camera operator camera skill (16%);
-- technician technical skill (12%);
-- script potential score (22%);
-- team energy, morale and stress;
-- seeded take variance;
-- a small retake improvement modifier;
-- a scene-specific set-dressing modifier derived from owned and missing required props. Missing set pieces lower scene quality but do not prevent production from starting.
+Each scene's take quality uses the following weighted skill inputs:
+- principal cast acting (25%);
+- director directing (17%);
+- camera operation (14%);
+- average technical skill across selected technicians (11%);
+- script potential (18%);
+- lighting and sound (2.5% each);
+- set design (4%);
+- costume design and makeup (2% each);
+- background acting (1%);
+- producer management (1%).
+
+Team energy, morale and stress, seeded take variance, a small retake improvement modifier and the scene-specific set-dressing modifier are applied in addition to those skill weights. Unassigned optional roles use a neutral baseline and do not impose a penalty.
 
 The project stores a result for each completed scene: scene ID/number, beat, location, action, dialogue, set ID/title, installed prop IDs, set-dressing quality, final quality, retake count and elapsed production minutes. Scene setup plans are serialized with the production project. A scene's plan can be refreshed during Preparation and until the first Set Dressing minute is processed, including when the player buys props after production starts. The zero-progress Set Dressing window also accepts purchases and adjusts the current phase duration before installation begins. Purchases made before installation progress begins update the current scene; later purchases affect the next scene when its Preparation phase starts, but never rewrite an already dressed or completed scene.
 
@@ -169,3 +172,11 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 ## Working hours and overnight pause
 
 Rehearsal, Shooting and Review advance only during the shared shift window of the required director, camera operator and primary technician. The effective window is the intersection of their individual shifts. When the window closes, active performers return to their stage workstations, off-camera staff are restored, the stage camera is idled and the production phase pauses until the next shared shift. Set dressing and set strike logistics remain separate operational phases and may finish before the next performance phase starts.
+
+## Background performers, professional progression and lifecycle
+
+Background extras are assigned separately from scripted cast roles. Up to four extras can be selected, bounded by the eight physical scene marks after reserving space for scripted performers. Background performers join every scene without replacing principal cast members. An employee assigned to a scripted role cannot also be selected as background.
+
+Professional mastery is persistent. Normal work develops an employee's primary skill and reliability. Rehearsal develops actors' acting, diction, movement and improvisation, and the director's actor-direction skills. Shooting develops the cast and the selected camera, lighting, sound, equipment, set, costume and makeup specialists. Set Dressing and Review develop the staff working in those phases. Skill experience is stored separately from the 0–100 mastery value; the amount of experience required for each next point rises with mastery, and age modifies the learning rate.
+
+The production shift is calculated from the overlap of the selected crew's working schedules. This prevents optional crew members from being silently required outside their own shifts. Project schema v4 persists background performer assignments.
