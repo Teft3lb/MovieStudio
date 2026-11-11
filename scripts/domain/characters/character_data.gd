@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 5
+const SCHEMA_VERSION: int = 6
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -12,6 +12,7 @@ var last_name: String = ""
 var profession_id: String = "actor"
 var specialization_id: String = ""
 var age: int = 30
+var age_days: int = 0
 
 var experience: float = 0.0
 var popularity: float = 0.0
@@ -27,6 +28,7 @@ var work_state: String = "working"
 var current_task: String = ""
 
 var skills: Dictionary = {}
+var skill_xp: Dictionary = {}
 
 var personality: Dictionary = {
 	"ambition": 0.5,
@@ -123,6 +125,7 @@ func to_dict() -> Dictionary:
 		"profession_id": profession_id,
 		"specialization_id": specialization_id,
 		"age": age,
+		"age_days": age_days,
 		"experience": experience,
 		"popularity": popularity,
 		"daily_salary": daily_salary,
@@ -135,6 +138,7 @@ func to_dict() -> Dictionary:
 		"work_state": work_state,
 		"current_task": current_task,
 		"skills": skills.duplicate(true),
+		"skill_xp": skill_xp.duplicate(true),
 		"personality": personality.duplicate(true),
 		"needs": needs.duplicate(true),
 		"appearance": appearance.duplicate(true),
@@ -161,6 +165,7 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	if not available_specializations.has(result.specialization_id):
 		result.specialization_id = ""
 	result.age = maxi(int(payload.get("age", 30)), 18)
+	result.age_days = clampi(int(payload.get("age_days", 0)), 0, 364)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
 	result.daily_salary = maxi(int(payload.get("daily_salary", 0)), 0)
@@ -188,6 +193,15 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 				skill_value = clampf(float(raw_skills[skill_id]), 0.0, 100.0)
 		restored_skills[skill_id] = skill_value
 	result.skills = restored_skills
+
+	var raw_skill_xp: Variant = payload.get("skill_xp", {})
+	var restored_skill_xp: Dictionary = {}
+	for skill_id in profession_skill_ids:
+		var skill_xp_value: float = 0.0
+		if raw_skill_xp is Dictionary and raw_skill_xp.has(skill_id):
+			skill_xp_value = maxf(float(raw_skill_xp[skill_id]), 0.0)
+		restored_skill_xp[skill_id] = skill_xp_value
+	result.skill_xp = restored_skill_xp
 
 	var raw_personality: Variant = payload.get("personality", {})
 	if raw_personality is Dictionary:

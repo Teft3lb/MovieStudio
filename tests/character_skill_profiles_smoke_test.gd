@@ -135,6 +135,11 @@ func _test_profession_profile(
 		restored.specialization_id == candidate.specialization_id,
 		"Profession specialization must survive CharacterData serialization."
 	)
+	_expect(
+		restored.age_days == candidate.age_days
+		and restored.skill_xp == candidate.skill_xp,
+		"Age progress and partial skill experience must survive CharacterData serialization."
+	)
 
 
 func _test_role_separation(generator: Variant, rng: RandomNumberGenerator) -> void:

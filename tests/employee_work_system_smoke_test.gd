@@ -129,11 +129,19 @@ func _test_skill_progression(
 		assignments["EMP-WORK-ACTOR"]
 	)
 	var after: float = float(employee.skills.get(skill_id, 0.0))
+	var xp_after: float = float(employee.skill_xp.get(skill_id, 0.0))
 
 	_expect(changed, "A working employee must gain professional experience.")
 	_expect(
+		xp_after > 0.0,
+		"Every work minute must add persisted experience toward the next skill point."
+	)
+	for _minute in range(2500):
+		system.call("advance_work_minute", employee, assignments["EMP-WORK-ACTOR"])
+	after = float(employee.skills.get(skill_id, 0.0))
+	_expect(
 		after > before,
-		"Completing a work minute must improve the primary professional skill."
+		"Accumulated work experience must eventually improve the primary professional skill."
 	)
 	_expect(
 		after <= 100.0,
@@ -156,8 +164,15 @@ func _test_editor_skill_progression(
 	var after: float = float(editor.skills.get("editing", 0.0))
 	_expect(changed, "A working film editor must gain editing experience.")
 	_expect(
+		float(editor.skill_xp.get("editing", 0.0)) > 0.0,
+		"Editing Suite work must accumulate persisted editing experience."
+	)
+	for _minute in range(2500):
+		system.call("advance_work_minute", editor, assignments["EMP-WORK-EDITOR"])
+	after = float(editor.skills.get("editing", 0.0))
+	_expect(
 		after > before,
-		"Editing Suite work must improve the editor's editing skill."
+		"Accumulated editing work must eventually improve the editor's editing skill."
 	)
 
 

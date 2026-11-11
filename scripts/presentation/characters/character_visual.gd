@@ -46,6 +46,9 @@ var _right_knee_pivot: Node3D
 var _mouth_node: MeshInstance3D
 var _carried_prop_root: Node3D
 var _body_base_scale: Vector3 = Vector3.ONE
+var _hair_meshes: Array[MeshInstance3D] = []
+var _base_hair_color: Color = Color.WHITE
+var _character_age: int = 30
 
 var _walking: bool = false
 var _working: bool = false
@@ -58,6 +61,26 @@ var _animation_phase: float = 0.0
 func setup(character_payload: Dictionary) -> void:
 	_build_model(character_payload)
 
+
+func set_character_age(age: int) -> void:
+	_character_age = maxi(age, 18)
+	var grey_factor: float = clampf(
+		(float(_character_age) - 43.0) / 32.0,
+		0.0,
+		0.88
+	)
+	var aged_hair_color: Color = _base_hair_color.lerp(
+		Color(0.68, 0.68, 0.66, 1.0),
+		grey_factor
+	)
+	for hair_mesh in _hair_meshes:
+		if not is_instance_valid(hair_mesh):
+			continue
+		var hair_material: StandardMaterial3D = (
+			hair_mesh.material_override as StandardMaterial3D
+		)
+		if hair_material != null:
+			hair_material.albedo_color = aged_hair_color
 
 func set_walking(value: bool) -> void:
 	_walking = value
@@ -367,6 +390,8 @@ func _build_model(character_payload: Dictionary) -> void:
 		posmod(int(appearance.get("outfit_color", 0)), OUTFIT_COLORS.size())
 	]
 	var hair_style: int = int(appearance.get("hair_style", 0))
+	_base_hair_color = hair_color
+	_hair_meshes.clear()
 	var height_scale: float = float(appearance.get("height_scale", 1.0))
 	var head_scale: float = float(appearance.get("head_scale", 1.0))
 
@@ -399,17 +424,20 @@ func _build_model(character_payload: Dictionary) -> void:
 		head_root, "HairCap", 0.24, hair_color, Vector3(0.0, 0.135, 0.0)
 	)
 	hair_cap.scale = Vector3(1.0, 0.52, 1.0)
+	_hair_meshes.append(hair_cap)
 
 	if hair_style == 1:
 		var back_hair := _create_sphere(
 			head_root, "BackHair", 0.19, hair_color, Vector3(0.0, -0.015, 0.115)
 		)
 		back_hair.scale = Vector3(0.88, 1.05, 0.75)
+		_hair_meshes.append(back_hair)
 	elif hair_style == 2:
 		var fringe := _create_sphere(
 			head_root, "Fringe", 0.15, hair_color, Vector3(0.0, 0.105, -0.145)
 		)
 		fringe.scale = Vector3(1.0, 0.48, 0.52)
+		_hair_meshes.append(fringe)
 
 	_create_sphere(
 		head_root, "LeftEar", 0.055, skin_color, Vector3(-0.225, 0.0, 0.0)
@@ -428,10 +456,11 @@ func _build_model(character_payload: Dictionary) -> void:
 			head_root, "Pupil", 0.015, PUPIL_COLOR,
 			Vector3(eye_x, 0.022, -0.231)
 		)
-		_create_box(
+		var eyebrow := _create_box(
 			head_root, "Eyebrow", Vector3(0.075, 0.014, 0.012),
 			hair_color, Vector3(eye_x, 0.082, -0.207)
 		)
+		_hair_meshes.append(eyebrow)
 
 	_create_sphere(
 		head_root, "Nose", 0.035, skin_color, Vector3(0.0, -0.045, -0.218)
@@ -507,6 +536,7 @@ func _build_model(character_payload: Dictionary) -> void:
 		Vector3(0.0, 0.22, -0.02)
 	)
 	_carried_prop_root.visible = false
+	set_character_age(int(character_payload.get("age", 30)))
 
 	_right_leg_pivot = Node3D.new()
 	_right_leg_pivot.name = "RightLegPivot"

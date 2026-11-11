@@ -25,6 +25,12 @@ const EMPLOYEE_WORK_SYSTEM_SCRIPT = preload(
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
+const CHARACTER_AGING_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_aging_system.gd"
+)
+const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_skill_progression_system.gd"
+)
 
 const INITIAL_PROFESSIONS: Array[String] = [
 	"actor",
@@ -39,6 +45,8 @@ var employees: Array = []
 var market_candidates: Array = []
 var _generator: RefCounted
 var _needs_system: RefCounted
+var _aging_system: RefCounted
+var _skill_progression_system: RefCounted
 var _employment_system: Variant
 var _game_clock: Node
 var _studio_hud: Node
@@ -89,6 +97,8 @@ func _ready() -> void:
 	_game_clock = get_node("../GameClock")
 	_studio_hud = get_node_or_null("../StudioHUD")
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
+	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
+	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	_game_clock.day_advanced.connect(_on_game_day_advanced)
 	_game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
@@ -886,7 +896,7 @@ func _spawn_initial_roster() -> void:
 		var employee_id: String = "EMP-%04d" % (index + 1)
 		var profession_id: String = INITIAL_PROFESSIONS[index]
 		var data: Variant = _generator.call(
-			"generate", rng, employee_id, profession_id
+			"generate", rng, employee_id, profession_id, true
 		)
 		employees.append(data)
 
@@ -1664,6 +1674,15 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		_refresh_detail_panel()
 
 func _on_game_day_advanced(day: int) -> void:
+	for employee in employees:
+		var became_older: bool = bool(
+			_aging_system.call("advance_day", employee)
+		)
+		if became_older:
+			var actor: Node = get_employee_actor(str(employee.id))
+			if actor != null and actor.has_method("set_character_age"):
+				actor.call("set_character_age", int(employee.age))
+
 	var result: Dictionary = _employment_system.call("advance_day", day)
 	var employees_expired: bool = false
 
@@ -2091,9 +2110,17 @@ func _refresh_detail_panel() -> void:
 		)
 	)
 	for skill_id in profession_skill_ids:
-		skill_lines.append("%s: %d / 100" % [
+		var progress_percent: int = roundi(float(
+			_skill_progression_system.call(
+				"get_progress_percent",
+				employee,
+				skill_id
+			)
+		))
+		skill_lines.append("%s: %d / 100 · опыт до следующего пункта: %d%%" % [
 			PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
 			roundi(float(skills.get(skill_id, 0.0))),
+			progress_percent,
 		])
 	_detail_skills_label.text = "\n".join(skill_lines)
 

@@ -552,6 +552,10 @@ func _finish_leaving_workplace() -> void:
 	_set_working(false)
 
 
+func set_character_age(age: int) -> void:
+	if is_instance_valid(_visual):
+		_visual.call("set_character_age", age)
+
 func get_character_id() -> String:
 	if character_data == null:
 		return ""

@@ -24,7 +24,8 @@ const LAST_NAMES: Array[String] = [
 func generate(
 	rng: RandomNumberGenerator,
 	character_id: String,
-	profession_id: String = "actor"
+	profession_id: String = "actor",
+	starter_staff: bool = false
 ) -> RefCounted:
 	var data: Variant = CHARACTER_DATA_SCRIPT.new()
 
@@ -41,7 +42,9 @@ func generate(
 		data.specialization_id = specialization_ids[
 			rng.randi_range(0, specialization_ids.size() - 1)
 		]
-	data.age = rng.randi_range(20, 64)
+	data.age = rng.randi_range(20, 35) if starter_staff else rng.randi_range(20, 64)
+	data.age_days = rng.randi_range(0, 364)
+	data.experience = rng.randf_range(0.0, 5.0) if starter_staff else rng.randf_range(0.0, 48.0)
 
 	var primary_skill_id: String = PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(
 		data.profession_id
@@ -60,7 +63,16 @@ func generate(
 	)
 	var skills: Dictionary = {}
 	for skill_id in profession_skill_ids:
-		if skill_id == primary_skill_id:
+		if starter_staff:
+			if skill_id == primary_skill_id:
+				skills[skill_id] = rng.randf_range(18.0, 40.0)
+			elif skill_id == specialization_skill_id:
+				skills[skill_id] = rng.randf_range(16.0, 38.0)
+			elif skill_id == "reliability":
+				skills[skill_id] = rng.randf_range(30.0, 55.0)
+			else:
+				skills[skill_id] = rng.randf_range(6.0, 34.0)
+		elif skill_id == primary_skill_id:
 			skills[skill_id] = rng.randf_range(56.0, 94.0)
 		elif skill_id == specialization_skill_id:
 			skills[skill_id] = rng.randf_range(58.0, 94.0)
@@ -70,8 +82,10 @@ func generate(
 			skills[skill_id] = rng.randf_range(18.0, 78.0)
 
 	data.skills = skills
+	data.skill_xp = {}
+	for skill_id in profession_skill_ids:
+		data.skill_xp[skill_id] = 0.0
 
-	data.experience = rng.randf_range(0.0, 48.0)
 	if data.profession_id == "actor":
 		data.popularity = rng.randf_range(0.0, 26.0)
 	elif data.profession_id == "extra":

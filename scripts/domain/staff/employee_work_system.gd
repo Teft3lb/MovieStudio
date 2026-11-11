@@ -9,7 +9,17 @@ const PROFESSION_CATALOG_SCRIPT = preload(
 )
 
 const PRIMARY_SKILL_GAIN_PER_MINUTE: float = 0.0012
-const RELIABILITY_SKILL_GAIN_PER_MINUTE: float = 0.0002
+const PRIMARY_SKILL_XP_PER_MINUTE: float = 0.012
+const RELIABILITY_SKILL_XP_PER_MINUTE: float = 0.002
+const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_skill_progression_system.gd"
+)
+
+var _skill_progression_system: RefCounted
+
+
+func _init() -> void:
+	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
 
 
 func build_assignments(employees: Array, buildings: Array) -> Dictionary:
@@ -94,24 +104,22 @@ func advance_work_minute(employee: Variant, assignment: Dictionary) -> bool:
 		assignment.get("task_title", employee.current_task)
 	)
 
-	var skills: Dictionary = employee.skills
-	var primary_value: float = float(skills.get(primary_skill_id, 0.0))
-	var next_primary_value: float = minf(
-		primary_value + PRIMARY_SKILL_GAIN_PER_MINUTE,
-		100.0
-	)
-	var changed: bool = next_primary_value > primary_value
-	skills[primary_skill_id] = next_primary_value
-
-	if skills.has("reliability"):
-		var reliability_value: float = float(skills.get("reliability", 0.0))
-		var next_reliability_value: float = minf(
-			reliability_value + RELIABILITY_SKILL_GAIN_PER_MINUTE,
-			100.0
+	var changed: bool = bool(
+		_skill_progression_system.call(
+			"award_skill_experience",
+			employee,
+			primary_skill_id,
+			PRIMARY_SKILL_XP_PER_MINUTE
 		)
-		if next_reliability_value > reliability_value:
-			changed = true
-		skills["reliability"] = next_reliability_value
-
-	employee.skills = skills
+	)
+	if employee.skills.has("reliability"):
+		changed = bool(
+			_skill_progression_system.call(
+				"award_skill_experience",
+				employee,
+				"reliability",
+				RELIABILITY_SKILL_XP_PER_MINUTE
+			)
+		) or changed
 	return changed
+
