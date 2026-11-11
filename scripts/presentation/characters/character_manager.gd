@@ -548,11 +548,19 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		if return_route.is_empty():
 			return false
 		if str(actor.call("get_workplace_building_id")) != building_id:
+			var workplace_exit_route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				slot_index
+			)
+			if workplace_exit_route.is_empty():
+				return false
 			actor.call(
 				"assign_workplace_route",
 				building_id,
 				return_route,
-				profession_id
+				profession_id,
+				workplace_exit_route
 			)
 		else:
 			actor.call("return_to_workplace", return_route)
@@ -592,11 +600,19 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 			)
 			if return_route.is_empty():
 				return false
+			var workplace_exit_route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				slot_index
+			)
+			if workplace_exit_route.is_empty():
+				return false
 			actor.call(
 				"assign_workplace_route",
 				building_id,
 				return_route,
-				profession_id
+				profession_id,
+				workplace_exit_route
 			)
 		if manual_fast_forward:
 			actor.call("snap_to_workplace")
@@ -619,11 +635,19 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 	)
 	if route.is_empty():
 		return false
+	var workplace_exit_route: Array[Vector3] = _studio_building_manager.call(
+		"get_workplace_path",
+		building_id,
+		slot_index
+	)
+	if workplace_exit_route.is_empty():
+		return false
 	actor.call(
 		"assign_workplace_route",
 		building_id,
 		route,
-		profession_id
+		profession_id,
+		workplace_exit_route
 	)
 	if manual_fast_forward:
 		actor.call("snap_to_workplace")
@@ -788,16 +812,50 @@ func _refresh_workplace_assignments() -> void:
 			)
 			if route.is_empty():
 				continue
+			var workplace_exit_route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			if workplace_exit_route.is_empty():
+				continue
 			actor.call(
 				"assign_workplace_route",
 				building_id,
 				route,
-				str(employee.profession_id)
+				str(employee.profession_id),
+				workplace_exit_route
 			)
 
+	_refresh_roaming_routes()
 	if is_instance_valid(_roster_header):
 		_refresh_roster()
 		_refresh_detail_panel()
+
+func _refresh_roaming_routes() -> void:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _studio_building_manager.has_method("get_roaming_route")
+	):
+		return
+
+	for index in range(employees.size()):
+		var employee_id: String = str(employees[index].id)
+		var actor: Node = get_employee_actor(employee_id)
+		if actor == null:
+			continue
+		var start_position: Vector3 = actor.call(
+			"get_roaming_resume_position"
+		)
+		var base_route: Array[Vector3] = _route_for(index)
+		var safe_route: Array[Vector3] = _studio_building_manager.call(
+			"get_roaming_route",
+			start_position,
+			base_route
+		)
+		if safe_route.size() >= 2:
+			actor.call("set_roaming_route", safe_route)
+
 
 func _spawn_initial_roster() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -1530,11 +1588,19 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			)
 			if route.is_empty():
 				continue
+			var workplace_exit_route: Array[Vector3] = _studio_building_manager.call(
+				"get_workplace_path",
+				building_id,
+				int(assignment.get("slot_index", 0))
+			)
+			if workplace_exit_route.is_empty():
+				continue
 			actor.call(
 				"assign_workplace_route",
 				building_id,
 				route,
-				str(employee.profession_id)
+				str(employee.profession_id),
+				workplace_exit_route
 			)
 
 		var is_at_workplace: bool = bool(

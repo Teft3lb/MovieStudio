@@ -78,12 +78,128 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		0.0,
 		_entrance_inside.z - 1.0
 	)
+	var indoor_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		corridor,
+		_workplace_points[normalized_slot],
+		_get_interior_navigation_obstacles(normalized_slot),
+		0.5,
+		_get_interior_navigation_bounds()
+	)
+	if indoor_path.is_empty():
+		return path
 
 	path.append(to_global(outside))
 	path.append(to_global(inside))
 	path.append(to_global(corridor))
-	path.append(to_global(_workplace_points[normalized_slot]))
+	for point_index in range(1, indoor_path.size()):
+		var world_point: Vector3 = to_global(indoor_path[point_index])
+		if path.back().distance_to(world_point) > 0.2:
+			path.append(world_point)
 	return path
+
+
+func get_exit_path_from(start_world_position: Vector3) -> Array[Vector3]:
+	var local_start: Vector3 = to_local(start_world_position)
+	var indoor_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		local_start,
+		_entrance_inside,
+		_get_interior_navigation_obstacles(-1),
+		0.5,
+		_get_interior_navigation_bounds()
+	)
+	if indoor_path.is_empty():
+		return []
+
+	var result: Array[Vector3] = []
+	for point in indoor_path:
+		result.append(to_global(point))
+	var outside_position: Vector3 = to_global(_entrance_outside)
+	if result.back().distance_to(outside_position) > 0.2:
+		result.append(outside_position)
+	return result
+
+
+func _get_interior_navigation_bounds() -> Rect2:
+	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
+		str(building_data.building_type_id)
+	)
+	var footprint: Vector2 = definition.get("footprint", Vector2(12.0, 10.0))
+	var margin: float = 0.65
+	return Rect2(
+		Vector2(
+			-footprint.x * 0.5 + margin,
+			-footprint.y * 0.5 + margin
+		),
+		Vector2(
+			footprint.x - margin * 2.0,
+			footprint.y - margin * 2.0
+		)
+	)
+
+
+func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
+	var obstacles: Array[Dictionary] = []
+	match str(building_data.building_type_id):
+		"cafeteria":
+			obstacles.append({
+				"center": Vector2(0.0, -4.45),
+				"half_extents": Vector2(3.7, 0.5),
+				"clearance": 0.22,
+			})
+			obstacles.append({
+				"center": Vector2(0.0, -5.75),
+				"half_extents": Vector2(1.7, 0.06),
+				"clearance": 0.22,
+			})
+			for table_center_x in [-4.0, 0.0, 4.0]:
+				obstacles.append({
+					"center": Vector2(table_center_x, 0.35),
+					"half_extents": Vector2(1.05, 0.625),
+					"clearance": 0.22,
+				})
+		"staff_housing":
+			var bed_z_positions: Array[float] = [-3.5, -1.2, 1.2, 3.5]
+			var bed_slot_index: int = 0
+			for side in [-1.0, 1.0]:
+				for bed_z in bed_z_positions:
+					if bed_slot_index != slot_index:
+						obstacles.append({
+							"center": Vector2(side * 5.15, bed_z),
+							"half_extents": Vector2(0.78, 0.98),
+							"clearance": 0.18,
+						})
+					bed_slot_index += 1
+		"prop_warehouse":
+			for side in [-1.0, 1.0]:
+				obstacles.append({
+					"center": Vector2(side * 3.75, -0.25),
+					"half_extents": Vector2(0.5, 3.0),
+					"clearance": 0.18,
+				})
+				obstacles.append({
+					"center": Vector2(side * 4.2, -0.25),
+					"half_extents": Vector2(0.11, 3.0),
+					"clearance": 0.18,
+				})
+		"sound_stage":
+			obstacles.append({
+				"center": Vector2(-3.9, -2.3),
+				"half_extents": Vector2(0.14, 1.4),
+				"clearance": 0.22,
+			})
+			obstacles.append({
+				"center": Vector2(3.9, -2.3),
+				"half_extents": Vector2(0.14, 1.4),
+				"clearance": 0.22,
+			})
+			obstacles.append({
+				"center": Vector2(0.0, -5.0),
+				"half_extents": Vector2(4.1, 0.12),
+				"clearance": 0.22,
+			})
+	return obstacles
 
 
 func get_workplace_position(slot_index: int) -> Vector3:
@@ -1119,10 +1235,10 @@ func _build_cafeteria(
 			Vector3(center_x, 0.40, 0.35)
 		)
 		var table_seats: Array[Vector3] = [
-			Vector3(center_x - 0.55, 0.0, table_center_z - 1.0),
-			Vector3(center_x + 0.55, 0.0, table_center_z - 1.0),
-			Vector3(center_x - 0.55, 0.0, table_center_z + 1.0),
-			Vector3(center_x + 0.55, 0.0, table_center_z + 1.0),
+			Vector3(center_x - 0.55, 0.0, table_center_z - 1.3),
+			Vector3(center_x + 0.55, 0.0, table_center_z - 1.3),
+			Vector3(center_x - 0.55, 0.0, table_center_z + 1.3),
+			Vector3(center_x + 0.55, 0.0, table_center_z + 1.3),
 		]
 		for seat_index in range(table_seats.size()):
 			var seat_position: Vector3 = table_seats[seat_index]

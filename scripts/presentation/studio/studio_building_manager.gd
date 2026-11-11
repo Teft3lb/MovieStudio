@@ -254,6 +254,171 @@ func get_workplace_path(
 	return path
 
 
+func get_roaming_route(
+	start_position: Vector3,
+	base_route: Array[Vector3]
+) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	if _navigation_system == null or base_route.size() < 2:
+		return result
+
+	var obstacles: Array[Dictionary] = _get_building_navigation_obstacles()
+	var route_start: Vector3 = start_position
+	for building in _buildings:
+		var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
+			str(building.building_type_id),
+			float(building.rotation_degrees)
+		)
+		var inside_building: bool = (
+			absf(start_position.x - building.position.x) <= footprint.x * 0.5
+			and absf(start_position.z - building.position.z) <= footprint.y * 0.5
+		)
+		if not inside_building:
+			continue
+		var building_actor: Variant = _building_actors.get(str(building.id))
+		if building_actor == null or not is_instance_valid(building_actor):
+			return result
+		var exit_path: Array[Vector3] = building_actor.call(
+			"get_exit_path_from",
+			start_position
+		)
+		if exit_path.is_empty():
+			return result
+		result.append_array(exit_path)
+		route_start = exit_path.back()
+		break
+
+	if result.is_empty():
+		result.append(route_start)
+
+	var safe_waypoints: Array[Vector3] = []
+	for waypoint in base_route:
+		var safe_waypoint: Vector3 = _get_safe_roaming_waypoint(
+			waypoint,
+			obstacles
+		)
+		if _is_roaming_point_blocked(
+			Vector2(safe_waypoint.x, safe_waypoint.z),
+			obstacles,
+			0.0
+		):
+			return []
+		safe_waypoints.append(safe_waypoint)
+
+	var current_position: Vector3 = route_start
+	for waypoint_index in range(safe_waypoints.size() + 1):
+		var target_position: Vector3 = safe_waypoints[
+			posmod(waypoint_index, safe_waypoints.size())
+		]
+		if current_position.distance_to(target_position) <= 0.2:
+			current_position = target_position
+			continue
+
+		var segment: Array[Vector3] = _navigation_system.call(
+			"build_path",
+			current_position,
+			target_position,
+			obstacles,
+			0.75,
+			Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+		)
+		if segment.is_empty():
+			return []
+		for point in segment:
+			if result.back().distance_to(point) > 0.2:
+				result.append(point)
+		current_position = target_position
+
+	return result
+
+
+func _get_safe_roaming_waypoint(
+	waypoint: Vector3,
+	obstacles: Array[Dictionary]
+) -> Vector3:
+	var candidate: Vector2 = Vector2(waypoint.x, waypoint.z)
+	for _attempt in range(16):
+		var blocking_obstacle: Dictionary = {}
+		for obstacle in obstacles:
+			var center: Vector2 = obstacle.get("center", Vector2.ZERO)
+			var half_extents: Vector2 = obstacle.get(
+				"half_extents",
+				Vector2.ONE
+			)
+			var clearance: float = float(
+				obstacle.get("clearance", 0.62)
+			) + 0.9
+			if (
+				absf(candidate.x - center.x) <= half_extents.x + clearance
+				and absf(candidate.y - center.y) <= half_extents.y + clearance
+			):
+				blocking_obstacle = obstacle
+				break
+		if blocking_obstacle.is_empty():
+			break
+
+		var center: Vector2 = blocking_obstacle.get("center", Vector2.ZERO)
+		var half_extents: Vector2 = blocking_obstacle.get(
+			"half_extents",
+			Vector2.ONE
+		)
+		var clearance: float = float(
+			blocking_obstacle.get("clearance", 0.62)
+		) + 0.9
+		var candidates: Array[Vector2] = [
+			Vector2(center.x - half_extents.x - clearance, candidate.y),
+			Vector2(center.x + half_extents.x + clearance, candidate.y),
+			Vector2(candidate.x, center.y - half_extents.y - clearance),
+			Vector2(candidate.x, center.y + half_extents.y + clearance),
+		]
+		var best_candidate: Vector2 = candidate
+		var best_distance: float = INF
+		for candidate_value in candidates:
+			var bounded_candidate: Vector2 = Vector2(
+				clampf(candidate_value.x, -46.0, 46.0),
+				clampf(candidate_value.y, -46.0, 46.0)
+			)
+			if _is_roaming_point_blocked(
+				bounded_candidate,
+				obstacles,
+				0.15
+			):
+				continue
+			var distance: float = candidate.distance_squared_to(
+				bounded_candidate
+			)
+			if distance < best_distance:
+				best_distance = distance
+				best_candidate = bounded_candidate
+		if best_distance == INF:
+			return waypoint
+		candidate = best_candidate
+
+	return Vector3(candidate.x, waypoint.y, candidate.y)
+
+
+func _is_roaming_point_blocked(
+	point: Vector2,
+	obstacles: Array[Dictionary],
+	extra_clearance: float
+) -> bool:
+	for obstacle in obstacles:
+		var center: Vector2 = obstacle.get("center", Vector2.ZERO)
+		var half_extents: Vector2 = obstacle.get(
+			"half_extents",
+			Vector2.ONE
+		)
+		var clearance: float = float(
+			obstacle.get("clearance", 0.62)
+		) + extra_clearance
+		if (
+			absf(point.x - center.x) <= half_extents.x + clearance
+			and absf(point.y - center.y) <= half_extents.y + clearance
+		):
+			return true
+	return false
+
+
 func get_workplace_path_from(
 	building_id: String,
 	slot_index: int,
@@ -4222,7 +4387,7 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 					continue
 			"returning_via_warehouse":
 				if bool(actor.call("is_at_scene_mark")):
-					actor.call("return_to_workplace", [])
+					actor.call("return_to_workplace")
 					task["state"] = "returning"
 			"returning":
 				if (

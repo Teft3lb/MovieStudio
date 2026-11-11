@@ -41,6 +41,8 @@ var _left_arm_pivot: Node3D
 var _right_arm_pivot: Node3D
 var _left_leg_pivot: Node3D
 var _right_leg_pivot: Node3D
+var _left_knee_pivot: Node3D
+var _right_knee_pivot: Node3D
 var _mouth_node: MeshInstance3D
 var _carried_prop_root: Node3D
 var _body_base_scale: Vector3 = Vector3.ONE
@@ -122,6 +124,7 @@ func advance_simulation(simulation_delta: float) -> void:
 		else:
 			_set_arm_pose(swing, -swing)
 		_set_leg_pose(-swing, swing)
+		_set_knee_pose(0.0, 0.0)
 	elif _performing:
 		_advance_performance_animation()
 	elif _working:
@@ -129,6 +132,7 @@ func advance_simulation(simulation_delta: float) -> void:
 	else:
 		_set_arm_pose(0.0, 0.0)
 		_set_leg_pose(0.0, 0.0)
+		_set_knee_pose(0.0, 0.0)
 		if is_instance_valid(_body_root):
 			_body_root.rotation = Vector3.ZERO
 		if is_instance_valid(_head_root):
@@ -199,11 +203,18 @@ func _advance_performance_animation() -> void:
 			right_arm = -0.12 - motion * 0.12
 			head_motion *= 0.5
 		"eating":
-			var eating_cycle: float = sin(_animation_phase * 2.8)
-			left_arm = 0.38 + maxf(eating_cycle, 0.0) * 0.24
-			right_arm = 0.38 + maxf(-eating_cycle, 0.0) * 0.24
-			body_lean = 0.035 + absf(eating_cycle) * 0.025
-			head_motion = 0.045 + absf(eating_cycle) * 0.035
+			var left_reach: float = pow(
+				maxf(sin(_animation_phase * 1.65), 0.0),
+				1.2
+			)
+			var right_reach: float = pow(
+				maxf(sin(_animation_phase * 1.65 - PI), 0.0),
+				1.2
+			)
+			left_arm = lerpf(0.40, 2.08, left_reach)
+			right_arm = lerpf(0.40, 2.08, right_reach)
+			body_lean = 0.0
+			head_motion = -0.035 - maxf(left_reach, right_reach) * 0.10
 		"sleeping":
 			left_arm = 0.02
 			right_arm = 0.02
@@ -260,17 +271,28 @@ func _advance_performance_animation() -> void:
 			_mouth_node.scale.y = 1.0
 	var leg_motion: float = sin(_animation_phase * 2.0) * 0.075
 	if _performance_action == "eating":
-		_set_leg_pose(0.82 + leg_motion, 0.82 - leg_motion)
+		var seated_hip_angle: float = 1.18
+		_set_leg_pose(
+			seated_hip_angle + leg_motion * 0.12,
+			seated_hip_angle - leg_motion * 0.12
+		)
+		_set_knee_pose(
+			-seated_hip_angle - leg_motion * 0.12,
+			-seated_hip_angle + leg_motion * 0.12
+		)
 	elif _performance_action == "sleeping":
 		_set_leg_pose(0.0, 0.0)
+		_set_knee_pose(0.0, 0.0)
 	else:
 		_set_leg_pose(leg_motion, -leg_motion)
+		_set_knee_pose(0.0, 0.0)
 	if is_instance_valid(_body_root):
-		_body_root.rotation = (
-			Vector3(-PI * 0.5, 0.0, 0.0)
-			if _performance_action == "sleeping"
-			else Vector3(0.0, 0.0, body_lean)
-		)
+		if _performance_action == "sleeping":
+			_body_root.rotation = Vector3(-PI * 0.5, 0.0, 0.0)
+		elif _performance_action == "eating":
+			_body_root.rotation = Vector3(-0.07, 0.0, 0.0)
+		else:
+			_body_root.rotation = Vector3(0.0, 0.0, body_lean)
 	if is_instance_valid(_head_root):
 		_head_root.rotation.x = head_motion
 
@@ -309,6 +331,7 @@ func _advance_work_animation() -> void:
 
 	_set_arm_pose(left_arm, right_arm)
 	_set_leg_pose(0.0, 0.0)
+	_set_knee_pose(0.0, 0.0)
 
 
 func _set_arm_pose(left_angle: float, right_angle: float) -> void:
@@ -323,6 +346,13 @@ func _set_leg_pose(left_angle: float, right_angle: float) -> void:
 		_left_leg_pivot.rotation.x = left_angle
 	if is_instance_valid(_right_leg_pivot):
 		_right_leg_pivot.rotation.x = right_angle
+
+
+func _set_knee_pose(left_angle: float, right_angle: float) -> void:
+	if is_instance_valid(_left_knee_pivot):
+		_left_knee_pivot.rotation.x = left_angle
+	if is_instance_valid(_right_knee_pivot):
+		_right_knee_pivot.rotation.x = right_angle
 
 
 func _build_model(character_payload: Dictionary) -> void:
@@ -443,12 +473,20 @@ func _build_model(character_payload: Dictionary) -> void:
 	_left_leg_pivot.position = Vector3(-0.14, 0.83, 0.0)
 	_body_root.add_child(_left_leg_pivot)
 	_create_capsule(
-		_left_leg_pivot, "LeftLeg", 0.125, 0.86, TROUSER_COLOR,
-		Vector3(0.0, -0.36, 0.0)
+		_left_leg_pivot, "LeftLeg", 0.125, 0.48, TROUSER_COLOR,
+		Vector3(0.0, -0.23, 0.0)
+	)
+	_left_knee_pivot = Node3D.new()
+	_left_knee_pivot.name = "LeftKneePivot"
+	_left_knee_pivot.position = Vector3(0.0, -0.46, 0.0)
+	_left_leg_pivot.add_child(_left_knee_pivot)
+	_create_capsule(
+		_left_knee_pivot, "LeftShin", 0.11, 0.42, TROUSER_COLOR,
+		Vector3(0.0, -0.21, 0.0)
 	)
 	_create_box(
-		_left_leg_pivot, "LeftShoe", Vector3(0.25, 0.13, 0.36),
-		SHOE_COLOR, Vector3(0.0, -0.78, -0.07)
+		_left_knee_pivot, "LeftShoe", Vector3(0.25, 0.13, 0.36),
+		SHOE_COLOR, Vector3(0.0, -0.42, -0.07)
 	)
 
 	_carried_prop_root = Node3D.new()
@@ -476,12 +514,20 @@ func _build_model(character_payload: Dictionary) -> void:
 	_right_leg_pivot.position = Vector3(0.14, 0.83, 0.0)
 	_body_root.add_child(_right_leg_pivot)
 	_create_capsule(
-		_right_leg_pivot, "RightLeg", 0.125, 0.86, TROUSER_COLOR,
-		Vector3(0.0, -0.36, 0.0)
+		_right_leg_pivot, "RightLeg", 0.125, 0.48, TROUSER_COLOR,
+		Vector3(0.0, -0.23, 0.0)
+	)
+	_right_knee_pivot = Node3D.new()
+	_right_knee_pivot.name = "RightKneePivot"
+	_right_knee_pivot.position = Vector3(0.0, -0.46, 0.0)
+	_right_leg_pivot.add_child(_right_knee_pivot)
+	_create_capsule(
+		_right_knee_pivot, "RightShin", 0.11, 0.42, TROUSER_COLOR,
+		Vector3(0.0, -0.21, 0.0)
 	)
 	_create_box(
-		_right_leg_pivot, "RightShoe", Vector3(0.25, 0.13, 0.36),
-		SHOE_COLOR, Vector3(0.0, -0.78, -0.07)
+		_right_knee_pivot, "RightShoe", Vector3(0.25, 0.13, 0.36),
+		SHOE_COLOR, Vector3(0.0, -0.42, -0.07)
 	)
 
 

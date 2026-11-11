@@ -27,6 +27,7 @@ var _scene_dialogue: String = ""
 var _workplace_building_id: String = ""
 var _workplace_path: Array[Vector3] = []
 var _workplace_commute_path: Array[Vector3] = []
+var _workplace_exit_path: Array[Vector3] = []
 var _workplace_path_index: int = 0
 var _workplace_work_style: String = ""
 var _production_action_id: String = ""
@@ -536,6 +537,7 @@ func _finish_leaving_workplace() -> void:
 	_workplace_building_id = ""
 	_workplace_path.clear()
 	_workplace_commute_path.clear()
+	_workplace_exit_path.clear()
 	_workplace_path_index = 0
 	_has_workplace_destination = false
 	_is_at_workplace = false
@@ -732,16 +734,23 @@ func _clear_facility_route() -> void:
 func assign_workplace_route(
 	building_id: String,
 	route: Array[Vector3],
-	work_style: String
+	work_style: String,
+	exit_route: Array[Vector3] = []
 ) -> void:
 	_clear_facility_route()
 	if route.is_empty():
 		clear_workplace()
 		return
 
+	var resolved_exit_route: Array[Vector3] = (
+		exit_route.duplicate()
+		if not exit_route.is_empty()
+		else route.duplicate()
+	)
 	if (
 		_workplace_building_id == building_id
 		and _workplace_commute_path == route
+		and _workplace_exit_path == resolved_exit_route
 		and _has_workplace_destination
 		and not _is_leaving_workplace
 	):
@@ -749,6 +758,7 @@ func assign_workplace_route(
 
 	_workplace_building_id = building_id
 	_workplace_commute_path = route.duplicate()
+	_workplace_exit_path = resolved_exit_route
 	_workplace_path = route.duplicate()
 	_workplace_path_index = 0
 	_workplace_work_style = work_style
@@ -773,8 +783,19 @@ func leave_workplace() -> void:
 		return
 
 	var exit_path: Array[Vector3] = []
-	for index in range(_workplace_path_index - 1, -1, -1):
-		exit_path.append(_workplace_path[index])
+	var is_at_destination: bool = _is_at_workplace
+	if (
+		not _workplace_exit_path.is_empty()
+		and global_position.distance_to(_workplace_exit_path.back()) <= 0.25
+	):
+		is_at_destination = true
+
+	if is_at_destination and not _workplace_exit_path.is_empty():
+		for index in range(_workplace_exit_path.size() - 2, -1, -1):
+			exit_path.append(_workplace_exit_path[index])
+	else:
+		for index in range(_workplace_path_index - 1, -1, -1):
+			exit_path.append(_workplace_path[index])
 
 	if exit_path.is_empty():
 		_finish_leaving_workplace()
@@ -793,6 +814,7 @@ func clear_workplace() -> void:
 	_workplace_building_id = ""
 	_workplace_path.clear()
 	_workplace_commute_path.clear()
+	_workplace_exit_path.clear()
 	_workplace_path_index = 0
 	_has_workplace_destination = false
 	_is_at_workplace = false
@@ -820,9 +842,34 @@ func snap_to_workplace() -> void:
 
 func snap_outside_workplace() -> void:
 	_cancel_scene_performance()
-	if _has_workplace_destination and not _workplace_commute_path.is_empty():
-		global_position = _workplace_commute_path[0]
+	if _is_leaving_workplace and not _workplace_path.is_empty():
+		global_position = _workplace_path.back()
+	elif _has_workplace_destination and not _workplace_exit_path.is_empty():
+		global_position = _workplace_exit_path.front()
+	elif _has_workplace_destination and not _workplace_commute_path.is_empty():
+		global_position = _workplace_commute_path.front()
 	_finish_leaving_workplace()
+
+
+func set_roaming_route(route: Array[Vector3]) -> void:
+	if route.size() < 2:
+		return
+	_route = route.duplicate()
+	_route_index = 1
+
+
+func get_roaming_resume_position() -> Vector3:
+	if _has_workplace_destination and not _workplace_exit_path.is_empty():
+		return _workplace_exit_path.front()
+	if _has_workplace_destination and not _workplace_commute_path.is_empty():
+		return _workplace_commute_path.front()
+	if _facility_active and not _facility_route.is_empty():
+		return (
+			_facility_route.back()
+			if _facility_is_leaving
+			else _facility_route.front()
+		)
+	return global_position
 
 
 func get_workplace_building_id() -> String:
