@@ -2076,7 +2076,7 @@ func _build_film_crew_assignment_controls(assigned_staff: Array) -> void:
 		role_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var empty_index: int = -1
 		if not required:
-			empty_index = role_option.item_count
+			empty_index = role_option.get_item_count()
 			role_option.add_item("— Не назначен —")
 			role_option.set_item_metadata(empty_index, "")
 
@@ -2103,7 +2103,7 @@ func _build_film_crew_assignment_controls(assigned_staff: Array) -> void:
 			var skill_value: int = roundi(
 				float(employee.skills.get(skill_id, 0.0))
 			)
-			var item_index: int = role_option.item_count
+			var item_index: int = role_option.get_item_count()
 			role_option.add_item(
 				"%s · мастерство %d/100" % [
 					employee.get_full_name(),
@@ -2122,7 +2122,7 @@ func _build_film_crew_assignment_controls(assigned_staff: Array) -> void:
 			elif empty_index >= 0:
 				selected_index = empty_index
 
-		if role_option.item_count == 0:
+		if role_option.get_item_count() == 0:
 			role_option.add_item("Нет сотрудника подходящей профессии")
 			role_option.set_item_metadata(0, "")
 			selected_index = 0
@@ -2152,7 +2152,7 @@ func _on_film_crew_role_selected(
 	role_id: String,
 	role_option: OptionButton
 ) -> void:
-	if selected_index < 0 or selected_index >= role_option.item_count:
+	if selected_index < 0 or selected_index >= role_option.get_item_count():
 		return
 	var selected_employee_id: String = str(
 		role_option.get_item_metadata(selected_index)
@@ -2165,13 +2165,22 @@ func _on_film_crew_role_selected(
 			if str(other_role_id) == role_id:
 				continue
 			if str(_film_crew_assignments[other_role_id]) == selected_employee_id:
-				for option_index in range(role_option.item_count):
+				for option_index in range(role_option.get_item_count()):
 					if str(role_option.get_item_metadata(option_index)) == previous_employee_id:
 						role_option.select(option_index)
 						break
 				return
 	_film_crew_assignments[role_id] = selected_employee_id
 	_update_film_production_ui()
+
+
+func _get_max_background_performer_count() -> int:
+	if _latest_script == null:
+		return MAX_BACKGROUND_PERFORMERS
+	return mini(
+		MAX_BACKGROUND_PERFORMERS,
+		maxi(8 - _latest_script.cast.size(), 0)
+	)
 
 
 func _build_film_background_assignment_controls(assigned_staff: Array) -> void:
@@ -2197,7 +2206,7 @@ func _build_film_background_assignment_controls(assigned_staff: Array) -> void:
 
 	var normalized_selection: Array[String] = []
 	for employee_id in _film_background_performer_ids:
-		if available_ids.has(employee_id) and normalized_selection.size() < MAX_BACKGROUND_PERFORMERS:
+		if available_ids.has(employee_id) and normalized_selection.size() < _get_max_background_performer_count():
 			normalized_selection.append(employee_id)
 	_film_background_performer_ids = normalized_selection
 
@@ -2222,7 +2231,7 @@ func _build_film_background_assignment_controls(assigned_staff: Array) -> void:
 		_building_detail_layout.add_child(checkbox)
 
 	var note := Label.new()
-	note.text = "Выбранные актёры массовки участвуют в каждой сцене (до %d человек)." % MAX_BACKGROUND_PERFORMERS
+	note.text = "Выбранные актёры массовки участвуют в каждой сцене (до %d человек)." % _get_max_background_performer_count()
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.add_theme_font_size_override("font_size", 10)
 	_building_detail_layout.add_child(note)
@@ -2236,7 +2245,7 @@ func _on_film_background_performer_toggled(
 	if enabled:
 		if (
 			_film_cast_assignments.values().has(employee_id)
-			or _film_background_performer_ids.size() >= MAX_BACKGROUND_PERFORMERS
+			or _film_background_performer_ids.size() >= _get_max_background_performer_count()
 		):
 			checkbox.set_pressed_no_signal(false)
 			return
@@ -2410,7 +2419,7 @@ func _has_complete_production_assignments(
 			return false
 		cast_employee_ids[employee_id] = true
 
-	if _film_background_performer_ids.size() > MAX_BACKGROUND_PERFORMERS:
+	if _film_background_performer_ids.size() > _get_max_background_performer_count():
 		return false
 	var unique_background_ids: Dictionary = {}
 	for employee_id in _film_background_performer_ids:
@@ -2538,6 +2547,7 @@ func _dispatch_film_crew_to_stage() -> void:
 	for role_id in [
 		"director",
 		"camera_operator",
+		"technician",
 		"producer",
 		"production_designer",
 		"costume_designer",
