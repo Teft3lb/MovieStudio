@@ -64,3 +64,11 @@ The facility tests cover building capacities and interior route points, facility
 - Eating and sleeping use procedural seated/lying poses built from the existing character pivots; a full skeletal animation and food/bed interaction system remain future work.
 - Facility buildings have no construction price yet; construction costs belong to the future Studio Economy system.
 - Employees beyond built facility capacity keep the existing fallback behavior until additional capacity is constructed.
+
+
+## Physical movement and sleep recovery
+
+- Cafeteria seat orientation is calculated from each seat toward its actual table in building-local space; chair backs are wide across the seat and narrow front-to-back.
+- Building perimeter walls and the Sound Stage set walls have dedicated collision shapes on movement layer 8. CharacterActor checks its capsule against that layer during roaming, workplace, facility and scene movement; an obstructed step is rejected and can slide along a clear axis.
+- When a new building is placed, roaming routes are recalculated. If no safe route exists, the previous unsanitized route is cleared rather than allowing an employee to walk through the new footprint.
+- Off-duty sleep recovery is applied only while the employee is physically at a staff-housing bed. Employees who remain awake elsewhere do not receive sleep recovery.

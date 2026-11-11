@@ -1,6 +1,9 @@
 extends Node3D
 class_name StudioBuildingManager
 
+const DEFAULT_FILM_SHIFT_START_HOUR: int = 8
+const DEFAULT_FILM_SHIFT_END_HOUR: int = 17
+
 signal buildings_changed
 
 const BUILDING_CATALOG_SCRIPT = preload(
@@ -530,6 +533,16 @@ func _get_building_navigation_obstacles() -> Array[Dictionary]:
 	return result
 
 
+func get_workplace_facing_direction(
+	building_id: String,
+	slot_index: int
+) -> Vector3:
+	var actor: Variant = _building_actors.get(building_id)
+	if actor == null or not is_instance_valid(actor):
+		return Vector3.ZERO
+	return actor.call("get_workplace_facing_direction", slot_index)
+
+
 func get_workplace_position(building_id: String, slot_index: int) -> Vector3:
 	var path: Array[Vector3] = get_workplace_path(building_id, slot_index)
 	if path.is_empty():
@@ -639,13 +652,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _placing_building_type_id.is_empty():
 		_handle_placement_input(event)
 		return
-
 	if not event is InputEventMouseButton:
 		return
 	var mouse_event := event as InputEventMouseButton
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
-
+	if (
+		is_instance_valid(_character_manager)
+		and _character_manager.has_method("try_select_employee_from_screen")
+		and bool(_character_manager.call("try_select_employee_from_screen", mouse_event.position))
+	):
+		get_viewport().set_input_as_handled()
+		return
 	var building_actor: Node = _get_building_actor_at(mouse_event.position)
 	if building_actor != null:
 		_select_building(str(building_actor.call("get_building_id")))
@@ -717,6 +735,11 @@ func _create_building(
 	if is_player_placed:
 		_refresh_build_status()
 		buildings_changed.emit()
+		if (
+			is_instance_valid(_character_manager)
+			and _character_manager.has_method("refresh_navigation_routes")
+		):
+			_character_manager.call("refresh_navigation_routes")
 	return building_data
 
 
@@ -1508,7 +1531,7 @@ func _on_generate_script_pressed() -> void:
 	_update_script_writing_ui()
 
 
-func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
+func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	if (
 		_active_writing_project != null
 		and str(_active_writing_project.status) == "in_progress"
@@ -1517,14 +1540,7 @@ func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
 		var writer: Variant = _find_employee(writer_id)
 		var at_workplace: bool = false
 		if writer != null and is_instance_valid(_character_manager):
-			at_workplace = bool(
-				_character_manager.call(
-					"is_employee_at_workplace",
-					writer_id,
-					"script_department"
-				)
-			)
-
+			at_workplace = bool(_character_manager.call("is_employee_at_workplace", writer_id, "script_department"))
 		var result: Dictionary = _script_writing_system.call(
 			"advance_minute",
 			_active_writing_project,
@@ -1534,12 +1550,9 @@ func _on_game_minute_advanced(_day: int, _hour: int, _minute: int) -> void:
 		if bool(result.get("completed", false)):
 			_latest_script = result.get("script")
 		elif bool(result.get("failed", false)):
-			_show_script_generation_error(
-				str(_active_writing_project.last_activity_message)
-			)
+			_show_script_generation_error(str(_active_writing_project.last_activity_message))
 		_update_script_writing_ui()
-
-	_advance_film_production()
+	_advance_film_production(hour)
 	_advance_film_editing()
 
 
@@ -2286,16 +2299,94 @@ func _dispatch_film_crew_to_stage() -> void:
 		)
 
 
-func _advance_film_production() -> void:
+func get_film_production_shift() -> Vector2i:
+	var start_hour: int = DEFAULT_FILM_SHIFT_START_HOUR
+	var end_hour: int = DEFAULT_FILM_SHIFT_END_HOUR
+	if _active_film_project == null:
+		return Vector2i(start_hour, end_hour)
+	var crew_assignments: Dictionary = _active_film_project.crew_assignments
+	var found_core_crew: bool = false
+	for profession_id in ["director", "camera_operator", "technician"]:
+		var employee_id: String = str(crew_assignments.get(profession_id, ""))
+		var employee: Variant = _find_employee(employee_id)
+		if employee == null:
+			continue
+		if not found_core_crew:
+			start_hour = int(employee.shift_start_hour)
+			end_hour = int(employee.shift_end_hour)
+			found_core_crew = true
+		else:
+			start_hour = maxi(start_hour, int(employee.shift_start_hour))
+			end_hour = mini(end_hour, int(employee.shift_end_hour))
+	return Vector2i(start_hour, end_hour)
+
+
+func is_film_production_work_hour(hour: int) -> bool:
+	var shift: Vector2i = get_film_production_shift()
+	return hour >= shift.x and hour < shift.y
+
+
+func should_release_production_employee_for_off_hours(hour: int) -> bool:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or str(_active_film_project.current_phase) not in ["rehearsal", "shooting", "review"]
+	):
+		return false
+	return not is_film_production_work_hour(hour)
+
+
+func _pause_film_scene_for_off_hours() -> void:
+	var stage_id: String = _get_sound_stage_building_id()
+	if stage_id.is_empty():
+		return
+	for employee_id in _active_scene_performer_ids:
+		var actor: Variant = _character_manager.call("get_employee_actor", employee_id)
+		if (
+			actor == null
+			or not is_instance_valid(actor)
+			or not bool(actor.call("is_in_scene_performance"))
+			or bool(actor.call("is_returning_to_workplace"))
+		):
+			continue
+		var return_path: Array[Vector3] = get_scene_path(
+			stage_id,
+			actor.global_position,
+			actor.call("get_workplace_position")
+		)
+		if not return_path.is_empty():
+			actor.call("return_to_workplace", return_path)
+	_active_scene_performer_ids.clear()
+	_restore_off_camera_staff(stage_id)
+	set_stage_camera_target(stage_id, Vector3.ZERO, false)
+
+
+func _advance_film_production(hour: int = -1) -> void:
 	if (
 		_active_film_project == null
 		or str(_active_film_project.status) != "in_production"
 	):
 		return
-
-	if str(_active_film_project.current_phase) == "preparation":
-		_dispatch_film_crew_to_stage()
-
+	var resolved_hour: int = hour
+	if resolved_hour < 0:
+		resolved_hour = (
+			int(_game_clock.current_hour)
+			if is_instance_valid(_game_clock)
+			else DEFAULT_FILM_SHIFT_START_HOUR
+		)
+	var current_phase: String = str(_active_film_project.current_phase)
+	if (
+		current_phase in ["rehearsal", "shooting", "review"]
+		and not is_film_production_work_hour(resolved_hour)
+	):
+		_pause_film_scene_for_off_hours()
+		var shift: Vector2i = get_film_production_shift()
+		_active_film_project.pause_reason = "Съёмочная смена завершена. Продолжение в %02d:00." % shift.x
+		_active_film_project.last_activity_message = _active_film_project.pause_reason
+		_update_film_stage_slate()
+		_update_film_production_ui()
+		return
+	_dispatch_film_crew_to_stage()
 	var cast_ready: bool = _sync_film_scene_performance()
 	_sync_film_set_dressing()
 	var crew_ready: bool = _are_film_crew_ready()
@@ -2304,17 +2395,13 @@ func _advance_film_production() -> void:
 		and _set_logistics_phase == "set_dressing"
 		and _are_set_logistics_tasks_complete()
 	):
-		_active_film_project.last_activity_message = (
-			"Декорации установлены. Съёмочная группа готовится к репетиции."
-		)
+		_active_film_project.last_activity_message = "Декорации установлены. Съёмочная группа готовится к репетиции."
 	elif (
 		crew_ready
 		and _set_logistics_phase == "set_strike"
 		and _are_set_logistics_tasks_complete()
 	):
-		_active_film_project.last_activity_message = (
-			"Реквизит возвращён на склад. Площадка готова к следующей сцене."
-		)
+		_active_film_project.last_activity_message = "Реквизит возвращён на склад. Площадка готова к следующей сцене."
 	var snapshot: Dictionary = _build_film_performance_snapshot()
 	var result: Dictionary = _film_production_system.call(
 		"advance_minute",
@@ -2324,30 +2411,14 @@ func _advance_film_production() -> void:
 		cast_ready,
 		snapshot
 	)
-
 	if not bool(result.get("advanced", false)):
 		if _set_logistics_blocked:
-			_active_film_project.pause_reason = (
-				"Логистика реквизита остановлена: проверь склад и маршруты техников."
-			)
-		elif (
-			_set_logistics_phase == "set_dressing"
-			and not _are_set_logistics_tasks_complete()
-		):
-			_active_film_project.pause_reason = (
-				"Техники доставляют декорации со склада и устанавливают их на площадке."
-			)
-		elif (
-			_set_logistics_phase == "set_strike"
-			and not _are_set_logistics_tasks_complete()
-		):
-			_active_film_project.pause_reason = (
-				"Техники снимают декорации и возвращают их на склад."
-			)
-		_active_film_project.last_activity_message = (
-			_active_film_project.pause_reason
-		)
-
+			_active_film_project.pause_reason = "Логистика реквизита остановлена: проверь склад и маршруты техников."
+		elif _set_logistics_phase == "set_dressing" and not _are_set_logistics_tasks_complete():
+			_active_film_project.pause_reason = "Техники доставляют декорации со склада и устанавливают их на площадке."
+		elif _set_logistics_phase == "set_strike" and not _are_set_logistics_tasks_complete():
+			_active_film_project.pause_reason = "Техники снимают декорации и возвращают их на склад."
+		_active_film_project.last_activity_message = _active_film_project.pause_reason
 	if bool(result.get("phase_changed", false)):
 		_apply_film_crew_actions()
 		if str(_active_film_project.current_phase) == "preparation":
@@ -4387,7 +4458,23 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 					continue
 			"returning_via_warehouse":
 				if bool(actor.call("is_at_scene_mark")):
-					actor.call("return_to_workplace")
+					var return_path: Array[Vector3] = (
+						_character_manager.call(
+							"get_employee_workplace_path_from",
+							worker_id,
+							actor.global_position,
+							warehouse_id,
+							int(task.get("prop_index", 0))
+						)
+					)
+					if return_path.is_empty():
+						_set_logistics_blocked = true
+						push_error(
+							"StudioBuildingManager: cannot route %s from the warehouse back to the stage."
+							% worker_id
+						)
+						return
+					actor.call("return_to_workplace", return_path)
 					task["state"] = "returning"
 			"returning":
 				if (

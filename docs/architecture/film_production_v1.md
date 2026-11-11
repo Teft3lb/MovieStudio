@@ -164,3 +164,8 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 - Film projects and completed results are serializable domain objects but are not yet connected to campaign save/load.
 - Only one film production project is active at a time.
 - Cafeteria and staff housing are optional facilities. Employees outside active production use them for scheduled lunch and off-duty recovery; assigned active-production participants remain at the Sound Stage across lunch and shift boundaries.
+
+
+## Working hours and overnight pause
+
+Rehearsal, Shooting and Review advance only during the shared shift window of the required director, camera operator and primary technician. The effective window is the intersection of their individual shifts. When the window closes, active performers return to their stage workstations, off-camera staff are restored, the stage camera is idled and the production phase pauses until the next shared shift. Set dressing and set strike logistics remain separate operational phases and may finish before the next performance phase starts.

@@ -195,6 +195,17 @@ func _test_sound_stage_interior() -> void:
 		actor.get_node_or_null("Interior/TechnicalEquipmentRack") != null,
 		"Sound Stage must contain a technician equipment station."
 	)
+	var back_wall_collision: StaticBody3D = actor.find_child("BackWallCollision", true, false) as StaticBody3D
+	var side_wall_collision: StaticBody3D = actor.get_node("Interior/SetSideWallLeftCollision") as StaticBody3D
+	_expect(
+		back_wall_collision != null
+		and side_wall_collision != null
+		and back_wall_collision.collision_layer == 8
+		and side_wall_collision.collision_layer == 8
+		and back_wall_collision.get_node_or_null("CollisionShape3D") != null
+		and side_wall_collision.get_node_or_null("CollisionShape3D") != null,
+		"Building perimeter and set walls must expose dedicated movement collision shapes."
+	)
 	var camera_workplace: Vector3 = actor.to_local(
 		actor.call("get_workplace_position", 3)
 	)
@@ -470,6 +481,26 @@ func _test_cafeteria_seating_layout() -> void:
 		front_back_position.z < first_front_seat.z
 		and back_back_position.z > first_back_seat.z,
 		"Cafeteria chair backs must sit behind the employee on both sides of the table."
+	)
+	var front_back_mesh: BoxMesh = (front_chair_back as MeshInstance3D).mesh as BoxMesh
+	_expect(
+		front_back_mesh != null
+		and absf(front_back_mesh.size.x - 0.58) < 0.01
+		and absf(front_back_mesh.size.z - 0.12) < 0.01,
+		"Chair backs must be wide across the seat and thin front-to-back, not laid across the seat center."
+	)
+	var front_facing: Vector3 = actor.call("get_workplace_facing_direction", 0)
+	var back_facing: Vector3 = actor.call("get_workplace_facing_direction", 2)
+	var front_table_direction: Vector3 = (
+		actor.to_global(Vector3(-4.0, 0.0, 0.35)) - first_front_path.back()
+	).normalized()
+	var back_table_direction: Vector3 = (
+		actor.to_global(Vector3(-4.0, 0.0, 0.35)) - first_back_path.back()
+	).normalized()
+	_expect(
+		front_facing.dot(front_table_direction) > 0.99
+		and back_facing.dot(back_table_direction) > 0.99,
+		"Both cafeteria seat rows must face the table in building-local orientation."
 	)
 
 

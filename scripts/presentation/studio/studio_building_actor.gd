@@ -209,6 +209,23 @@ func get_workplace_position(slot_index: int) -> Vector3:
 	return path[path.size() - 1]
 
 
+func get_workplace_facing_direction(slot_index: int) -> Vector3:
+	if (
+		str(building_data.building_type_id) != "cafeteria"
+		or _workplace_points.is_empty()
+	):
+		return Vector3.ZERO
+	var normalized_slot: int = clampi(slot_index, 0, _workplace_points.size() - 1)
+	var seat_position: Vector3 = _workplace_points[normalized_slot]
+	var table_center_x: float = roundf(seat_position.x / 4.0) * 4.0
+	var table_position: Vector3 = Vector3(table_center_x, 0.0, 0.35)
+	var local_direction: Vector3 = table_position - seat_position
+	local_direction.y = 0.0
+	if local_direction.length_squared() <= 0.001:
+		return Vector3.ZERO
+	return (global_basis * local_direction).normalized()
+
+
 func get_scene_path(
 	start_world_position: Vector3,
 	target_world_position: Vector3
@@ -728,7 +745,7 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 	var metal_color: Color = Color(0.34, 0.36, 0.38)
 	var tape_color: Color = Color(0.88, 0.69, 0.24)
 
-	_create_box(
+	_create_wall_panel(
 		_interior_root,
 		"MainSetBackdrop",
 		Vector3(8.2, 4.0, 0.24),
@@ -742,14 +759,14 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Color(0.29, 0.28, 0.25),
 		Vector3(0.0, 0.12, -2.6)
 	)
-	_create_box(
+	_create_wall_panel(
 		_interior_root,
 		"SetSideWallLeft",
 		Vector3(0.18, 3.0, 2.8),
 		Color(0.34, 0.32, 0.29),
 		Vector3(-3.9, 1.6, -2.3)
 	)
-	_create_box(
+	_create_wall_panel(
 		_interior_root,
 		"SetSideWallRight",
 		Vector3(0.18, 3.0, 2.8),
@@ -1257,7 +1274,7 @@ func _build_cafeteria(
 			_create_box(
 				_interior_root,
 				"CafeteriaChairBack_%d_%d" % [table_index, seat_index],
-				Vector3(0.12, 0.62, 0.58),
+				Vector3(0.58, 0.62, 0.12),
 				Color(0.23, 0.27, 0.27),
 				seat_position + Vector3(0.0, 0.80, chair_back_side * 0.34)
 			)
@@ -1551,70 +1568,19 @@ func _create_perimeter_walls(
 	var wall_y: float = wall_height * 0.5
 	var half_width: float = width * 0.5
 	var half_depth: float = depth * 0.5
-
 	var back_group: Node3D = _create_wall_group("back")
-	_create_box(
-		back_group,
-		"BackWall",
-		Vector3(width, wall_height, WALL_THICKNESS),
-		wall_color,
-		Vector3(0.0, wall_y, -half_depth)
-	)
-
+	_create_wall_panel(back_group, "BackWall", Vector3(width, wall_height, WALL_THICKNESS), wall_color, Vector3(0.0, wall_y, -half_depth))
 	var left_group: Node3D = _create_wall_group("left")
-	_create_box(
-		left_group,
-		"LeftWall",
-		Vector3(WALL_THICKNESS, wall_height, depth),
-		wall_color,
-		Vector3(-half_width, wall_y, 0.0)
-	)
-
+	_create_wall_panel(left_group, "LeftWall", Vector3(WALL_THICKNESS, wall_height, depth), wall_color, Vector3(-half_width, wall_y, 0.0))
 	var right_group: Node3D = _create_wall_group("right")
-	_create_box(
-		right_group,
-		"RightWall",
-		Vector3(WALL_THICKNESS, wall_height, depth),
-		wall_color,
-		Vector3(half_width, wall_y, 0.0)
-	)
-
+	_create_wall_panel(right_group, "RightWall", Vector3(WALL_THICKNESS, wall_height, depth), wall_color, Vector3(half_width, wall_y, 0.0))
 	var front_group: Node3D = _create_wall_group("front")
 	var side_width: float = (width - door_width) * 0.5
-	_create_box(
-		front_group,
-		"FrontWallLeft",
-		Vector3(side_width, wall_height, WALL_THICKNESS),
-		wall_color,
-		Vector3(
-			-(door_width * 0.5 + side_width * 0.5),
-			wall_y,
-			half_depth
-		)
-	)
-	_create_box(
-		front_group,
-		"FrontWallRight",
-		Vector3(side_width, wall_height, WALL_THICKNESS),
-		wall_color,
-		Vector3(
-			door_width * 0.5 + side_width * 0.5,
-			wall_y,
-			half_depth
-		)
-	)
-	_create_box(
-		front_group,
-		"DoorHeader",
-		Vector3(door_width, maxf(wall_height - door_height, 0.25), WALL_THICKNESS),
-		wall_color,
-		Vector3(
-			0.0,
-			door_height + maxf(wall_height - door_height, 0.25) * 0.5,
-			half_depth
-		)
-	)
-
+	_create_wall_panel(front_group, "FrontWallLeft", Vector3(side_width, wall_height, WALL_THICKNESS), wall_color, Vector3(-(door_width * 0.5 + side_width * 0.5), wall_y, half_depth))
+	_create_wall_panel(front_group, "FrontWallRight", Vector3(side_width, wall_height, WALL_THICKNESS), wall_color, Vector3(door_width * 0.5 + side_width * 0.5, wall_y, half_depth))
+	var header_size: Vector3 = Vector3(door_width, maxf(wall_height - door_height, 0.25), WALL_THICKNESS)
+	var header_position: Vector3 = Vector3(0.0, door_height + maxf(wall_height - door_height, 0.25) * 0.5, half_depth)
+	_create_wall_panel(front_group, "DoorHeader", header_size, wall_color, header_position)
 	_entrance_inside = Vector3(0.0, 0.0, half_depth - 0.8)
 	_entrance_outside = Vector3(0.0, 0.0, half_depth + 1.4)
 
@@ -1746,6 +1712,36 @@ func _create_light_stand(
 		Color(0.73, 0.68, 0.53),
 		local_position + Vector3(0.0, 2.55, -0.10)
 	)
+
+
+func _create_wall_panel(
+	parent: Node3D,
+	node_name: String,
+	size: Vector3,
+	color: Color,
+	local_position: Vector3
+) -> void:
+	_create_box(parent, node_name, size, color, local_position)
+	_create_wall_collision(parent, node_name, size, local_position)
+
+
+func _create_wall_collision(
+	parent: Node3D,
+	node_name: String,
+	size: Vector3,
+	local_position: Vector3
+) -> void:
+	var body := StaticBody3D.new()
+	body.name = "%sCollision" % node_name
+	body.position = local_position
+	body.collision_layer = 8
+	body.collision_mask = 0
+	var collision := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	collision.shape = shape
+	body.add_child(collision)
+	parent.add_child(body)
 
 
 func _create_hitbox() -> void:
