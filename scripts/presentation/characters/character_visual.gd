@@ -128,6 +128,7 @@ func advance_simulation(simulation_delta: float) -> void:
 	elif _performing:
 		_advance_performance_animation()
 	elif _working:
+		_set_knee_pose(0.0, 0.0)
 		_advance_work_animation()
 	else:
 		_set_arm_pose(0.0, 0.0)

@@ -548,6 +548,16 @@ func _test_facility_poses() -> void:
 		and body_root.scale.y < 0.9,
 		"Sleeping must place a scaled-down character horizontally on the bed with subtle breathing."
 	)
+	var left_knee: Node3D = visual.get_node(
+		"BodyRoot/LeftLegPivot/LeftKneePivot"
+	) as Node3D
+	visual.call("set_performance_action", "")
+	visual.call("set_working", true)
+	visual.call("advance_simulation", 0.25)
+	_expect(
+		absf(left_knee.rotation.x) < 0.01,
+		"After leaving the cafeteria, normal work must reset the seated knee bend."
+	)
 	visual.free()
 
 
