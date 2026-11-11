@@ -67,6 +67,7 @@ func _run_tests() -> void:
 	)
 	_test_scene_cast_resolution(system, script, project)
 	_test_background_performers(system, script, crew_assignments, cast_assignments)
+	_test_specialist_quality_contributions(system, script, crew_assignments, cast_assignments)
 	_test_production_pause(system, script, project)
 	_test_cast_can_wait_during_set_preparation(
 		system,
@@ -192,6 +193,63 @@ func _create_script() -> Variant:
 	]
 	return script
 
+
+func _test_specialist_quality_contributions(
+	system: RefCounted,
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-SPECIALIST-QUALITY",
+		992211,
+		1,
+		8,
+		0
+	)
+	var baseline_snapshot: Dictionary = {
+		"acting_average": 45.0,
+		"directing": 45.0,
+		"camera_work": 45.0,
+		"technical": 45.0,
+		"lighting": 45.0,
+		"sound": 45.0,
+		"set_design": 45.0,
+		"costume_design": 45.0,
+		"makeup": 45.0,
+		"background_acting": 45.0,
+		"management": 45.0,
+		"energy": 0.75,
+		"morale": 0.75,
+		"stress": 0.15,
+	}
+	var initial_rng_state: int = int(project.rng_state)
+	var baseline_quality: float = float(
+		system.call("_calculate_scene_quality", project, baseline_snapshot)
+	)
+	project.rng_state = initial_rng_state
+	var specialist_snapshot: Dictionary = baseline_snapshot.duplicate(true)
+	for skill_key in [
+		"lighting",
+		"sound",
+		"set_design",
+		"costume_design",
+		"makeup",
+		"background_acting",
+		"management",
+	]:
+		specialist_snapshot[skill_key] = 100.0
+	var specialist_quality: float = float(
+		system.call("_calculate_scene_quality", project, specialist_snapshot)
+	)
+	_expect(
+		specialist_quality > baseline_quality + 8.0,
+		"Specialist crew, costumes, makeup, massed extras and producer mastery must contribute to scene quality."
+	)
 
 func _test_missing_props_do_not_block_production(
 	system: RefCounted,

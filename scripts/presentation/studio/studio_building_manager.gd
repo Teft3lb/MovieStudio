@@ -2598,20 +2598,28 @@ func get_film_production_shift() -> Vector2i:
 	var end_hour: int = DEFAULT_FILM_SHIFT_END_HOUR
 	if _active_film_project == null:
 		return Vector2i(start_hour, end_hour)
+
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	var found_core_crew: bool = false
-	for profession_id in ["director", "camera_operator", "technician"]:
-		var employee_id: String = str(crew_assignments.get(profession_id, ""))
+	var crew_ids: Array[String] = []
+	for employee_id_value in crew_assignments.values():
+		var employee_id: String = str(employee_id_value)
+		if not employee_id.is_empty() and not crew_ids.has(employee_id):
+			crew_ids.append(employee_id)
+
+	var found_crew: bool = false
+	for employee_id in crew_ids:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			continue
-		if not found_core_crew:
+		if not found_crew:
 			start_hour = int(employee.shift_start_hour)
 			end_hour = int(employee.shift_end_hour)
-			found_core_crew = true
+			found_crew = true
 		else:
 			start_hour = maxi(start_hour, int(employee.shift_start_hour))
 			end_hour = mini(end_hour, int(employee.shift_end_hour))
+	if end_hour <= start_hour:
+		return Vector2i(DEFAULT_FILM_SHIFT_START_HOUR, DEFAULT_FILM_SHIFT_END_HOUR)
 	return Vector2i(start_hour, end_hour)
 
 
@@ -4454,11 +4462,14 @@ func is_employee_waiting_for_scene(employee_id: String) -> bool:
 		or employee_id.is_empty()
 	):
 		return false
-	var is_cast_member: bool = false
-	for assigned_id in _active_film_project.cast_assignments.values():
-		if str(assigned_id) == employee_id:
-			is_cast_member = true
-			break
+	var is_cast_member: bool = (
+		_active_film_project.background_performer_ids.has(employee_id)
+	)
+	if not is_cast_member:
+		for assigned_id in _active_film_project.cast_assignments.values():
+			if str(assigned_id) == employee_id:
+				is_cast_member = true
+				break
 	if not is_cast_member:
 		return false
 
