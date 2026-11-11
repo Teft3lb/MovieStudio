@@ -27,6 +27,9 @@ const SCRIPT_WRITING_SYSTEM_SCRIPT = preload(
 const FILM_PRODUCTION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/film_production/film_production_system.gd"
 )
+const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_skill_progression_system.gd"
+)
 const FILM_EDITING_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/film_editing/film_editing_system.gd"
 )
@@ -53,11 +56,35 @@ const REQUIRED_STAGE_PROFESSIONS: Array[String] = [
 	"camera_operator",
 	"technician",
 ]
+const FILM_CREW_ROLE_CONFIG: Array[Dictionary] = [
+	{"id": "director", "title": "Режиссёр", "profession_id": "director", "specialization_id": "", "skill_id": "directing", "required": true},
+	{"id": "camera_operator", "title": "Оператор", "profession_id": "camera_operator", "specialization_id": "", "skill_id": "camera_work", "required": true},
+	{"id": "technician", "title": "Главный техник", "profession_id": "technician", "specialization_id": "", "skill_id": "technical", "required": true},
+	{"id": "producer", "title": "Продюсер", "profession_id": "producer", "specialization_id": "", "skill_id": "management", "required": false},
+	{"id": "lighting_technician", "title": "Светотехник", "profession_id": "technician", "specialization_id": "lighting", "skill_id": "lighting", "required": false},
+	{"id": "sound_technician", "title": "Звукотехник", "profession_id": "technician", "specialization_id": "sound", "skill_id": "sound", "required": false},
+	{"id": "equipment_technician", "title": "Техник оборудования", "profession_id": "technician", "specialization_id": "equipment", "skill_id": "equipment", "required": false},
+	{"id": "technician_assistant_1", "title": "Дополнительный техник I", "profession_id": "technician", "specialization_id": "", "skill_id": "technical", "required": false},
+	{"id": "technician_assistant_2", "title": "Дополнительный техник II", "profession_id": "technician", "specialization_id": "", "skill_id": "technical", "required": false},
+	{"id": "production_designer", "title": "Художник-постановщик", "profession_id": "production_designer", "specialization_id": "sets", "skill_id": "set_design", "required": false},
+	{"id": "costume_designer", "title": "Художник по костюмам", "profession_id": "production_designer", "specialization_id": "costumes", "skill_id": "costume_design", "required": false},
+	{"id": "makeup_artist", "title": "Гримёр", "profession_id": "production_designer", "specialization_id": "makeup", "skill_id": "makeup", "required": false},
+]
+const FILM_TECHNICIAN_ROLE_IDS: Array[String] = [
+	"technician",
+	"lighting_technician",
+	"sound_technician",
+	"equipment_technician",
+	"technician_assistant_1",
+	"technician_assistant_2",
+]
+const MAX_BACKGROUND_PERFORMERS: int = 4
 
 var _game_clock: Node
 var _character_manager: Node
 var _script_writing_system: RefCounted
 var _film_production_system: RefCounted
+var _skill_progression_system: RefCounted
 var _film_editing_system: RefCounted
 var _navigation_system: RefCounted
 var _set_inventory: Variant
@@ -82,6 +109,10 @@ var _completed_film_archive: Array = []
 var _next_film_editing_sequence: int = 1
 var _film_editing_editor_id: String = ""
 var _film_cast_assignments: Dictionary = {}
+var _film_crew_assignments: Dictionary = {}
+var _film_crew_options: Dictionary = {}
+var _film_background_performer_ids: Array[String] = []
+var _film_background_options: Dictionary = {}
 var _cast_assignment_script_id: String = ""
 var _active_scene_performer_ids: Array[String] = []
 var _film_phase_actions_pending: bool = false
@@ -137,6 +168,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_character_manager = character_manager
 	_script_writing_system = SCRIPT_WRITING_SYSTEM_SCRIPT.new()
 	_film_production_system = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
 	_film_editing_system = FILM_EDITING_SYSTEM_SCRIPT.new()
 	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
 	_set_inventory = SET_INVENTORY_SCRIPT.new()
@@ -1794,7 +1826,9 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 	_building_detail_layout.add_child(crew_label)
 
 	if _latest_script != null:
+		_build_film_crew_assignment_controls(assigned_staff)
 		_build_film_cast_assignment_controls(assigned_staff)
+		_build_film_background_assignment_controls(assigned_staff)
 	else:
 		var no_script_label := Label.new()
 		no_script_label.text = "Сначала заверши сценарий в сценарном отделе."
@@ -2010,6 +2044,208 @@ func _refresh_active_scene_set_dressing_if_unstarted() -> void:
 	_update_film_production_ui()
 
 
+func _build_film_crew_assignment_controls(assigned_staff: Array) -> void:
+	var heading := Label.new()
+	heading.text = "СЪЁМОЧНАЯ ГРУППА"
+	heading.add_theme_font_size_override("font_size", 14)
+	_building_detail_layout.add_child(heading)
+
+	_film_crew_options.clear()
+	var used_employee_ids: Dictionary = {}
+	var assignments_locked: bool = (
+		_active_film_project != null
+		and str(_active_film_project.status) == "in_production"
+	)
+
+	for role_config in FILM_CREW_ROLE_CONFIG:
+		var role_id: String = str(role_config.get("id", ""))
+		var role_title: String = str(role_config.get("title", "Позиция"))
+		var profession_id: String = str(role_config.get("profession_id", ""))
+		var specialization_id: String = str(
+			role_config.get("specialization_id", "")
+		)
+		var skill_id: String = str(role_config.get("skill_id", ""))
+		var required: bool = bool(role_config.get("required", false))
+
+		var role_label := Label.new()
+		role_label.text = role_title + (" · обязательно" if required else " · по желанию")
+		_building_detail_layout.add_child(role_label)
+
+		var role_option := OptionButton.new()
+		role_option.fit_to_longest_item = false
+		role_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var empty_index: int = -1
+		if not required:
+			empty_index = role_option.item_count
+			role_option.add_item("— Не назначен —")
+			role_option.set_item_metadata(empty_index, "")
+
+		var candidates: Array = []
+		for employee in assigned_staff:
+			if str(employee.profession_id) != profession_id:
+				continue
+			if (
+				not specialization_id.is_empty()
+				and str(employee.specialization_id) != specialization_id
+			):
+				continue
+			var employee_id: String = str(employee.id)
+			if employee_id.is_empty() or used_employee_ids.has(employee_id):
+				continue
+			candidates.append(employee)
+
+		var saved_employee_id: String = str(
+			_film_crew_assignments.get(role_id, "")
+		)
+		var selected_index: int = -1
+		for employee in candidates:
+			var employee_id: String = str(employee.id)
+			var skill_value: int = roundi(
+				float(employee.skills.get(skill_id, 0.0))
+			)
+			var item_index: int = role_option.item_count
+			role_option.add_item(
+				"%s · мастерство %d/100" % [
+					employee.get_full_name(),
+					skill_value,
+				]
+			)
+			role_option.set_item_metadata(item_index, employee_id)
+			if employee_id == saved_employee_id:
+				selected_index = item_index
+
+		if selected_index < 0:
+			if required and not candidates.is_empty():
+				selected_index = empty_index + 1 if empty_index >= 0 else 0
+			elif role_id == "producer" and not candidates.is_empty():
+				selected_index = empty_index + 1
+			elif empty_index >= 0:
+				selected_index = empty_index
+
+		if role_option.item_count == 0:
+			role_option.add_item("Нет сотрудника подходящей профессии")
+			role_option.set_item_metadata(0, "")
+			selected_index = 0
+			role_option.disabled = true
+		elif selected_index >= 0:
+			role_option.select(selected_index)
+
+		var selected_employee_id: String = (
+			str(role_option.get_item_metadata(selected_index))
+			if selected_index >= 0
+			else ""
+		)
+		_film_crew_assignments[role_id] = selected_employee_id
+		if not selected_employee_id.is_empty():
+			used_employee_ids[selected_employee_id] = true
+
+		role_option.disabled = role_option.disabled or assignments_locked
+		role_option.item_selected.connect(
+			_on_film_crew_role_selected.bind(role_id, role_option)
+		)
+		_film_crew_options[role_id] = role_option
+		_building_detail_layout.add_child(role_option)
+
+
+func _on_film_crew_role_selected(
+	selected_index: int,
+	role_id: String,
+	role_option: OptionButton
+) -> void:
+	if selected_index < 0 or selected_index >= role_option.item_count:
+		return
+	var selected_employee_id: String = str(
+		role_option.get_item_metadata(selected_index)
+	)
+	var previous_employee_id: String = str(
+		_film_crew_assignments.get(role_id, "")
+	)
+	if not selected_employee_id.is_empty():
+		for other_role_id in _film_crew_assignments.keys():
+			if str(other_role_id) == role_id:
+				continue
+			if str(_film_crew_assignments[other_role_id]) == selected_employee_id:
+				for option_index in range(role_option.item_count):
+					if str(role_option.get_item_metadata(option_index)) == previous_employee_id:
+						role_option.select(option_index)
+						break
+				return
+	_film_crew_assignments[role_id] = selected_employee_id
+	_update_film_production_ui()
+
+
+func _build_film_background_assignment_controls(assigned_staff: Array) -> void:
+	var heading := Label.new()
+	heading.text = "МАССОВКА"
+	heading.add_theme_font_size_override("font_size", 14)
+	_building_detail_layout.add_child(heading)
+
+	var cast_employee_ids: Dictionary = {}
+	for employee_id_value in _film_cast_assignments.values():
+		cast_employee_ids[str(employee_id_value)] = true
+
+	var available_ids: Dictionary = {}
+	var extras: Array = []
+	for employee in assigned_staff:
+		if str(employee.profession_id) != "extra":
+			continue
+		var employee_id: String = str(employee.id)
+		if employee_id.is_empty() or cast_employee_ids.has(employee_id):
+			continue
+		available_ids[employee_id] = true
+		extras.append(employee)
+
+	var normalized_selection: Array[String] = []
+	for employee_id in _film_background_performer_ids:
+		if available_ids.has(employee_id) and normalized_selection.size() < MAX_BACKGROUND_PERFORMERS:
+			normalized_selection.append(employee_id)
+	_film_background_performer_ids = normalized_selection
+
+	_film_background_options.clear()
+	var assignments_locked: bool = (
+		_active_film_project != null
+		and str(_active_film_project.status) == "in_production"
+	)
+	for employee in extras:
+		var employee_id: String = str(employee.id)
+		var checkbox := CheckBox.new()
+		checkbox.text = "%s · мастерство %d/100" % [
+			employee.get_full_name(),
+			roundi(float(employee.skills.get("acting", 0.0))),
+		]
+		checkbox.button_pressed = _film_background_performer_ids.has(employee_id)
+		checkbox.disabled = assignments_locked
+		checkbox.toggled.connect(
+			_on_film_background_performer_toggled.bind(employee_id, checkbox)
+		)
+		_film_background_options[employee_id] = checkbox
+		_building_detail_layout.add_child(checkbox)
+
+	var note := Label.new()
+	note.text = "Выбранные актёры массовки участвуют в каждой сцене (до %d человек)." % MAX_BACKGROUND_PERFORMERS
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_font_size_override("font_size", 10)
+	_building_detail_layout.add_child(note)
+
+
+func _on_film_background_performer_toggled(
+	enabled: bool,
+	employee_id: String,
+	checkbox: CheckBox
+) -> void:
+	if enabled:
+		if (
+			_film_cast_assignments.values().has(employee_id)
+			or _film_background_performer_ids.size() >= MAX_BACKGROUND_PERFORMERS
+		):
+			checkbox.set_pressed_no_signal(false)
+			return
+		if not _film_background_performer_ids.has(employee_id):
+			_film_background_performer_ids.append(employee_id)
+	else:
+		_film_background_performer_ids.erase(employee_id)
+	_update_film_production_ui()
+
 func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 	var heading := Label.new()
 	heading.text = "РАСПРЕДЕЛЕНИЕ РОЛЕЙ"
@@ -2090,31 +2326,29 @@ func _on_film_cast_role_selected(
 ) -> void:
 	if selected_index < 0 or selected_index >= role_option.get_item_count():
 		return
-	_film_cast_assignments[role_id] = str(
+	var selected_employee_id: String = str(
 		role_option.get_item_metadata(selected_index)
 	)
+	_film_cast_assignments[role_id] = selected_employee_id
+	if _film_background_performer_ids.has(selected_employee_id):
+		_film_background_performer_ids.erase(selected_employee_id)
+		var background_option: CheckBox = (
+			_film_background_options.get(selected_employee_id) as CheckBox
+		)
+		if is_instance_valid(background_option):
+			background_option.set_pressed_no_signal(false)
 	_update_film_production_ui()
 
 
-func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
+func _get_film_crew_assignments(_assigned_staff: Array) -> Dictionary:
 	var result: Dictionary = {}
-	for profession_id in REQUIRED_STAGE_PROFESSIONS:
-		for employee in assigned_staff:
-			var employee_profession: String = str(employee.profession_id)
-			var matches_position: bool = (
-				employee_profession == profession_id
-				or (
-					profession_id == "actor"
-					and employee_profession == "extra"
-				)
-			)
-			if matches_position:
-				result[profession_id] = str(employee.id)
-				break
-	for employee in assigned_staff:
-		if str(employee.profession_id) == "producer":
-			result["producer"] = str(employee.id)
-			break
+	for role_config in FILM_CREW_ROLE_CONFIG:
+		var role_id: String = str(role_config.get("id", ""))
+		var employee_id: String = str(
+			_film_crew_assignments.get(role_id, "")
+		)
+		if not employee_id.is_empty():
+			result[role_id] = employee_id
 	return result
 
 
@@ -2134,15 +2368,64 @@ func _has_complete_production_assignments(
 		)
 	):
 		return false
-	var assigned_employee_ids: Dictionary = {}
+
+	var employees_by_id: Dictionary = {}
 	for employee in assigned_staff:
-		assigned_employee_ids[str(employee.id)] = true
-	for employee_id_value in crew_assignments.values():
-		if not assigned_employee_ids.has(str(employee_id_value)):
+		employees_by_id[str(employee.id)] = employee
+
+	var selected_crew_ids: Dictionary = {}
+	for role_config in FILM_CREW_ROLE_CONFIG:
+		var role_id: String = str(role_config.get("id", ""))
+		var employee_id: String = str(crew_assignments.get(role_id, ""))
+		if employee_id.is_empty():
+			if bool(role_config.get("required", false)):
+				return false
+			continue
+		if not employees_by_id.has(employee_id) or selected_crew_ids.has(employee_id):
 			return false
+		var employee: Variant = employees_by_id[employee_id]
+		if str(employee.profession_id) != str(role_config.get("profession_id", "")):
+			return false
+		var specialization_id: String = str(
+			role_config.get("specialization_id", "")
+		)
+		if (
+			not specialization_id.is_empty()
+			and str(employee.specialization_id) != specialization_id
+		):
+			return false
+		selected_crew_ids[employee_id] = true
+
+	var cast_employee_ids: Dictionary = {}
 	for employee_id_value in cast_assignments.values():
-		if not assigned_employee_ids.has(str(employee_id_value)):
+		var employee_id: String = str(employee_id_value)
+		if (
+			employee_id.is_empty()
+			or not employees_by_id.has(employee_id)
+			or selected_crew_ids.has(employee_id)
+		):
 			return false
+		var cast_employee: Variant = employees_by_id[employee_id]
+		if str(cast_employee.profession_id) not in ["actor", "extra"]:
+			return false
+		cast_employee_ids[employee_id] = true
+
+	if _film_background_performer_ids.size() > MAX_BACKGROUND_PERFORMERS:
+		return false
+	var unique_background_ids: Dictionary = {}
+	for employee_id in _film_background_performer_ids:
+		if (
+			employee_id.is_empty()
+			or not employees_by_id.has(employee_id)
+			or selected_crew_ids.has(employee_id)
+			or cast_employee_ids.has(employee_id)
+			or unique_background_ids.has(employee_id)
+		):
+			return false
+		var background_employee: Variant = employees_by_id[employee_id]
+		if str(background_employee.profession_id) != "extra":
+			return false
+		unique_background_ids[employee_id] = true
 	return true
 
 
@@ -2178,8 +2461,7 @@ func _on_start_film_production_pressed() -> void:
 		+ _next_script_sequence
 	)
 	_active_production_technician_ids = _get_stage_technician_ids(
-		stage_id,
-		str(crew_assignments.get("technician", ""))
+		crew_assignments
 	)
 	var technician_count: int = clampi(
 		maxi(_active_production_technician_ids.size(), 1),
@@ -2203,7 +2485,8 @@ func _on_start_film_production_pressed() -> void:
 		int(_game_clock.current_hour),
 		int(_game_clock.current_minute),
 		scene_setups,
-		technician_count
+		technician_count,
+		_film_background_performer_ids
 	)
 	if project == null:
 		_active_production_technician_ids.clear()
@@ -2252,15 +2535,15 @@ func _dispatch_film_crew_to_stage() -> void:
 	):
 		return
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in [
+	for role_id in [
 		"director",
 		"camera_operator",
-		"technician",
 		"producer",
+		"production_designer",
+		"costume_designer",
+		"makeup_artist",
 	]:
-		var employee_id: String = str(
-			crew_assignments.get(profession_id, "")
-		)
+		var employee_id: String = str(crew_assignments.get(role_id, ""))
 		if employee_id.is_empty():
 			continue
 		var actor: Variant = _character_manager.call(
@@ -2404,6 +2687,9 @@ func _advance_film_production(hour: int = -1) -> void:
 		and _are_set_logistics_tasks_complete()
 	):
 		_active_film_project.last_activity_message = "Реквизит возвращён на склад. Площадка готова к следующей сцене."
+	var phase_for_skill_progression: String = str(
+		_active_film_project.current_phase
+	)
 	var snapshot: Dictionary = _build_film_performance_snapshot()
 	var result: Dictionary = _film_production_system.call(
 		"advance_minute",
@@ -2413,6 +2699,8 @@ func _advance_film_production(hour: int = -1) -> void:
 		cast_ready,
 		snapshot
 	)
+	if bool(result.get("advanced", false)):
+		_award_film_skill_progression(phase_for_skill_progression)
 	if not bool(result.get("advanced", false)):
 		if _set_logistics_blocked:
 			_active_film_project.pause_reason = "Логистика реквизита остановлена: проверь склад и маршруты техников."
@@ -2504,10 +2792,12 @@ func _are_film_crew_ready() -> bool:
 	):
 		return false
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	for profession_id in ["director", "camera_operator", "technician"]:
-		var employee_id: String = str(
-			crew_assignments.get(profession_id, "")
-		)
+	var checked_ids: Dictionary = {}
+	for employee_id_value in crew_assignments.values():
+		var employee_id: String = str(employee_id_value)
+		if employee_id.is_empty() or checked_ids.has(employee_id):
+			continue
+		checked_ids[employee_id] = true
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			return false
@@ -2758,8 +3048,15 @@ func _release_cast_for_scene_preparation(
 	var scene_number: int = int(_active_film_project.current_scene_index) + 1
 	var processed_ids: Dictionary = {}
 	var crew_ids: Array = _active_film_project.crew_assignments.values()
+	var cast_and_background_ids: Array[String] = []
 	for assigned_id_value in _active_film_project.cast_assignments.values():
 		var employee_id: String = str(assigned_id_value)
+		if not employee_id.is_empty() and not cast_and_background_ids.has(employee_id):
+			cast_and_background_ids.append(employee_id)
+	for background_employee_id in _active_film_project.background_performer_ids:
+		if not background_employee_id.is_empty() and not cast_and_background_ids.has(background_employee_id):
+			cast_and_background_ids.append(background_employee_id)
+	for employee_id in cast_and_background_ids:
 		if employee_id.is_empty() or processed_ids.has(employee_id):
 			continue
 		processed_ids[employee_id] = true
@@ -3055,14 +3352,24 @@ func _build_film_performance_snapshot() -> Dictionary:
 		_active_film_script,
 		_active_film_project
 	)
+	var background_ids: Array[String] = (
+		_active_film_project.background_performer_ids
+	)
 	var acting_total: float = 0.0
 	var acting_count: int = 0
+	var background_acting_total: float = 0.0
+	var background_acting_count: int = 0
 	for employee_id_value in performer_ids:
-		var employee: Variant = _find_employee(str(employee_id_value))
+		var employee_id: String = str(employee_id_value)
+		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			continue
-		acting_total += float(employee.skills.get("acting", 45.0))
-		acting_count += 1
+		if background_ids.has(employee_id):
+			background_acting_total += float(employee.skills.get("acting", 45.0))
+			background_acting_count += 1
+		else:
+			acting_total += float(employee.skills.get("acting", 45.0))
+			acting_count += 1
 
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
 	var director: Variant = _find_employee(
@@ -3071,17 +3378,44 @@ func _build_film_performance_snapshot() -> Dictionary:
 	var camera_operator: Variant = _find_employee(
 		str(crew_assignments.get("camera_operator", ""))
 	)
-	var technician: Variant = _find_employee(
-		str(crew_assignments.get("technician", ""))
+	var producer: Variant = _find_employee(
+		str(crew_assignments.get("producer", ""))
 	)
+
+	var technical_total: float = 0.0
+	var technical_count: int = 0
+	for role_id in FILM_TECHNICIAN_ROLE_IDS:
+		var technician_id: String = str(crew_assignments.get(role_id, ""))
+		var technician: Variant = _find_employee(technician_id)
+		if technician == null:
+			continue
+		technical_total += float(technician.skills.get("technical", 45.0))
+		technical_count += 1
+
+	var lighting_technician: Variant = _find_employee(
+		str(crew_assignments.get("lighting_technician", ""))
+	)
+	var sound_technician: Variant = _find_employee(
+		str(crew_assignments.get("sound_technician", ""))
+	)
+	var production_designer: Variant = _find_employee(
+		str(crew_assignments.get("production_designer", ""))
+	)
+	var costume_designer: Variant = _find_employee(
+		str(crew_assignments.get("costume_designer", ""))
+	)
+	var makeup_artist: Variant = _find_employee(
+		str(crew_assignments.get("makeup_artist", ""))
+	)
+
 	var participants: Array[String] = []
 	for employee_id_value in performer_ids:
 		var employee_id: String = str(employee_id_value)
-		if not participants.has(employee_id):
+		if not employee_id.is_empty() and not participants.has(employee_id):
 			participants.append(employee_id)
 	for employee_id_value in crew_assignments.values():
 		var employee_id: String = str(employee_id_value)
-		if not participants.has(employee_id):
+		if not employee_id.is_empty() and not participants.has(employee_id):
 			participants.append(employee_id)
 
 	var energy_total: float = 0.0
@@ -3103,6 +3437,10 @@ func _build_film_performance_snapshot() -> Dictionary:
 			acting_total / float(maxi(acting_count, 1))
 			if acting_count > 0 else 45.0
 		),
+		"background_acting": (
+			background_acting_total / float(maxi(background_acting_count, 1))
+			if background_acting_count > 0 else 45.0
+		),
 		"directing": (
 			float(director.skills.get("directing", 45.0))
 			if director != null else 45.0
@@ -3112,8 +3450,32 @@ func _build_film_performance_snapshot() -> Dictionary:
 			if camera_operator != null else 45.0
 		),
 		"technical": (
-			float(technician.skills.get("technical", 45.0))
-			if technician != null else 45.0
+			technical_total / float(maxi(technical_count, 1))
+			if technical_count > 0 else 45.0
+		),
+		"lighting": (
+			float(lighting_technician.skills.get("lighting", 45.0))
+			if lighting_technician != null else 45.0
+		),
+		"sound": (
+			float(sound_technician.skills.get("sound", 45.0))
+			if sound_technician != null else 45.0
+		),
+		"set_design": (
+			float(production_designer.skills.get("set_design", 45.0))
+			if production_designer != null else 45.0
+		),
+		"costume_design": (
+			float(costume_designer.skills.get("costume_design", 45.0))
+			if costume_designer != null else 45.0
+		),
+		"makeup": (
+			float(makeup_artist.skills.get("makeup", 45.0))
+			if makeup_artist != null else 45.0
+		),
+		"management": (
+			float(producer.skills.get("management", 45.0))
+			if producer != null else 45.0
 		),
 		"energy": energy_total / divisor,
 		"morale": morale_total / divisor,
@@ -3121,71 +3483,198 @@ func _build_film_performance_snapshot() -> Dictionary:
 	}
 
 
+func _award_employee_skill_experience(
+	employee_id: String,
+	skill_id: String,
+	amount: float
+) -> void:
+	if amount <= 0.0 or _skill_progression_system == null:
+		return
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	_skill_progression_system.call(
+		"award_skill_experience",
+		employee,
+		skill_id,
+		amount
+	)
+
+
+func _award_film_skill_progression(phase: String) -> void:
+	if _active_film_project == null:
+		return
+	var performers: Array = _film_production_system.call(
+		"get_scene_performer_ids",
+		_active_film_script,
+		_active_film_project
+	)
+	if phase == "rehearsal" or phase == "shooting":
+		for employee_id_value in performers:
+			var employee_id: String = str(employee_id_value)
+			_award_employee_skill_experience(
+				employee_id,
+				"acting",
+				0.65 if phase == "rehearsal" else 0.35
+			)
+			_award_employee_skill_experience(
+				employee_id,
+				"movement",
+				0.12 if phase == "rehearsal" else 0.05
+			)
+			if phase == "rehearsal":
+				_award_employee_skill_experience(employee_id, "improvisation", 0.10)
+				_award_employee_skill_experience(employee_id, "diction", 0.08)
+
+	var crew: Dictionary = _active_film_project.crew_assignments
+	for role_id in FILM_CREW_ROLE_CONFIG:
+		var crew_role_id: String = str(role_id.get("id", ""))
+		var employee_id: String = str(crew.get(crew_role_id, ""))
+		if employee_id.is_empty():
+			continue
+		match crew_role_id:
+			"director":
+				if phase == "rehearsal":
+					_award_employee_skill_experience(employee_id, "actor_direction", 0.55)
+					_award_employee_skill_experience(employee_id, "directing", 0.20)
+				elif phase == "shooting" or phase == "review":
+					_award_employee_skill_experience(employee_id, "directing", 0.30)
+			"camera_operator":
+				if phase == "rehearsal":
+					_award_employee_skill_experience(employee_id, "composition", 0.10)
+				elif phase == "shooting":
+					_award_employee_skill_experience(employee_id, "camera_work", 0.40)
+					_award_employee_skill_experience(employee_id, "composition", 0.18)
+				elif phase == "review":
+					_award_employee_skill_experience(employee_id, "camera_work", 0.12)
+			"technician", "technician_assistant_1", "technician_assistant_2":
+				if phase == "set_dressing":
+					_award_employee_skill_experience(employee_id, "technical", 0.42)
+					_award_employee_skill_experience(employee_id, "prop_design", 0.24)
+				elif phase == "shooting":
+					_award_employee_skill_experience(employee_id, "technical", 0.16)
+			"lighting_technician":
+				if phase == "set_dressing":
+					_award_employee_skill_experience(employee_id, "lighting", 0.12)
+				elif phase == "shooting":
+					_award_employee_skill_experience(employee_id, "lighting", 0.42)
+			"sound_technician":
+				if phase == "shooting":
+					_award_employee_skill_experience(employee_id, "sound", 0.42)
+			"equipment_technician":
+				if phase == "set_dressing":
+					_award_employee_skill_experience(employee_id, "equipment", 0.30)
+				elif phase == "shooting":
+					_award_employee_skill_experience(employee_id, "equipment", 0.18)
+			"production_designer":
+				if phase == "set_dressing":
+					_award_employee_skill_experience(employee_id, "set_design", 0.50)
+				elif phase == "shooting":
+					_award_employee_skill_experience(employee_id, "set_design", 0.10)
+			"costume_designer":
+				if phase == "rehearsal" or phase == "shooting":
+					_award_employee_skill_experience(employee_id, "costume_design", 0.24)
+			"makeup_artist":
+				if phase == "rehearsal" or phase == "shooting":
+					_award_employee_skill_experience(employee_id, "makeup", 0.24)
+			"producer":
+				if phase == "review":
+					_award_employee_skill_experience(employee_id, "management", 0.20)
+				else:
+					_award_employee_skill_experience(employee_id, "management", 0.08)
+
 func _apply_film_crew_actions() -> void:
 	if _active_film_project == null:
 		return
 	var phase: String = str(_active_film_project.current_phase)
 	var scene_number: int = int(_active_film_project.current_scene_index) + 1
 	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	var task_by_profession: Dictionary = {
+	var task_by_role: Dictionary = {
 		"director": "Руководит сценой %d" % scene_number,
 		"camera_operator": "Снимает сцену %d" % scene_number,
 		"technician": "Обслуживает оборудование сцены %d" % scene_number,
 		"producer": "Координирует съёмки фильма",
+		"lighting_technician": "Настраивает свет сцены %d" % scene_number,
+		"sound_technician": "Настраивает звук сцены %d" % scene_number,
+		"equipment_technician": "Проверяет оборудование сцены %d" % scene_number,
+		"technician_assistant_1": "Помогает техникам на сцене %d" % scene_number,
+		"technician_assistant_2": "Помогает техникам на сцене %d" % scene_number,
+		"production_designer": "Отвечает за оформление сцены %d" % scene_number,
+		"costume_designer": "Готовит костюмы актёров",
+		"makeup_artist": "Готовит грим актёров",
 	}
-	var action_by_profession: Dictionary = {
+	var action_by_role: Dictionary = {
 		"director": "directing",
 		"camera_operator": "operating_camera",
 		"technician": "checking_equipment",
 		"producer": "coordinating",
+		"lighting_technician": "checking_equipment",
+		"sound_technician": "checking_equipment",
+		"equipment_technician": "checking_equipment",
+		"technician_assistant_1": "checking_equipment",
+		"technician_assistant_2": "checking_equipment",
+		"production_designer": "checking_equipment",
+		"costume_designer": "reviewing",
+		"makeup_artist": "reviewing",
 	}
 	if phase == "set_dressing":
 		var setup: Dictionary = _active_film_project.get_current_scene_setup()
 		var raw_props: Variant = setup.get("prop_ids", [])
 		var has_props: bool = raw_props is Array and not raw_props.is_empty()
-		task_by_profession["technician"] = (
-			"Расставляет декорации сцены %d" % scene_number
-			if has_props
-			else "Готовит нейтральную площадку сцены %d" % scene_number
-		)
-		action_by_profession["technician"] = (
-			"placing_set_piece" if has_props else "checking_equipment"
-		)
+		for role_id in [
+			"technician",
+			"technician_assistant_1",
+			"technician_assistant_2",
+			"production_designer",
+		]:
+			task_by_role[role_id] = (
+				"Расставляет декорации сцены %d" % scene_number
+				if has_props
+				else "Готовит нейтральную площадку сцены %d" % scene_number
+			)
+			action_by_role[role_id] = (
+				"placing_set_piece" if has_props else "checking_equipment"
+			)
 	elif phase == "review":
-		task_by_profession["director"] = "Просматривает дубль сцены %d" % scene_number
-		task_by_profession["camera_operator"] = "Проверяет снятый материал"
-		action_by_profession["director"] = "reviewing"
-		action_by_profession["camera_operator"] = "reviewing"
+		task_by_role["director"] = "Просматривает дубль сцены %d" % scene_number
+		task_by_role["camera_operator"] = "Проверяет снятый материал"
+		action_by_role["director"] = "reviewing"
+		action_by_role["camera_operator"] = "reviewing"
 	elif phase == "preparation":
-		task_by_profession["director"] = "Готовит постановку сцены %d" % scene_number
-		task_by_profession["camera_operator"] = "Выставляет кадр сцены %d" % scene_number
-		action_by_profession["technician"] = "checking_equipment"
+		task_by_role["director"] = "Готовит постановку сцены %d" % scene_number
+		task_by_role["camera_operator"] = "Выставляет кадр сцены %d" % scene_number
+		action_by_role["technician"] = "checking_equipment"
 
-	for profession_id in ["director", "camera_operator", "technician", "producer"]:
-		var employee_id: String = str(
-			crew_assignments.get(profession_id, "")
-		)
+	for role_config in FILM_CREW_ROLE_CONFIG:
+		var role_id: String = str(role_config.get("id", ""))
+		var employee_id: String = str(crew_assignments.get(role_id, ""))
 		if employee_id.is_empty():
 			continue
 		_character_manager.call(
 			"set_employee_task",
 			employee_id,
-			str(task_by_profession.get(profession_id, "Работает над фильмом"))
+			str(task_by_role.get(role_id, "Работает над фильмом"))
 		)
 		_character_manager.call(
 			"set_employee_production_action",
 			employee_id,
-			str(action_by_profession.get(profession_id, ""))
+			str(action_by_role.get(role_id, ""))
 		)
 
+	var cast_participant_ids: Array[String] = []
 	for cast_employee_id_value in _active_film_project.cast_assignments.values():
 		var cast_employee_id: String = str(cast_employee_id_value)
-		if not cast_employee_id.is_empty():
-			_character_manager.call(
-				"set_employee_task",
-				cast_employee_id,
-				"Участвует в съёмках фильма"
-			)
+		if not cast_employee_id.is_empty() and not cast_participant_ids.has(cast_employee_id):
+			cast_participant_ids.append(cast_employee_id)
+	for background_employee_id in _active_film_project.background_performer_ids:
+		if not cast_participant_ids.has(background_employee_id):
+			cast_participant_ids.append(background_employee_id)
+	for cast_employee_id in cast_participant_ids:
+		_character_manager.call(
+			"set_employee_task",
+			cast_employee_id,
+			"Участвует в съёмках фильма"
+		)
 
 
 func _reset_film_crew_actions() -> void:
@@ -3207,6 +3696,9 @@ func _reset_film_crew_actions() -> void:
 			and not participant_ids.has(cast_employee_id)
 		):
 			participant_ids.append(cast_employee_id)
+	for background_employee_id in _active_film_project.background_performer_ids:
+		if not background_employee_id.is_empty() and not participant_ids.has(background_employee_id):
+			participant_ids.append(background_employee_id)
 	for participant_id in participant_ids:
 		if _find_employee(participant_id) == null:
 			continue
@@ -3931,7 +4423,7 @@ func is_employee_in_active_production(employee_id: String) -> bool:
 	for assigned_id in _active_film_project.cast_assignments.values():
 		if str(assigned_id) == employee_id:
 			return true
-	return false
+	return _active_film_project.background_performer_ids.has(employee_id)
 
 
 func is_employee_in_active_editing(employee_id: String) -> bool:
@@ -4115,22 +4607,18 @@ func _get_prop_warehouse_building_id() -> String:
 
 
 func _get_stage_technician_ids(
-	stage_id: String,
-	primary_technician_id: String
+	crew_assignments: Dictionary
 ) -> Array[String]:
 	var result: Array[String] = []
-	if not primary_technician_id.is_empty():
-		result.append(primary_technician_id)
-	for employee in _get_assigned_staff(stage_id):
-		if str(employee.profession_id) != "technician":
-			continue
-		var employee_id: String = str(employee.id)
-		if not employee_id.is_empty() and not result.has(employee_id):
+	for role_id in FILM_TECHNICIAN_ROLE_IDS:
+		var employee_id: String = str(crew_assignments.get(role_id, ""))
+		if (
+			not employee_id.is_empty()
+			and not result.has(employee_id)
+			and result.size() < 8
+		):
 			result.append(employee_id)
-		if result.size() >= 8:
-			break
 	return result
-
 
 
 func _get_set_logistics_scene_key(
