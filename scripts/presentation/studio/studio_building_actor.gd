@@ -244,17 +244,17 @@ func get_scene_path(
 		{
 			"center": Vector2(-3.9, -2.3),
 			"half_extents": Vector2(0.14, 1.4),
-			"clearance": 0.22,
+			"clearance": 0.28,
 		},
 		{
 			"center": Vector2(3.9, -2.3),
 			"half_extents": Vector2(0.14, 1.4),
-			"clearance": 0.22,
+			"clearance": 0.28,
 		},
 		{
 			"center": Vector2(0.0, -5.0),
 			"half_extents": Vector2(4.1, 0.12),
-			"clearance": 0.22,
+			"clearance": 0.28,
 		},
 	]
 	if is_instance_valid(_set_dressing_root):

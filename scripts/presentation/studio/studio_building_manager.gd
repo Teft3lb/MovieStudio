@@ -84,6 +84,7 @@ var _film_editing_editor_id: String = ""
 var _film_cast_assignments: Dictionary = {}
 var _cast_assignment_script_id: String = ""
 var _active_scene_performer_ids: Array[String] = []
+var _film_phase_actions_pending: bool = false
 
 var _buildings: Array = []
 var _building_actors: Dictionary = {}
@@ -2386,6 +2387,11 @@ func _advance_film_production(hour: int = -1) -> void:
 		_update_film_stage_slate()
 		_update_film_production_ui()
 		return
+	if _film_phase_actions_pending:
+		_apply_film_crew_actions()
+		_film_phase_actions_pending = false
+		_active_film_project.pause_reason = ""
+		_active_film_project.last_activity_message = "Съёмочная смена возобновлена."
 	_dispatch_film_crew_to_stage()
 	var cast_ready: bool = _sync_film_scene_performance()
 	_sync_film_set_dressing()
@@ -2425,6 +2431,7 @@ func _advance_film_production(hour: int = -1) -> void:
 			next_phase in ["rehearsal", "shooting", "review"]
 			and not is_film_production_work_hour(resolved_hour)
 		):
+			_film_phase_actions_pending = true
 			_pause_film_scene_for_off_hours()
 			var next_shift: Vector2i = get_film_production_shift()
 			_active_film_project.pause_reason = (
@@ -3186,6 +3193,7 @@ func _apply_film_crew_actions() -> void:
 
 
 func _reset_film_crew_actions() -> void:
+	_film_phase_actions_pending = false
 	if _active_film_project == null:
 		return
 	var participant_ids: Array[String] = []
