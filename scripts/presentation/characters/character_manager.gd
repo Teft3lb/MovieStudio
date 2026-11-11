@@ -2116,13 +2116,16 @@ func _refresh_detail_panel() -> void:
 				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
 			))
 		else:
-			var progress_percent: int = roundi(float(
-				_skill_progression_system.call(
-					"get_progress_percent",
-					employee,
-					skill_id
-				)
-			))
+			var progress_percent: int = mini(
+				roundi(float(
+					_skill_progression_system.call(
+						"get_progress_percent",
+						employee,
+						skill_id
+					)
+				)),
+				99
+			)
 			skill_lines.append("%s: %d / 100 · опыт до следующего пункта: %d%%" % [
 				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
 				skill_value,

@@ -56,6 +56,7 @@ Run from the project root:
 
 ~~~bash
 godot --headless --path . --script res://tests/character_system_v2_smoke_test.gd
+godot --headless --path . --script res://tests/character_lifecycle_smoke_test.gd
 ~~~
 
 The test covers:

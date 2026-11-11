@@ -121,6 +121,7 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/employee_management_smoke_test.gd
 & $godot --headless --path . --script res://tests/character_system_v2_smoke_test.gd
 & $godot --headless --path . --script res://tests/character_skill_profiles_smoke_test.gd
+& $godot --headless --path . --script res://tests/character_lifecycle_smoke_test.gd
 & $godot --headless --path . --script res://tests/character_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/game_clock_fast_forward_test.gd
 ~~~
