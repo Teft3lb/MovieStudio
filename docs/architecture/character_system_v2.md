@@ -22,7 +22,7 @@ The selection hitbox is separate from the visual meshes. This keeps picking reli
 
 ## Employee profile
 
-CharacterData schema version 2 adds:
+CharacterData originally introduced schema version 2. The current schema version 6 also stores birthday progress and per-skill experience. The profile includes:
 - short generated biography;
 - career ambition;
 - shift and break hours;

@@ -2110,18 +2110,24 @@ func _refresh_detail_panel() -> void:
 		)
 	)
 	for skill_id in profession_skill_ids:
-		var progress_percent: int = roundi(float(
-			_skill_progression_system.call(
-				"get_progress_percent",
-				employee,
-				skill_id
-			)
-		))
-		skill_lines.append("%s: %d / 100 · опыт до следующего пункта: %d%%" % [
-			PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
-			roundi(float(skills.get(skill_id, 0.0))),
-			progress_percent,
-		])
+		var skill_value: int = roundi(float(skills.get(skill_id, 0.0)))
+		if skill_value >= 100:
+			skill_lines.append("%s: 100 / 100 · максимум" % (
+				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
+			))
+		else:
+			var progress_percent: int = roundi(float(
+				_skill_progression_system.call(
+					"get_progress_percent",
+					employee,
+					skill_id
+				)
+			))
+			skill_lines.append("%s: %d / 100 · опыт до следующего пункта: %d%%" % [
+				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
+				skill_value,
+				progress_percent,
+			])
 	_detail_skills_label.text = "\n".join(skill_lines)
 
 	_detail_personality_label.text = (

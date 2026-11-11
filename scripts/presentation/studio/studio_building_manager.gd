@@ -2599,22 +2599,28 @@ func get_film_production_shift() -> Vector2i:
 	if _active_film_project == null:
 		return Vector2i(start_hour, end_hour)
 
-	var crew_assignments: Dictionary = _active_film_project.crew_assignments
-	var crew_ids: Array[String] = []
-	for employee_id_value in crew_assignments.values():
+	var participant_ids: Array[String] = []
+	for employee_id_value in _active_film_project.crew_assignments.values():
 		var employee_id: String = str(employee_id_value)
-		if not employee_id.is_empty() and not crew_ids.has(employee_id):
-			crew_ids.append(employee_id)
+		if not employee_id.is_empty() and not participant_ids.has(employee_id):
+			participant_ids.append(employee_id)
+	for employee_id_value in _active_film_project.cast_assignments.values():
+		var employee_id: String = str(employee_id_value)
+		if not employee_id.is_empty() and not participant_ids.has(employee_id):
+			participant_ids.append(employee_id)
+	for employee_id in _active_film_project.background_performer_ids:
+		if not employee_id.is_empty() and not participant_ids.has(employee_id):
+			participant_ids.append(employee_id)
 
-	var found_crew: bool = false
-	for employee_id in crew_ids:
+	var found_participant: bool = false
+	for employee_id in participant_ids:
 		var employee: Variant = _find_employee(employee_id)
 		if employee == null:
 			continue
-		if not found_crew:
+		if not found_participant:
 			start_hour = int(employee.shift_start_hour)
 			end_hour = int(employee.shift_end_hour)
-			found_crew = true
+			found_participant = true
 		else:
 			start_hour = maxi(start_hour, int(employee.shift_start_hour))
 			end_hour = mini(end_hour, int(employee.shift_end_hour))
