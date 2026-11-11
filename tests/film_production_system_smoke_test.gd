@@ -66,6 +66,7 @@ func _run_tests() -> void:
 		cast_assignments
 	)
 	_test_scene_cast_resolution(system, script, project)
+	_test_background_performers(system, script, crew_assignments, cast_assignments)
 	_test_production_pause(system, script, project)
 	_test_cast_can_wait_during_set_preparation(
 		system,
@@ -100,6 +101,51 @@ func _run_tests() -> void:
 	)
 
 	_finish_test("FilmProductionSystemSmokeTest")
+
+
+func _test_background_performers(
+	system: RefCounted,
+	script: Variant,
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var background_ids: Array[String] = [
+		"EMP-EXTRA-01",
+		"EMP-EXTRA-02",
+	]
+	var project: Variant = system.call(
+		"start_project",
+		script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-BACKGROUND-01",
+		441122,
+		1,
+		8,
+		0,
+		[],
+		1,
+		background_ids
+	)
+	var performers: Array = system.call(
+		"get_scene_performer_ids",
+		script,
+		project
+	)
+	_expect(
+		project != null
+		and performers.size() == 4
+		and performers.has("EMP-EXTRA-01")
+		and performers.has("EMP-EXTRA-02"),
+		"Selected background performers must join every scene without duplicating principal cast members."
+	)
+	var restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(
+		project.to_dict()
+	)
+	_expect(
+		restored.background_performer_ids == background_ids,
+		"Background performer assignments must survive production project serialization."
+	)
 
 
 func _create_script() -> Variant:

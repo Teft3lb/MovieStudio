@@ -52,7 +52,8 @@ func start_project(
 	current_hour: int,
 	current_minute: int,
 	scene_setups: Array = [],
-	technician_count: int = 1
+	technician_count: int = 1,
+	background_performer_ids: Array[String] = []
 ) -> Variant:
 	if not can_start_project(script, crew_assignments, cast_assignments):
 		return null
@@ -76,6 +77,9 @@ func start_project(
 	project.total_scene_count = script.scenes.size()
 	project.crew_assignments = crew_assignments.duplicate(true)
 	project.cast_assignments = cast_assignments.duplicate(true)
+	project.background_performer_ids = _normalize_employee_ids(
+		background_performer_ids
+	)
 	project.scene_setups = _normalize_scene_setups(
 		script.scenes,
 		scene_setups
@@ -90,7 +94,8 @@ func start_project(
 		script,
 		cast_assignments,
 		project.scene_setups,
-		int(project.technician_count)
+		int(project.technician_count),
+		project.background_performer_ids
 	)
 	project.last_activity_message = "Съёмочная группа собирается на площадке."
 	_rng.seed = seed
@@ -382,6 +387,12 @@ func get_scene_performer_ids(
 			)
 			if not employee_id.is_empty() and not result.has(employee_id):
 				result.append(employee_id)
+
+	for background_employee_id in project.background_performer_ids:
+		if result.size() >= 8:
+			break
+		if not result.has(background_employee_id):
+			result.append(background_employee_id)
 	return result
 
 
@@ -406,6 +417,15 @@ func get_scene_dialogue_for_employee(
 		if str(project.cast_assignments.get(role_id, "")) == employee_id:
 			return spoken_text
 	return ""
+
+
+func _normalize_employee_ids(employee_ids: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for employee_id in employee_ids:
+		var normalized_id: String = str(employee_id)
+		if not normalized_id.is_empty() and not result.has(normalized_id):
+			result.append(normalized_id)
+	return result
 
 
 func _normalize_scene_setups(
@@ -506,7 +526,8 @@ func _estimate_total_minutes(
 	script: Variant,
 	cast_assignments: Dictionary,
 	scene_setups: Array,
-	technician_count: int
+	technician_count: int,
+	background_performer_ids: Array[String] = []
 ) -> int:
 	var total: int = 0
 	for scene_index in range(script.scenes.size()):
@@ -514,7 +535,8 @@ func _estimate_total_minutes(
 		var performer_count: int = _get_scene_performer_count(
 			script,
 			scene_data,
-			cast_assignments
+			cast_assignments,
+			background_performer_ids
 		)
 		var setup: Dictionary = scene_setups[scene_index]
 		total += _get_phase_duration("preparation", performer_count)
@@ -536,7 +558,8 @@ func _estimate_total_minutes(
 func _get_scene_performer_count(
 	script: Variant,
 	scene: Dictionary,
-	cast_assignments: Dictionary
+	cast_assignments: Dictionary,
+	background_performer_ids: Array[String] = []
 ) -> int:
 	var role_by_character: Dictionary = {}
 	for cast_member in script.cast:
@@ -556,7 +579,12 @@ func _get_scene_performer_count(
 			var employee_id: String = str(employee_id_value)
 			if not unique_ids.has(employee_id):
 				unique_ids.append(employee_id)
-	return maxi(unique_ids.size(), 1)
+	for employee_id in background_performer_ids:
+		if unique_ids.size() >= 8:
+			break
+		if not employee_id.is_empty() and not unique_ids.has(employee_id):
+			unique_ids.append(employee_id)
+	return clampi(unique_ids.size(), 1, 8)
 
 
 func _get_set_strike_duration(
@@ -641,11 +669,18 @@ func _calculate_scene_quality(
 	project.rng_state = _rng.state
 
 	var score: float = (
-		acting * 0.30
-		+ directing * 0.20
-		+ camera * 0.16
-		+ technical * 0.12
-		+ float(project.script_potential_score) * 0.22
+		acting * 0.25
+		+ directing * 0.17
+		+ camera * 0.14
+		+ technical * 0.11
+		+ float(project.script_potential_score) * 0.18
+		+ clampf(float(snapshot.get("lighting", 45.0)), 0.0, 100.0) * 0.025
+		+ clampf(float(snapshot.get("sound", 45.0)), 0.0, 100.0) * 0.025
+		+ clampf(float(snapshot.get("set_design", 45.0)), 0.0, 100.0) * 0.04
+		+ clampf(float(snapshot.get("costume_design", 45.0)), 0.0, 100.0) * 0.02
+		+ clampf(float(snapshot.get("makeup", 45.0)), 0.0, 100.0) * 0.02
+		+ clampf(float(snapshot.get("background_acting", 45.0)), 0.0, 100.0) * 0.01
+		+ clampf(float(snapshot.get("management", 45.0)), 0.0, 100.0) * 0.01
 		+ (
 			float(project.get_current_scene_setup().get(
 				"set_dressing_quality",

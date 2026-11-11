@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmProductionProject
 
-const SCHEMA_VERSION: int = 3
+const SCHEMA_VERSION: int = 4
 
 var id: String = ""
 var script_id: String = ""
@@ -27,6 +27,7 @@ var technician_count: int = 1
 
 var crew_assignments: Dictionary = {}
 var cast_assignments: Dictionary = {}
+var background_performer_ids: Array[String] = []
 var scene_results: Array = []
 var scene_setups: Array = []
 
@@ -132,6 +133,7 @@ func to_dict() -> Dictionary:
 		"technician_count": technician_count,
 		"crew_assignments": crew_assignments.duplicate(true),
 		"cast_assignments": cast_assignments.duplicate(true),
+		"background_performer_ids": background_performer_ids.duplicate(),
 		"scene_results": scene_results.duplicate(true),
 		"scene_setups": scene_setups.duplicate(true),
 		"pause_reason": pause_reason,
@@ -220,6 +222,12 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	var raw_cast: Variant = payload.get("cast_assignments", {})
 	if raw_cast is Dictionary:
 		result.cast_assignments = raw_cast.duplicate(true)
+	var raw_background_ids: Variant = payload.get("background_performer_ids", [])
+	if raw_background_ids is Array:
+		for employee_id_value in raw_background_ids:
+			var employee_id: String = str(employee_id_value)
+			if not employee_id.is_empty() and not result.background_performer_ids.has(employee_id):
+				result.background_performer_ids.append(employee_id)
 	var raw_results: Variant = payload.get("scene_results", [])
 	if raw_results is Array:
 		result.scene_results = raw_results.duplicate(true)
