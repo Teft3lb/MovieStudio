@@ -2370,11 +2370,7 @@ func _advance_film_production(hour: int = -1) -> void:
 		return
 	var resolved_hour: int = hour
 	if resolved_hour < 0:
-		resolved_hour = (
-			int(_game_clock.current_hour)
-			if is_instance_valid(_game_clock)
-			else DEFAULT_FILM_SHIFT_START_HOUR
-		)
+		resolved_hour = DEFAULT_FILM_SHIFT_START_HOUR
 	var current_phase: String = str(_active_film_project.current_phase)
 	if (
 		current_phase in ["rehearsal", "shooting", "review"]
