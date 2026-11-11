@@ -43,6 +43,8 @@ var _facility_slot_index: int = -1
 var _facility_route: Array[Vector3] = []
 var _facility_route_index: int = 0
 var _facility_action_id: String = ""
+var _facility_facing_direction: Vector3 = Vector3.ZERO
+var _movement_collision_shape: CapsuleShape3D
 var _clear_workplace_after_facility_leave: bool = false
 
 
@@ -71,47 +73,48 @@ func setup(
 	_create_scene_dialogue_label()
 	_create_selection_ring()
 	_create_selection_hitbox()
+	_movement_collision_shape = CapsuleShape3D.new()
+	_movement_collision_shape.radius = 0.27
+	_movement_collision_shape.height = 2.05
 
 
 func _process(delta: float) -> void:
 	if not is_instance_valid(_game_clock):
 		return
-
 	var simulation_delta: float = float(
 		_game_clock.call("get_simulation_delta", delta)
 	)
 	if is_zero_approx(simulation_delta):
 		return
-
 	if _facility_active:
 		_process_facility_movement(simulation_delta)
 		return
-
 	if _scene_performance_active:
 		_process_scene_performance(simulation_delta)
 		return
-
 	if _has_workplace_destination and not _workplace_path.is_empty():
 		_process_workplace_movement(simulation_delta)
 		return
-
 	if _route.size() < 2:
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
-
 	var target: Vector3 = _route[_route_index]
 	var direction: Vector3 = target - global_position
 	direction.y = 0.0
-
 	if direction.length_squared() <= 0.09:
 		_route_index = (_route_index + 1) % _route.size()
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
-
 	direction = direction.normalized()
-	global_position += direction * _move_speed * simulation_delta
+	var next_position: Vector3 = (
+		global_position + direction * _move_speed * simulation_delta
+	)
+	if not _try_move_to_position(next_position):
+		_set_walking(false)
+		_advance_visual(simulation_delta)
+		return
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
@@ -126,7 +129,6 @@ func _process_facility_movement(simulation_delta: float) -> void:
 			) <= 0.18
 		):
 			_facility_route_index += 1
-
 		if _facility_route_index >= _facility_route.size():
 			global_position = _facility_route.back()
 			_facility_is_moving = false
@@ -139,21 +141,24 @@ func _process_facility_movement(simulation_delta: float) -> void:
 					_visual.call("set_performance_action", _facility_action_id)
 			_advance_visual(simulation_delta)
 			return
-
 		var target: Vector3 = _facility_route[_facility_route_index]
 		var direction: Vector3 = target - global_position
 		direction.y = 0.0
 		if direction.length_squared() > 0.001:
 			direction = direction.normalized()
-			global_position = global_position.move_toward(
+			var next_position: Vector3 = global_position.move_toward(
 				target,
 				_move_speed * simulation_delta
 			)
-			look_at(global_position + direction, Vector3.UP)
+			if _try_move_to_position(next_position):
+				look_at(global_position + direction, Vector3.UP)
+			else:
+				_set_walking(false)
+				_advance_visual(simulation_delta)
+				return
 		_set_walking(true)
 		_advance_visual(simulation_delta)
 		return
-
 	_set_walking(false)
 	if is_instance_valid(_visual):
 		_visual.call("set_performance_action", _facility_action_id)
@@ -165,32 +170,32 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 		_finish_workplace_arrival()
 		_advance_visual(simulation_delta)
 		return
-
 	var target: Vector3 = _workplace_path[_workplace_path_index]
 	var direction: Vector3 = target - global_position
 	direction.y = 0.0
-
 	if direction.length_squared() <= 0.25:
 		if _workplace_path_index < _workplace_path.size() - 1:
 			_workplace_path_index += 1
 			_set_walking(false)
 			_advance_visual(simulation_delta)
 			return
-
 		if _is_leaving_workplace:
 			_finish_leaving_workplace()
 		else:
 			_finish_workplace_arrival()
 		_advance_visual(simulation_delta)
 		return
-
 	_is_at_workplace = false
 	_set_working(false)
 	direction = direction.normalized()
-	global_position = global_position.move_toward(
+	var next_position: Vector3 = global_position.move_toward(
 		target,
 		_move_speed * simulation_delta
 	)
+	if not _try_move_to_position(next_position):
+		_set_walking(false)
+		_advance_visual(simulation_delta)
+		return
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
@@ -201,7 +206,7 @@ func start_scene_performance(
 	focus_position: Vector3,
 	action_id: String,
 	dialogue_text: String = "",
-	movement_path: Array[Vector3] = []
+	movement_path: Array = []
 ) -> void:
 	_clear_facility_route()
 	if not _has_workplace_destination:
@@ -223,7 +228,7 @@ func start_scene_performance(
 
 	if target_changed:
 		_scene_is_moving = global_position.distance_to(target_position) > 0.25
-		_scene_path = movement_path.duplicate()
+		_scene_path = _copy_vector3_path(movement_path)
 		if _scene_path.is_empty():
 			_scene_path.append(target_position)
 		_scene_path_index = 0
@@ -261,7 +266,7 @@ func set_scene_performance_action(
 
 func move_to_scene_hold(
 	target_position: Vector3,
-	movement_path: Array[Vector3] = []
+	movement_path: Array = []
 ) -> void:
 	_clear_facility_route()
 	if not _has_workplace_destination:
@@ -281,7 +286,7 @@ func move_to_scene_hold(
 	_scene_dialogue = ""
 	_set_scene_dialogue("")
 	_scene_is_moving = global_position.distance_to(target_position) > 0.25
-	_scene_path = movement_path.duplicate()
+	_scene_path = _copy_vector3_path(movement_path)
 	if _scene_path.is_empty():
 		_scene_path.append(target_position)
 	_scene_path_index = 0
@@ -337,21 +342,20 @@ func set_production_action(action_id: String) -> void:
 			_visual.call("set_performance_action", _production_action_id)
 
 
-func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
+func return_to_workplace(movement_path: Array = []) -> void:
 	if not _has_workplace_destination or _workplace_commute_path.is_empty():
 		_cancel_scene_performance()
 		return
 	_clear_facility_route()
 	if _scene_returning_to_workplace:
 		return
-
 	var last_index: int = _workplace_commute_path.size() - 1
 	_scene_performance_active = true
 	_scene_returning_to_workplace = true
 	_scene_hold_active = false
 	_scene_is_moving = true
 	_scene_target_position = _workplace_commute_path[last_index]
-	_scene_path = movement_path.duplicate()
+	_scene_path = _copy_vector3_path(movement_path)
 	if _scene_path.is_empty():
 		_scene_path.append(_scene_target_position)
 	_scene_path_index = 0
@@ -369,6 +373,7 @@ func return_to_workplace(movement_path: Array[Vector3] = []) -> void:
 		_finish_scene_return()
 	else:
 		_set_walking(true)
+
 
 func snap_to_scene_mark() -> void:
 	if (
@@ -426,26 +431,28 @@ func _process_scene_performance(simulation_delta: float) -> void:
 				_apply_scene_pose()
 			_advance_visual(simulation_delta)
 			return
-
 		var movement_target: Vector3 = _scene_path[_scene_path_index]
 		var direction: Vector3 = movement_target - global_position
 		direction.y = 0.0
 		if direction.length_squared() > 0.001:
 			direction = direction.normalized()
-			global_position = global_position.move_toward(
+			var next_position: Vector3 = global_position.move_toward(
 				movement_target,
 				_move_speed * simulation_delta
 			)
-			look_at(global_position + direction, Vector3.UP)
+			if _try_move_to_position(next_position):
+				look_at(global_position + direction, Vector3.UP)
+			else:
+				_set_walking(false)
+				_advance_visual(simulation_delta)
+				return
 		_set_walking(true)
 		_advance_visual(simulation_delta)
 		return
-
 	if _scene_returning_to_workplace:
 		_finish_scene_return()
 		_advance_visual(simulation_delta)
 		return
-
 	if _scene_hold_active:
 		_is_at_workplace = true
 		_set_walking(false)
@@ -453,7 +460,6 @@ func _process_scene_performance(simulation_delta: float) -> void:
 			_visual.call("set_performance_action", "")
 		_advance_visual(simulation_delta)
 		return
-
 	_is_at_workplace = true
 	_face_scene_focus()
 	_apply_scene_pose()
@@ -557,7 +563,8 @@ func assign_facility_route(
 	facility_type_id: String,
 	slot_index: int,
 	route: Array[Vector3],
-	action_id: String
+	action_id: String,
+	facing_direction: Vector3 = Vector3.ZERO
 ) -> bool:
 	if route.is_empty() or _scene_performance_active:
 		return false
@@ -568,7 +575,6 @@ func assign_facility_route(
 		and _facility_type_id == facility_type_id
 	):
 		return true
-
 	_clear_facility_route()
 	_facility_active = true
 	_facility_is_leaving = false
@@ -578,6 +584,11 @@ func assign_facility_route(
 	_facility_route = route.duplicate()
 	_facility_route_index = 0
 	_facility_action_id = action_id
+	_facility_facing_direction = (
+		facing_direction.normalized()
+		if facing_direction.length_squared() > 0.001
+		else Vector3.ZERO
+	)
 	while (
 		_facility_route_index < _facility_route.size()
 		and global_position.distance_to(
@@ -596,6 +607,7 @@ func assign_facility_route(
 	else:
 		global_position = _facility_route.back()
 		_set_walking(false)
+		_face_facility()
 		if is_instance_valid(_visual):
 			_visual.call("set_performance_action", _facility_action_id)
 	return true
@@ -667,6 +679,7 @@ func _finish_facility_leave() -> void:
 	_facility_route.clear()
 	_facility_route_index = 0
 	_facility_action_id = ""
+	_facility_facing_direction = Vector3.ZERO
 	_is_at_workplace = false
 	_set_walking(false)
 	_set_working(false)
@@ -678,11 +691,16 @@ func _finish_facility_leave() -> void:
 func _face_facility() -> void:
 	match _facility_type_id:
 		"cafeteria":
-			var is_front_row: bool = posmod(_facility_slot_index, 4) < 2
-			var facing_direction: Vector3 = (
-				Vector3.BACK if is_front_row else Vector3.FORWARD
+			var facing_direction: Vector3 = _facility_facing_direction
+			if facing_direction.length_squared() <= 0.001:
+				var is_front_row: bool = posmod(_facility_slot_index, 4) < 2
+				facing_direction = (
+					Vector3.BACK if is_front_row else Vector3.FORWARD
+				)
+			look_at(
+				global_position + facing_direction.normalized(),
+				Vector3.UP
 			)
-			look_at(global_position + facing_direction, Vector3.UP)
 		"staff_housing":
 			rotation.y = 0.0
 
@@ -727,6 +745,7 @@ func _clear_facility_route() -> void:
 	_facility_route.clear()
 	_facility_route_index = 0
 	_facility_action_id = ""
+	_facility_facing_direction = Vector3.ZERO
 	if is_instance_valid(_visual):
 		_visual.call("set_performance_action", "")
 
@@ -909,6 +928,71 @@ func is_scene_animation_active() -> bool:
 func set_selected(value: bool) -> void:
 	if is_instance_valid(_selection_ring):
 		_selection_ring.visible = value
+
+
+func _copy_vector3_path(source_path: Array) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	for point_value in source_path:
+		if point_value is Vector3:
+			result.append(point_value)
+	return result
+
+
+func _try_move_to_position(target_position: Vector3) -> bool:
+	var candidate: Vector3 = target_position
+	candidate.y = global_position.y
+	if _is_movement_position_clear(candidate):
+		global_position = candidate
+		return true
+	var x_candidate: Vector3 = Vector3(
+		candidate.x,
+		global_position.y,
+		global_position.z
+	)
+	var z_candidate: Vector3 = Vector3(
+		global_position.x,
+		global_position.y,
+		candidate.z
+	)
+	var x_is_clear: bool = _is_movement_position_clear(x_candidate)
+	var z_is_clear: bool = _is_movement_position_clear(z_candidate)
+	if x_is_clear and z_is_clear:
+		global_position = (
+			x_candidate
+			if x_candidate.distance_squared_to(target_position)
+			<= z_candidate.distance_squared_to(target_position)
+			else z_candidate
+		)
+		return true
+	if x_is_clear:
+		global_position = x_candidate
+		return true
+	if z_is_clear:
+		global_position = z_candidate
+		return true
+	return false
+
+
+func _is_movement_position_clear(candidate_position: Vector3) -> bool:
+	if _movement_collision_shape == null or not is_inside_tree():
+		return true
+	var world: World3D = get_world_3d()
+	if world == null:
+		return true
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = _movement_collision_shape
+	query.transform = Transform3D(
+		Basis.IDENTITY,
+		candidate_position + Vector3(0.0, 1.05, 0.0)
+	)
+	query.collision_mask = 8
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	query.margin = 0.02
+	var overlaps: Array[Dictionary] = (
+		world.direct_space_state.intersect_shape(query, 1)
+	)
+	return overlaps.is_empty()
 
 
 func _advance_visual(simulation_delta: float) -> void:

@@ -98,14 +98,14 @@ func _test_needs_and_schedule(employee: Variant) -> void:
 	)
 
 	var energy_before_off_duty: float = float(employee.needs.energy)
-	needs_system.call("advance_minute", employee, 20)
+	needs_system.call("advance_minute", employee, 22)
 	_expect(
 		employee.work_state == "off_duty",
-		"Employee must be off duty after the shift."
+		"Employee must be off duty after bedtime."
 	)
 	_expect(
-		float(employee.needs.energy) > energy_before_off_duty,
-		"Off-duty time must restore energy."
+		is_equal_approx(float(employee.needs.energy), energy_before_off_duty),
+		"An off-duty employee who is not physically in staff housing must not receive sleep recovery."
 	)
 
 
@@ -147,12 +147,12 @@ func _test_facility_recovery(employee: Variant) -> void:
 	regular_night.needs = night_needs.duplicate(true)
 	housing_night.needs = night_needs.duplicate(true)
 	var night_energy_before: float = 0.5
-	needs_system.call("advance_minute", regular_night, 20)
-	needs_system.call("advance_minute", housing_night, 20, false, true)
+	needs_system.call("advance_minute", regular_night, 22)
+	needs_system.call("advance_minute", housing_night, 22, false, true)
 	_expect(
-		float(housing_night.needs.energy) - night_energy_before
-		> float(regular_night.needs.energy) - night_energy_before,
-		"Sleeping in staff housing must restore more energy than ordinary off-duty time."
+		is_equal_approx(float(regular_night.needs.energy), night_energy_before)
+		and float(housing_night.needs.energy) > night_energy_before,
+		"Only employees physically resting in staff housing may recover sleep energy."
 	)
 	_expect(
 		float(housing_night.needs.stress) < float(regular_night.needs.stress),
@@ -221,7 +221,12 @@ func _test_selection_marker(employee: Variant) -> void:
 		and str(actor.call("get_workplace_building_id")) == "BLD-WORKPLACE",
 		"Arriving at staff housing must preserve the original workplace assignment."
 	)
-	actor.call("return_to_workplace", workplace_path)
+	var untyped_return_path: Array = [
+		Vector3(4.0, 0.0, 0.0),
+		Vector3(3.0, 0.0, 0.0),
+		Vector3(2.0, 0.0, 0.0),
+	]
+	actor.call("return_to_workplace", untyped_return_path)
 	_expect(
 		bool(actor.call("is_returning_to_workplace"))
 		and not bool(actor.call("is_in_facility")),

@@ -73,9 +73,6 @@ func advance_minute(
 			if at_staff_housing:
 				energy += 0.0011
 				stress -= 0.0012
-			else:
-				energy += 0.00025
-				stress -= 0.0003
 		_:
 			energy += 0.00025
 			stress -= 0.0003

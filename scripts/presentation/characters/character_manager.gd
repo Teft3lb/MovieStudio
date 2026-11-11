@@ -370,7 +370,6 @@ func _route_employee_to_facility(
 	)
 	if facility_assignment.is_empty():
 		return false
-
 	var workplace_assignment: Dictionary = _workplace_assignments.get(
 		employee_id,
 		{}
@@ -381,29 +380,47 @@ func _route_employee_to_facility(
 	var source_slot_index: int = int(
 		workplace_assignment.get("slot_index", 0)
 	)
+	var facility_building_id: String = str(
+		facility_assignment.get("building_id", "")
+	)
+	var facility_slot_index: int = int(
+		facility_assignment.get("slot_index", 0)
+	)
 	var route: Array[Vector3] = _studio_building_manager.call(
 		"get_facility_path_from",
-		str(facility_assignment.get("building_id", "")),
-		int(facility_assignment.get("slot_index", 0)),
+		facility_building_id,
+		facility_slot_index,
 		actor.global_position,
 		source_building_id,
 		source_slot_index
 	)
 	if route.is_empty():
 		return false
-
 	var action_id: String = (
 		"eating"
 		if facility_type_id == "cafeteria"
 		else "sleeping"
 	)
+	var facing_direction: Vector3 = Vector3.ZERO
+	if (
+		facility_type_id == "cafeteria"
+		and _studio_building_manager.has_method(
+			"get_workplace_facing_direction"
+		)
+	):
+		facing_direction = _studio_building_manager.call(
+			"get_workplace_facing_direction",
+			facility_building_id,
+			facility_slot_index
+		)
 	if not bool(actor.call(
 		"assign_facility_route",
-		str(facility_assignment.get("building_id", "")),
+		facility_building_id,
 		facility_type_id,
-		int(facility_assignment.get("slot_index", 0)),
+		facility_slot_index,
 		route,
-		action_id
+		action_id,
+		facing_direction
 	)):
 		return false
 	if (
@@ -838,7 +855,6 @@ func _refresh_roaming_routes() -> void:
 		or not _studio_building_manager.has_method("get_roaming_route")
 	):
 		return
-
 	for index in range(employees.size()):
 		var employee_id: String = str(employees[index].id)
 		var actor: Node = get_employee_actor(employee_id)
@@ -853,8 +869,12 @@ func _refresh_roaming_routes() -> void:
 			start_position,
 			base_route
 		)
-		if safe_route.size() >= 2:
-			actor.call("set_roaming_route", safe_route)
+		# Never keep the old unsanitized route when a new building blocks it.
+		actor.call("set_roaming_route", safe_route)
+
+
+func refresh_navigation_routes() -> void:
+	_refresh_roaming_routes()
 
 
 func _spawn_initial_roster() -> void:
@@ -1442,7 +1462,20 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			continue
 		if _is_active_production_participant(employee_id):
 			_manual_workplace_dispatches.erase(employee_id)
-			continue
+			var release_for_off_hours: bool = (
+				is_instance_valid(_studio_building_manager)
+				and _studio_building_manager.has_method(
+					"should_release_production_employee_for_off_hours"
+				)
+				and bool(
+					_studio_building_manager.call(
+						"should_release_production_employee_for_off_hours",
+						hour
+					)
+				)
+			)
+			if not release_for_off_hours:
+				continue
 		if _manual_workplace_dispatches.has(employee_id):
 			var manual_assignment: Dictionary = _workplace_assignments.get(
 				employee_id,
@@ -1716,40 +1749,43 @@ func _unhandled_input(event: InputEvent) -> void:
 		and bool(building_manager.call("is_placing_building"))
 	):
 		return
-
 	if not event is InputEventMouseButton:
 		return
-
 	var mouse_event := event as InputEventMouseButton
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
-
-	_select_from_screen(mouse_event.position)
+	if try_select_employee_from_screen(mouse_event.position):
+		get_viewport().set_input_as_handled()
+	else:
+		_select_employee("")
 
 
 func _select_from_screen(screen_position: Vector2) -> void:
+	if not try_select_employee_from_screen(screen_position):
+		_select_employee("")
+
+
+func try_select_employee_from_screen(screen_position: Vector2) -> bool:
 	var camera := get_viewport().get_camera_3d()
 	if camera == null:
-		return
-
+		return false
 	var ray_origin: Vector3 = camera.project_ray_origin(screen_position)
 	var ray_direction: Vector3 = camera.project_ray_normal(screen_position)
 	var ray_end: Vector3 = ray_origin + ray_direction * 250.0
 	var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_end, 2)
 	var hit: Dictionary = get_world_3d().direct_space_state.intersect_ray(query)
-
 	if hit.is_empty():
-		_select_employee("")
-		return
-
+		return false
 	var candidate: Node = hit.get("collider") as Node
 	while candidate != null and not candidate.is_in_group("studio_employee"):
 		candidate = candidate.get_parent()
-
-	if candidate != null:
-		_select_employee(str(candidate.call("get_character_id")))
-	else:
-		_select_employee("")
+	if candidate == null:
+		return false
+	var employee_id: String = str(candidate.call("get_character_id"))
+	if employee_id.is_empty():
+		return false
+	_select_employee(employee_id)
+	return true
 
 
 func _select_employee(employee_id: String) -> void:
@@ -2222,6 +2258,36 @@ func _show_employee_message(message: String) -> void:
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.close_requested.connect(dialog.queue_free)
 	dialog.popup_centered()
+
+func get_employee_workplace_path_from(
+	employee_id: String,
+	start_position: Vector3,
+	source_building_id: String = "",
+	source_slot_index: int = 0
+) -> Array[Vector3]:
+	var result: Array[Vector3] = []
+	if not is_instance_valid(_studio_building_manager):
+		return result
+	var assignment: Dictionary = _workplace_assignments.get(
+		employee_id,
+		{}
+	)
+	if assignment.is_empty():
+		return result
+	var raw_path: Variant = _studio_building_manager.call(
+		"get_workplace_path_from",
+		str(assignment.get("building_id", "")),
+		int(assignment.get("slot_index", 0)),
+		start_position,
+		source_building_id,
+		source_slot_index
+	)
+	if raw_path is Array:
+		for point_value in raw_path:
+			if point_value is Vector3:
+				result.append(point_value)
+	return result
+
 
 func get_employee_workplace_path(employee_id: String) -> Array[Vector3]:
 	var result: Array[Vector3] = []

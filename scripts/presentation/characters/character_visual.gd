@@ -163,44 +163,43 @@ func advance_simulation(simulation_delta: float) -> void:
 
 func _advance_performance_animation() -> void:
 	var motion: float = sin(_animation_phase * 4.0) * 0.25
-	var left_arm: float = -0.18
-	var right_arm: float = -0.18
+	var left_arm: float = 0.18
+	var right_arm: float = 0.18
 	var body_lean: float = 0.0
 	var head_motion: float = sin(_animation_phase * 2.2) * 0.06
-
 	match _performance_action:
 		"speaking":
-			left_arm = -0.28 + motion * 0.9
-			right_arm = -0.72 + sin(_animation_phase * 2.0) * 0.32
+			left_arm = 0.28 - motion * 0.9
+			right_arm = 0.72 - sin(_animation_phase * 2.0) * 0.32
 			body_lean = sin(_animation_phase * 1.4) * 0.045
 			head_motion *= 1.8
 		"reacting":
-			left_arm = -0.96 + motion * 0.45
-			right_arm = -0.96 - motion * 0.45
+			left_arm = 0.96 - motion * 0.45
+			right_arm = 0.96 + motion * 0.45
 			body_lean = sin(_animation_phase * 1.5) * 0.045
 		"dramatic":
-			left_arm = -1.12 + sin(_animation_phase * 1.7) * 0.28
-			right_arm = -1.12 - sin(_animation_phase * 1.7) * 0.28
+			left_arm = 1.12 - sin(_animation_phase * 1.7) * 0.28
+			right_arm = 1.12 + sin(_animation_phase * 1.7) * 0.28
 			body_lean = sin(_animation_phase * 1.3) * 0.09
 		"pointing":
-			left_arm = -0.28 + motion * 0.25
-			right_arm = -1.35 + sin(_animation_phase * 1.4) * 0.18
+			left_arm = 0.28 - motion * 0.25
+			right_arm = 1.35 - sin(_animation_phase * 1.4) * 0.18
 			body_lean = -0.045
 		"greeting":
-			left_arm = -0.18
-			right_arm = -1.35 + sin(_animation_phase * 2.4) * 0.34
+			left_arm = 0.18
+			right_arm = 1.35 - sin(_animation_phase * 2.4) * 0.34
 			body_lean = sin(_animation_phase * 1.2) * 0.025
 		"searching":
-			left_arm = -0.72 + motion * 0.35
-			right_arm = -0.55 - motion * 0.3
+			left_arm = 0.72 - motion * 0.35
+			right_arm = 0.55 + motion * 0.3
 			body_lean = sin(_animation_phase * 1.1) * 0.045
 		"rehearsing":
-			left_arm = -0.28 + motion * 0.75
-			right_arm = -0.48 - motion * 0.75
+			left_arm = 0.28 - motion * 0.75
+			right_arm = 0.48 + motion * 0.75
 			body_lean = sin(_animation_phase * 1.5) * 0.04
 		"waiting":
-			left_arm = -0.12 + motion * 0.12
-			right_arm = -0.12 - motion * 0.12
+			left_arm = 0.12 - motion * 0.12
+			right_arm = 0.12 + motion * 0.12
 			head_motion *= 0.5
 		"eating":
 			var left_reach: float = pow(
@@ -241,8 +240,8 @@ func _advance_performance_animation() -> void:
 			right_arm = 0.96 - sin(_animation_phase * 1.7) * 0.12
 			body_lean = 0.08
 		"directing":
-			left_arm = -0.24 + motion * 0.3
-			right_arm = -0.92 + sin(_animation_phase * 1.8) * 0.32
+			left_arm = 0.24 - motion * 0.3
+			right_arm = 0.92 - sin(_animation_phase * 1.8) * 0.32
 		"operating_camera":
 			left_arm = 0.28 + sin(_animation_phase * 1.7) * 0.10
 			right_arm = 0.38 - sin(_animation_phase * 1.7) * 0.10
@@ -252,15 +251,14 @@ func _advance_performance_animation() -> void:
 			right_arm = 0.48 + sin(_animation_phase * 2.7) * 0.12
 			body_lean = 0.055
 		"reviewing":
-			left_arm = -0.30 + motion * 0.2
-			right_arm = -0.30 - motion * 0.2
+			left_arm = 0.30 - motion * 0.2
+			right_arm = 0.30 + motion * 0.2
 		"coordinating":
-			left_arm = -0.42 + motion * 0.35
-			right_arm = -0.66 - motion * 0.35
+			left_arm = 0.42 - motion * 0.35
+			right_arm = 0.66 + motion * 0.35
 		_:
-			left_arm = -0.22 + motion * 0.3
-			right_arm = -0.22 - motion * 0.3
-
+			left_arm = 0.22 - motion * 0.3
+			right_arm = 0.22 + motion * 0.3
 	_set_arm_pose(left_arm, right_arm)
 	if is_instance_valid(_mouth_node):
 		if _performance_action == "speaking":

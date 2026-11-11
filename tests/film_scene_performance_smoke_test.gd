@@ -72,6 +72,9 @@ class FakeSetInventory extends RefCounted:
 
 class FakeProductionProject extends RefCounted:
 	var scene_setup: Dictionary = {}
+	var status: String = "in_production"
+	var current_phase: String = "preparation"
+	var crew_assignments: Dictionary = {}
 
 	func get_current_scene_setup() -> Dictionary:
 		return scene_setup.duplicate(true)
@@ -85,6 +88,7 @@ class FakeLogisticsCharacterManager extends Node:
 
 
 func _run_tests() -> void:
+	_test_production_shift_window()
 	_test_character_moves_and_performs_scene()
 	_test_off_shift_crew_returns_to_stage()
 	_test_stage_bystander_moves_off_camera_and_returns()
@@ -514,6 +518,69 @@ func _test_set_strike_assigns_every_installed_prop() -> void:
 	character_manager.free()
 
 
+class FakeProductionEmployee extends RefCounted:
+	var id: String = ""
+	var shift_start_hour: int = 8
+	var shift_end_hour: int = 17
+
+	func _init(employee_id: String = "") -> void:
+		id = employee_id
+
+
+class FakeProductionCharacterManager extends Node:
+	var employees: Array = []
+
+	func get_employees() -> Array:
+		return employees
+
+
+func _test_production_shift_window() -> void:
+	var director := FakeProductionEmployee.new("EMP-SHIFT-DIRECTOR")
+	var camera_operator := FakeProductionEmployee.new("EMP-SHIFT-CAMERA")
+	var technician := FakeProductionEmployee.new("EMP-SHIFT-TECH")
+	camera_operator.shift_start_hour = 9
+	camera_operator.shift_end_hour = 18
+	var character_manager := FakeProductionCharacterManager.new()
+	character_manager.employees = [director, camera_operator, technician]
+	var project := FakeProductionProject.new()
+	project.status = "in_production"
+	project.current_phase = "shooting"
+	project.crew_assignments = {
+		"director": director.id,
+		"camera_operator": camera_operator.id,
+		"technician": technician.id,
+	}
+	var manager: Node3D = STUDIO_BUILDING_MANAGER_SCRIPT.new()
+	root.add_child(manager)
+	root.add_child(character_manager)
+	manager.set("_character_manager", character_manager)
+	manager.set("_active_film_project", project)
+	var production_shift: Vector2i = manager.call("get_film_production_shift")
+	_expect(
+		production_shift == Vector2i(9, 17),
+		"Film production must use the shared working window of its required director, camera operator and technician."
+	)
+	_expect(
+		not bool(manager.call("is_film_production_work_hour", 8))
+		and bool(manager.call("is_film_production_work_hour", 9))
+		and bool(manager.call("is_film_production_work_hour", 16))
+		and not bool(manager.call("is_film_production_work_hour", 17)),
+		"Filming must advance only while all required crew members are within their shifts."
+	)
+	_expect(
+		not bool(manager.call("should_release_production_employee_for_off_hours", 16))
+		and bool(manager.call("should_release_production_employee_for_off_hours", 22)),
+		"Cast and crew must be released for rest when a rehearsal or shooting phase reaches off-hours."
+	)
+	project.current_phase = "set_dressing"
+	_expect(
+		not bool(manager.call("should_release_production_employee_for_off_hours", 22)),
+		"Set dressing logistics may finish safely before the next filming phase is paused."
+	)
+	manager.free()
+	character_manager.free()
+
+
 func _test_character_moves_and_performs_scene() -> void:
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 	var rng := RandomNumberGenerator.new()
@@ -607,6 +674,10 @@ func _test_character_moves_and_performs_scene() -> void:
 	_expect(
 		maximum_gesture - minimum_gesture > 0.08,
 		"Actor gestures must visibly change over time during a scene performance."
+	)
+	_expect(
+		left_arm.rotation.x > 0.0,
+		"Speaking gestures must reach forward into the scene instead of swinging behind the actor."
 	)
 	var dialogue_label: Label3D = actor.get_node("SceneDialogue") as Label3D
 	_expect(
