@@ -2420,6 +2420,23 @@ func _advance_film_production(hour: int = -1) -> void:
 			_active_film_project.pause_reason = "Техники снимают декорации и возвращают их на склад."
 		_active_film_project.last_activity_message = _active_film_project.pause_reason
 	if bool(result.get("phase_changed", false)):
+		var next_phase: String = str(_active_film_project.current_phase)
+		if (
+			next_phase in ["rehearsal", "shooting", "review"]
+			and not is_film_production_work_hour(resolved_hour)
+		):
+			_pause_film_scene_for_off_hours()
+			var next_shift: Vector2i = get_film_production_shift()
+			_active_film_project.pause_reason = (
+				"Съёмочная смена завершена. Продолжение в %02d:00."
+				% next_shift.x
+			)
+			_active_film_project.last_activity_message = (
+				_active_film_project.pause_reason
+			)
+			_update_film_stage_slate()
+			_update_film_production_ui()
+			return
 		_apply_film_crew_actions()
 		if str(_active_film_project.current_phase) == "preparation":
 			_refresh_active_scene_set_dressing_if_unstarted()
@@ -4458,23 +4475,9 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 					continue
 			"returning_via_warehouse":
 				if bool(actor.call("is_at_scene_mark")):
-					var return_path: Array[Vector3] = (
-						_character_manager.call(
-							"get_employee_workplace_path_from",
-							worker_id,
-							actor.global_position,
-							warehouse_id,
-							int(task.get("prop_index", 0))
-						)
-					)
-					if return_path.is_empty():
-						_set_logistics_blocked = true
-						push_error(
-							"StudioBuildingManager: cannot route %s from the warehouse back to the stage."
-							% worker_id
-						)
-						return
-					actor.call("return_to_workplace", return_path)
+					# The worker has already travelled from the warehouse to the
+					# stage workstation; this call only closes the scene route.
+					actor.call("return_to_workplace")
 					task["state"] = "returning"
 			"returning":
 				if (
