@@ -2483,6 +2483,15 @@ func _on_start_film_production_pressed() -> void:
 		str(_latest_script.genre_id),
 		technician_count
 	)
+	var production_shift: Vector2i = _get_film_production_shift_for_assignments(
+		crew_assignments,
+		cast_assignments,
+		_film_background_performer_ids
+	)
+	var production_shift_minutes_per_day: int = maxi(
+		(production_shift.y - production_shift.x) * 60,
+		60
+	)
 	var project: Variant = _film_production_system.call(
 		"start_project",
 		_latest_script,
@@ -2495,7 +2504,8 @@ func _on_start_film_production_pressed() -> void:
 		int(_game_clock.current_minute),
 		scene_setups,
 		technician_count,
-		_film_background_performer_ids
+		_film_background_performer_ids,
+		production_shift_minutes_per_day
 	)
 	if project == null:
 		_active_production_technician_ids.clear()
@@ -2522,10 +2532,20 @@ func _on_start_film_production_pressed() -> void:
 	_active_scene_performer_ids.clear()
 	_reset_set_logistics()
 	_last_scene_setup_refresh_key = ""
-	_dispatch_film_crew_to_stage()
-	_apply_film_crew_actions()
-	_sync_film_scene_performance()
-	_sync_film_set_dressing()
+	if is_film_production_work_hour(int(_game_clock.current_hour)):
+		_dispatch_film_crew_to_stage()
+		_apply_film_crew_actions()
+		_sync_film_scene_performance()
+		_sync_film_set_dressing()
+	else:
+		var next_shift: Vector2i = get_film_production_shift()
+		_active_film_project.pause_reason = (
+			"Съёмочная смена завершена. Продолжение в %02d:00."
+			% next_shift.x
+		)
+		_active_film_project.last_activity_message = (
+			_active_film_project.pause_reason
+		)
 	_update_film_stage_slate()
 	_update_film_production_ui()
 
@@ -2594,21 +2614,35 @@ func _dispatch_film_crew_to_stage() -> void:
 
 
 func get_film_production_shift() -> Vector2i:
+	if _active_film_project == null:
+		return Vector2i(
+			DEFAULT_FILM_SHIFT_START_HOUR,
+			DEFAULT_FILM_SHIFT_END_HOUR
+		)
+	return _get_film_production_shift_for_assignments(
+		_active_film_project.crew_assignments,
+		_active_film_project.cast_assignments,
+		_active_film_project.background_performer_ids
+)
+
+
+func _get_film_production_shift_for_assignments(
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary,
+	background_performer_ids: Array[String]
+) -> Vector2i:
 	var start_hour: int = DEFAULT_FILM_SHIFT_START_HOUR
 	var end_hour: int = DEFAULT_FILM_SHIFT_END_HOUR
-	if _active_film_project == null:
-		return Vector2i(start_hour, end_hour)
-
 	var participant_ids: Array[String] = []
-	for employee_id_value in _active_film_project.crew_assignments.values():
+	for employee_id_value in crew_assignments.values():
 		var employee_id: String = str(employee_id_value)
 		if not employee_id.is_empty() and not participant_ids.has(employee_id):
 			participant_ids.append(employee_id)
-	for employee_id_value in _active_film_project.cast_assignments.values():
+	for employee_id_value in cast_assignments.values():
 		var employee_id: String = str(employee_id_value)
 		if not employee_id.is_empty() and not participant_ids.has(employee_id):
 			participant_ids.append(employee_id)
-	for employee_id in _active_film_project.background_performer_ids:
+	for employee_id in background_performer_ids:
 		if not employee_id.is_empty() and not participant_ids.has(employee_id):
 			participant_ids.append(employee_id)
 
@@ -2625,7 +2659,10 @@ func get_film_production_shift() -> Vector2i:
 			start_hour = maxi(start_hour, int(employee.shift_start_hour))
 			end_hour = mini(end_hour, int(employee.shift_end_hour))
 	if end_hour <= start_hour:
-		return Vector2i(DEFAULT_FILM_SHIFT_START_HOUR, DEFAULT_FILM_SHIFT_END_HOUR)
+		return Vector2i(
+			DEFAULT_FILM_SHIFT_START_HOUR,
+			DEFAULT_FILM_SHIFT_END_HOUR
+		)
 	return Vector2i(start_hour, end_hour)
 
 
@@ -2638,10 +2675,20 @@ func should_release_production_employee_for_off_hours(hour: int) -> bool:
 	if (
 		_active_film_project == null
 		or str(_active_film_project.status) != "in_production"
-		or str(_active_film_project.current_phase) not in ["rehearsal", "shooting", "review"]
+		or is_film_production_work_hour(hour)
 	):
 		return false
-	return not is_film_production_work_hour(hour)
+
+	var phase: String = str(_active_film_project.current_phase)
+	if (
+		phase in ["set_dressing", "set_strike"]
+		and not _are_set_logistics_tasks_complete()
+	):
+		if not _set_logistics_worker_ids.is_empty():
+			return false
+		if not _set_logistics_blocked:
+			return false
+	return true
 
 
 func _pause_film_scene_for_off_hours() -> void:
@@ -2679,22 +2726,55 @@ func _advance_film_production(hour: int = -1) -> void:
 	if resolved_hour < 0:
 		resolved_hour = DEFAULT_FILM_SHIFT_START_HOUR
 	var current_phase: String = str(_active_film_project.current_phase)
-	if (
-		current_phase in ["rehearsal", "shooting", "review"]
-		and not is_film_production_work_hour(resolved_hour)
-	):
-		_pause_film_scene_for_off_hours()
-		var shift: Vector2i = get_film_production_shift()
-		_active_film_project.pause_reason = "Съёмочная смена завершена. Продолжение в %02d:00." % shift.x
-		_active_film_project.last_activity_message = _active_film_project.pause_reason
+	if not is_film_production_work_hour(resolved_hour):
+		var logistics_pending: bool = (
+			current_phase in ["set_dressing", "set_strike"]
+			and not _are_set_logistics_tasks_complete()
+		)
+		if logistics_pending:
+			_sync_film_set_dressing()
+			var logistics_complete: bool = _are_set_logistics_tasks_complete()
+			var blocked_without_active_workers: bool = (
+				_set_logistics_blocked
+				and _set_logistics_worker_ids.is_empty()
+			)
+			if logistics_complete or blocked_without_active_workers:
+				_pause_film_scene_for_off_hours()
+				if logistics_complete:
+					_active_film_project.pause_reason = (
+						"Съёмочная смена завершена. Продолжение в %02d:00."
+						% get_film_production_shift().x
+					)
+				else:
+					_active_film_project.pause_reason = (
+						"Смена завершена. Логистика заблокирована; персонал отправлен отдыхать."
+					)
+			else:
+				_active_film_project.pause_reason = (
+					"Смена завершена. Техники завершают логистику декораций; "
+					+ "производственные часы остановлены."
+				)
+		else:
+			_pause_film_scene_for_off_hours()
+			_active_film_project.pause_reason = (
+				"Съёмочная смена завершена. Продолжение в %02d:00."
+				% get_film_production_shift().x
+			)
+		_active_film_project.last_activity_message = (
+			_active_film_project.pause_reason
+		)
 		_update_film_stage_slate()
 		_update_film_production_ui()
 		return
+
 	if _film_phase_actions_pending:
 		_apply_film_crew_actions()
 		_film_phase_actions_pending = false
 		_active_film_project.pause_reason = ""
 		_active_film_project.last_activity_message = "Съёмочная смена возобновлена."
+	elif not str(_active_film_project.pause_reason).is_empty():
+		_active_film_project.last_activity_message = "Съёмочная смена возобновлена."
+	_active_film_project.pause_reason = ""
 	_dispatch_film_crew_to_stage()
 	var cast_ready: bool = _sync_film_scene_performance()
 	_sync_film_set_dressing()
@@ -4148,6 +4228,18 @@ func _on_create_film_editing_project_pressed() -> void:
 	var editor: Variant = _find_employee(_film_editing_editor_id)
 	if editor == null:
 		return
+	var editor_shift_hours: int = maxi(
+		int(editor.shift_end_hour) - int(editor.shift_start_hour),
+		1
+	)
+	var editor_break_hours: int = maxi(
+		int(editor.break_end_hour) - int(editor.break_start_hour),
+		0
+	)
+	var editor_work_minutes_per_day: int = maxi(
+		(editor_shift_hours - editor_break_hours) * 60,
+		60
+	)
 	var project_id: String = "EDIT-%04d" % _next_film_editing_sequence
 	var project: Variant = _film_editing_system.call(
 		"create_project",
@@ -4157,7 +4249,8 @@ func _on_create_film_editing_project_pressed() -> void:
 		project_id,
 		int(_game_clock.current_day),
 		int(_game_clock.current_hour),
-		int(_game_clock.current_minute)
+		int(_game_clock.current_minute),
+		editor_work_minutes_per_day
 	)
 	if project == null:
 		return
@@ -4231,11 +4324,12 @@ func _update_film_editing_ui() -> void:
 		)
 		_film_editing_detail_label.text = (
 			"Фильм: %s\nИсходное качество материала: %d/100\n"
-			+ "Монтажёр: %s\nОриентировочное время: %d игровых минут"
+			+ "Монтажёр: %s\nОриентировочное время: %.1f рабочих дней (%d игровых минут)"
 		) % [
 			str(project.film_title),
 			int(project.source_quality),
 			editor_name,
+			float(project.get_estimated_work_days()),
 			int(project.estimated_total_minutes),
 		]
 	elif str(project.status) == "in_editing":
@@ -4250,14 +4344,15 @@ func _update_film_editing_ui() -> void:
 		)
 		_film_editing_detail_label.text = (
 			"Фильм: %s\nЭтап: %s\nПрогресс этапа: %d / %d мин\n"
-			+ "Прошло: %d мин · Осталось примерно: %d мин\n%s"
+			+ "Прошло: %.1f / %.1f рабочих дней · Осталось: ~%.1f рабочих дней\n%s"
 		) % [
 			str(project.film_title),
 			project.get_phase_title(),
 			int(project.phase_minutes_elapsed),
 			int(project.phase_duration_minutes),
-			int(project.total_elapsed_minutes),
-			int(project.get_remaining_work_minutes()),
+			float(project.get_elapsed_work_days()),
+			float(project.get_estimated_work_days()),
+			float(project.get_remaining_work_days()),
 			str(project.last_activity_message),
 		]
 	else:
@@ -4266,14 +4361,14 @@ func _update_film_editing_ui() -> void:
 			"Фильм: %s\nИтоговое качество: %d/100\n"
 			+ "Качество исходного материала: %d/100\n"
 			+ "Навык монтажёра: %d/100\nСвязность таймлайна: %d/100\n"
-			+ "Затрачено: %d игровых минут\nФильм готов к выпуску."
+			+ "Затрачено: %.1f рабочих дней\nФильм готов к выпуску."
 		) % [
 			str(project.film_title),
 			int(project.final_quality),
 			int(project.source_quality),
 			roundi(float(project.editor_skill)),
 			int(project.continuity_score),
-			int(project.total_elapsed_minutes),
+			float(project.get_elapsed_work_days()),
 		]
 
 
@@ -4335,7 +4430,7 @@ func _update_film_production_ui() -> void:
 			_film_production_detail_label.text = (
 				"Сценарий и команда назначены. Нажми «НАЧАТЬ СЪЁМКИ»: "
 				+ "группа сама соберётся на площадке, а фильм пройдёт сцены "
-				+ "без остановок на обед и конец смены."
+				+ "по общей рабочей смене, с паузами на ночь."
 			)
 		else:
 			_film_production_status_label.text = "НЕ ХВАТАЕТ КОМАНДЫ"
@@ -4430,7 +4525,7 @@ func _update_film_production_ui() -> void:
 			+ "Декорации: %s · реквизит %s\n%s\n"
 			+ "%s\n%s\n"
 			+ "Событие: %s\n"
-			+ "Этап: %d / %d мин · Всего прошло: %d мин · Осталось примерно: %d мин\n"
+			+ "Этап: %d / %d мин · Прошло: %.1f / %.1f рабочих дней · Осталось: ~%.1f рабочих дней\n"
 			+ "Пересъёмок текущей сцены: %d"
 		) % [
 			str(project.film_title),
@@ -4445,8 +4540,9 @@ func _update_film_production_ui() -> void:
 			str(project.last_activity_message),
 			int(project.phase_minutes_elapsed),
 			int(project.phase_duration_minutes),
-			int(project.total_elapsed_minutes),
-			int(project.get_remaining_work_minutes()),
+			float(project.get_elapsed_work_days()),
+			float(project.get_estimated_work_days()),
+			float(project.get_remaining_work_days()),
 			int(project.current_scene_retakes),
 		]
 		if is_instance_valid(_film_production_start_button):
@@ -4461,6 +4557,7 @@ func _update_film_production_ui() -> void:
 				int(project.total_scene_count),
 			],
 			"Сценарный потенциал: %d / 100" % int(project.script_potential_score),
+			"Съёмочный период: %.1f рабочих дней" % float(project.get_elapsed_work_days()),
 			"Следующий этап: монтаж в монтажном отделе.",
 			"Результаты сцен:",
 		]

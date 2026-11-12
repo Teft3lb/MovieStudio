@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmProductionProject
 
-const SCHEMA_VERSION: int = 4
+const SCHEMA_VERSION: int = 5
 
 var id: String = ""
 var script_id: String = ""
@@ -21,6 +21,8 @@ var phase_duration_minutes: int = 0
 var total_elapsed_minutes: int = 0
 var current_scene_elapsed_minutes: int = 0
 var estimated_total_minutes: int = 0
+var production_shift_minutes_per_day: int = 540
+var phase_duration_multiplier: float = 1.0
 var current_scene_retakes: int = 0
 var current_scene_quality: float = 0.0
 var technician_count: int = 1
@@ -65,6 +67,18 @@ func get_phase_progress_percent() -> float:
 
 func get_remaining_work_minutes() -> int:
 	return maxi(estimated_total_minutes - total_elapsed_minutes, 0)
+
+
+func get_estimated_work_days() -> float:
+	return float(estimated_total_minutes) / float(maxi(production_shift_minutes_per_day, 1))
+
+
+func get_elapsed_work_days() -> float:
+	return float(total_elapsed_minutes) / float(maxi(production_shift_minutes_per_day, 1))
+
+
+func get_remaining_work_days() -> float:
+	return float(get_remaining_work_minutes()) / float(maxi(production_shift_minutes_per_day, 1))
 
 
 func get_phase_title() -> String:
@@ -128,6 +142,8 @@ func to_dict() -> Dictionary:
 		"total_elapsed_minutes": total_elapsed_minutes,
 		"current_scene_elapsed_minutes": current_scene_elapsed_minutes,
 		"estimated_total_minutes": estimated_total_minutes,
+		"production_shift_minutes_per_day": production_shift_minutes_per_day,
+		"phase_duration_multiplier": phase_duration_multiplier,
 		"current_scene_retakes": current_scene_retakes,
 		"current_scene_quality": current_scene_quality,
 		"technician_count": technician_count,
@@ -200,6 +216,16 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.estimated_total_minutes = maxi(
 		int(payload.get("estimated_total_minutes", 0)),
 		0
+	)
+	result.production_shift_minutes_per_day = clampi(
+		int(payload.get("production_shift_minutes_per_day", 540)),
+		60,
+		1440
+	)
+	result.phase_duration_multiplier = clampf(
+		float(payload.get("phase_duration_multiplier", 1.0)),
+		1.0,
+		60.0
 	)
 	result.current_scene_retakes = clampi(
 		int(payload.get("current_scene_retakes", 0)),

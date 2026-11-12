@@ -75,6 +75,8 @@ class FakeProductionProject extends RefCounted:
 	var status: String = "in_production"
 	var current_phase: String = "preparation"
 	var crew_assignments: Dictionary = {}
+	var cast_assignments: Dictionary = {}
+	var background_performer_ids: Array[String] = []
 
 	func get_current_scene_setup() -> Dictionary:
 		return scene_setup.duplicate(true)
@@ -560,6 +562,18 @@ func _test_production_shift_window() -> void:
 		production_shift == Vector2i(9, 17),
 		"Film production must use the shared working window of its required director, camera operator and technician."
 	)
+	var no_cast_assignments: Dictionary = {}
+	var no_background_ids: Array[String] = []
+	var assigned_shift: Vector2i = manager.call(
+		"_get_film_production_shift_for_assignments",
+		project.crew_assignments,
+		no_cast_assignments,
+		no_background_ids
+	)
+	_expect(
+		(assigned_shift.y - assigned_shift.x) * 60 == 480,
+		"Feature duration must use the actual eight-hour overlap of the assigned crew."
+	)
 	_expect(
 		not bool(manager.call("is_film_production_work_hour", 8))
 		and bool(manager.call("is_film_production_work_hour", 9))
@@ -573,9 +587,26 @@ func _test_production_shift_window() -> void:
 		"Cast and crew must be released for rest when a rehearsal or shooting phase reaches off-hours."
 	)
 	project.current_phase = "set_dressing"
+	var pending_prop_ids: Array[String] = ["lighthouse_console"]
+	var active_logistics_workers: Array[String] = [technician.id]
+	manager.set("_set_logistics_pending_prop_ids", pending_prop_ids)
+	manager.set("_set_logistics_worker_ids", active_logistics_workers)
 	_expect(
 		not bool(manager.call("should_release_production_employee_for_off_hours", 22)),
-		"Set dressing logistics may finish safely before the next filming phase is paused."
+		"Staff must remain available while technicians finish an in-progress prop delivery or return."
+	)
+	var no_pending_prop_ids: Array[String] = []
+	var no_logistics_workers: Array[String] = []
+	manager.set("_set_logistics_pending_prop_ids", no_pending_prop_ids)
+	manager.set("_set_logistics_worker_ids", no_logistics_workers)
+	_expect(
+		bool(manager.call("should_release_production_employee_for_off_hours", 22)),
+		"Once set logistics are complete, production participants must be released for off-duty recovery."
+	)
+	manager.set("_set_logistics_blocked", true)
+	_expect(
+		bool(manager.call("should_release_production_employee_for_off_hours", 22)),
+		"A blocked logistics setup with no worker carrying props must not keep the whole team at the stage overnight."
 	)
 	manager.free()
 	character_manager.free()

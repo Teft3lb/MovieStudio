@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmEditingProject
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 
 var id: String = ""
 var production_project_id: String = ""
@@ -15,6 +15,8 @@ var phase_minutes_elapsed: int = 0
 var phase_duration_minutes: int = 0
 var total_elapsed_minutes: int = 0
 var estimated_total_minutes: int = 0
+var work_minutes_per_day: int = 480
+var phase_duration_multiplier: float = 1.0
 
 var editor_id: String = ""
 var editor_skill: float = 0.0
@@ -46,6 +48,18 @@ func get_progress_percent() -> float:
 
 func get_remaining_work_minutes() -> int:
 	return maxi(estimated_total_minutes - total_elapsed_minutes, 0)
+
+
+func get_estimated_work_days() -> float:
+	return float(estimated_total_minutes) / float(maxi(work_minutes_per_day, 1))
+
+
+func get_elapsed_work_days() -> float:
+	return float(total_elapsed_minutes) / float(maxi(work_minutes_per_day, 1))
+
+
+func get_remaining_work_days() -> float:
+	return float(get_remaining_work_minutes()) / float(maxi(work_minutes_per_day, 1))
 
 
 func get_phase_title() -> String:
@@ -90,6 +104,8 @@ func to_dict() -> Dictionary:
 		"phase_duration_minutes": phase_duration_minutes,
 		"total_elapsed_minutes": total_elapsed_minutes,
 		"estimated_total_minutes": estimated_total_minutes,
+		"work_minutes_per_day": work_minutes_per_day,
+		"phase_duration_multiplier": phase_duration_multiplier,
 		"editor_id": editor_id,
 		"editor_skill": editor_skill,
 		"source_quality": source_quality,
@@ -120,6 +136,16 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.phase_duration_minutes = maxi(int(payload.get("phase_duration_minutes", 0)), 0)
 	result.total_elapsed_minutes = maxi(int(payload.get("total_elapsed_minutes", 0)), 0)
 	result.estimated_total_minutes = maxi(int(payload.get("estimated_total_minutes", 0)), 0)
+	result.work_minutes_per_day = clampi(
+		int(payload.get("work_minutes_per_day", 480)),
+		60,
+		1440
+	)
+	result.phase_duration_multiplier = clampf(
+		float(payload.get("phase_duration_multiplier", 1.0)),
+		1.0,
+		60.0
+	)
 	result.editor_id = str(payload.get("editor_id", ""))
 	result.editor_skill = clampf(float(payload.get("editor_skill", 0.0)), 0.0, 100.0)
 	result.source_quality = clampi(int(payload.get("source_quality", 0)), 0, 100)

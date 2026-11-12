@@ -22,6 +22,12 @@ const RETAKE_MINUTES_PER_ACTOR: int = 1
 const RETAKE_QUALITY_THRESHOLD: float = 58.0
 const MAX_RETAKES_PER_SCENE: int = 2
 
+const FEATURE_MIN_SCENE_COUNT: int = 8
+const FEATURE_REFERENCE_WORK_DAYS_AT_EIGHT_SCENES: float = 8.0
+const FEATURE_REFERENCE_WORK_DAYS_AT_TWELVE_SCENES: float = 15.0
+const FEATURE_EXTRA_SCENE_WORK_DAYS: float = 1.25
+const DEFAULT_PRODUCTION_SHIFT_MINUTES_PER_DAY: int = 540
+
 var _rng: RandomNumberGenerator
 
 
@@ -53,7 +59,8 @@ func start_project(
 	current_minute: int,
 	scene_setups: Array = [],
 	technician_count: int = 1,
-	background_performer_ids: Array[String] = []
+	background_performer_ids: Array[String] = [],
+	production_shift_minutes_per_day: int = DEFAULT_PRODUCTION_SHIFT_MINUTES_PER_DAY
 ) -> Variant:
 	if not can_start_project(script, crew_assignments, cast_assignments):
 		return null
@@ -85,17 +92,34 @@ func start_project(
 		scene_setups
 	)
 	project.technician_count = clampi(technician_count, 1, 8)
+	project.production_shift_minutes_per_day = clampi(
+		production_shift_minutes_per_day,
+		60,
+		1440
+	)
+	project.phase_duration_multiplier = _get_production_time_multiplier(
+		script,
+		cast_assignments,
+		project.scene_setups,
+		int(project.technician_count),
+		project.background_performer_ids,
+		int(project.production_shift_minutes_per_day)
+	)
 	project.seed = seed
 	project.started_day = maxi(current_day, 1)
 	project.started_hour = clampi(current_hour, 0, 23)
 	project.started_minute = clampi(current_minute, 0, 59)
-	project.phase_duration_minutes = PREPARATION_MINUTES
+	project.phase_duration_minutes = _scale_duration(
+		PREPARATION_MINUTES,
+		float(project.phase_duration_multiplier)
+	)
 	project.estimated_total_minutes = _estimate_total_minutes(
 		script,
 		cast_assignments,
 		project.scene_setups,
 		int(project.technician_count),
-		project.background_performer_ids
+		project.background_performer_ids,
+		float(project.phase_duration_multiplier)
 	)
 	project.last_activity_message = "Съёмочная группа собирается на площадке."
 	_rng.seed = seed
@@ -148,23 +172,32 @@ func refresh_current_scene_setup(
 		return {}
 	var refreshed_setup: Dictionary = normalized_setups[0]
 	var previous_setup: Dictionary = project.get_current_scene_setup()
-	var previous_duration: int = clampi(
-		int(previous_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
-		SET_DRESSING_BASE_MINUTES,
-		10
+	var time_multiplier: float = float(project.phase_duration_multiplier)
+	var previous_duration: int = _scale_duration(
+		clampi(
+			int(previous_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+			SET_DRESSING_BASE_MINUTES,
+			10
+		),
+		time_multiplier
 	)
-	var refreshed_duration: int = clampi(
-		int(refreshed_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
-		SET_DRESSING_BASE_MINUTES,
-		10
+	var refreshed_duration: int = _scale_duration(
+		clampi(
+			int(refreshed_setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+			SET_DRESSING_BASE_MINUTES,
+			10
+		),
+		time_multiplier
 	)
 	var previous_strike_duration: int = _get_set_strike_duration(
 		previous_setup.get("prop_ids", []).size(),
-		int(project.technician_count)
+		int(project.technician_count),
+		time_multiplier
 	)
 	var refreshed_strike_duration: int = _get_set_strike_duration(
 		refreshed_setup.get("prop_ids", []).size(),
-		int(project.technician_count)
+		int(project.technician_count),
+		time_multiplier
 	)
 	project.scene_setups[scene_index] = refreshed_setup.duplicate(true)
 	if current_phase == "set_dressing":
@@ -239,7 +272,11 @@ func advance_minute(
 				SET_DRESSING_BASE_MINUTES,
 				10
 			)
-			_set_phase(project, "set_dressing", setup_duration)
+			_set_phase(
+				project,
+				"set_dressing",
+				_scale_duration(setup_duration, float(project.phase_duration_multiplier))
+			)
 			project.last_activity_message = (
 				"Техник собирает декорации: %s."
 				% str(setup.get("set_title", "Нейтральная площадка"))
@@ -249,7 +286,11 @@ func advance_minute(
 			_set_phase(
 				project,
 				"rehearsal",
-				_get_phase_duration("rehearsal", active_actor_count)
+				_get_phase_duration(
+					"rehearsal",
+					active_actor_count,
+				float(project.phase_duration_multiplier)
+				)
 			)
 			project.last_activity_message = "Декорации готовы. Актёры репетируют сцену."
 			return _phase_change_result()
@@ -257,12 +298,20 @@ func advance_minute(
 			_set_phase(
 				project,
 				"shooting",
-				_get_phase_duration("shooting", active_actor_count)
+				_get_phase_duration(
+					"shooting",
+					active_actor_count,
+				float(project.phase_duration_multiplier)
+				)
 			)
 			project.last_activity_message = "Камера включена. Идёт съёмка дубля."
 			return _phase_change_result()
 		"shooting":
-			_set_phase(project, "review", REVIEW_MINUTES)
+			_set_phase(
+				project,
+				"review",
+				_scale_duration(REVIEW_MINUTES, float(project.phase_duration_multiplier))
+			)
 			project.last_activity_message = "Дубль снят. Режиссёр просматривает материал."
 			return _phase_change_result()
 		"review":
@@ -277,10 +326,15 @@ func advance_minute(
 				project.current_scene_retakes += 1
 				var retake_duration: int = _get_phase_duration(
 					"retake",
-					active_actor_count
+					active_actor_count,
+					float(project.phase_duration_multiplier)
 				)
 				project.estimated_total_minutes += (
-					retake_duration + REVIEW_MINUTES
+					retake_duration
+					+ _scale_duration(
+						REVIEW_MINUTES,
+						float(project.phase_duration_multiplier)
+					)
 				)
 				_set_phase(project, "shooting", retake_duration)
 				project.last_activity_message = (
@@ -301,7 +355,8 @@ func advance_minute(
 				"set_strike",
 				_get_set_strike_duration(
 					setup.get("prop_ids", []).size(),
-					int(project.technician_count)
+					int(project.technician_count),
+					float(project.phase_duration_multiplier)
 				)
 			)
 			project.last_activity_message = (
@@ -329,7 +384,14 @@ func advance_minute(
 			project.current_scene_retakes = 0
 			project.current_scene_quality = 0.0
 			project.current_scene_elapsed_minutes = 0
-			_set_phase(project, "preparation", PREPARATION_MINUTES)
+			_set_phase(
+				project,
+				"preparation",
+				_scale_duration(
+					PREPARATION_MINUTES,
+					float(project.phase_duration_multiplier)
+				)
+			)
 			project.last_activity_message = (
 				"Реквизит убран. Подготовка следующей сцены."
 			)
@@ -527,7 +589,8 @@ func _estimate_total_minutes(
 	cast_assignments: Dictionary,
 	scene_setups: Array,
 	technician_count: int,
-	background_performer_ids: Array[String] = []
+	background_performer_ids: Array[String] = [],
+	time_multiplier: float = 1.0
 ) -> int:
 	var total: int = 0
 	for scene_index in range(script.scenes.size()):
@@ -539,18 +602,34 @@ func _estimate_total_minutes(
 			background_performer_ids
 		)
 		var setup: Dictionary = scene_setups[scene_index]
-		total += _get_phase_duration("preparation", performer_count)
-		total += clampi(
-			int(setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
-			SET_DRESSING_BASE_MINUTES,
-			10
+		total += _get_phase_duration(
+			"preparation",
+			performer_count,
+			time_multiplier
 		)
-		total += _get_phase_duration("rehearsal", performer_count)
-		total += _get_phase_duration("shooting", performer_count)
-		total += REVIEW_MINUTES
+		total += _scale_duration(
+			clampi(
+				int(setup.get("setup_minutes", SET_DRESSING_BASE_MINUTES)),
+				SET_DRESSING_BASE_MINUTES,
+				10
+			),
+			time_multiplier
+		)
+		total += _get_phase_duration(
+			"rehearsal",
+			performer_count,
+			time_multiplier
+		)
+		total += _get_phase_duration(
+			"shooting",
+			performer_count,
+			time_multiplier
+		)
+		total += _scale_duration(REVIEW_MINUTES, time_multiplier)
 		total += _get_set_strike_duration(
 			setup.get("prop_ids", []).size(),
-			technician_count
+			technician_count,
+			time_multiplier
 		)
 	return maxi(total, 1)
 
@@ -589,39 +668,45 @@ func _get_scene_performer_count(
 
 func _get_set_strike_duration(
 	prop_count: int,
-	technician_count: int
+	technician_count: int,
+	time_multiplier: float = 1.0
 ) -> int:
 	var effective_technician_count: int = clampi(technician_count, 1, 8)
-	return clampi(
+	var base_duration: int = clampi(
 		SET_STRIKE_BASE_MINUTES + ceili(
 			float(maxi(prop_count, 0)) / float(effective_technician_count)
 		),
 		SET_STRIKE_BASE_MINUTES,
 		10
 	)
+	return _scale_duration(base_duration, time_multiplier)
 
 
-func _get_phase_duration(phase: String, actor_count: int) -> int:
+func _get_phase_duration(
+	phase: String,
+	actor_count: int,
+	time_multiplier: float = 1.0
+) -> int:
 	var normalized_actor_count: int = clampi(actor_count, 1, 8)
+	var base_duration: int = REVIEW_MINUTES
 	match phase:
 		"preparation":
-			return PREPARATION_MINUTES
+			base_duration = PREPARATION_MINUTES
 		"set_dressing":
-			return SET_DRESSING_BASE_MINUTES
+			base_duration = SET_DRESSING_BASE_MINUTES
 		"rehearsal":
-			return REHEARSAL_BASE_MINUTES + (
+			base_duration = REHEARSAL_BASE_MINUTES + (
 				normalized_actor_count * REHEARSAL_MINUTES_PER_ACTOR
 			)
 		"shooting":
-			return SHOOTING_BASE_MINUTES + (
+			base_duration = SHOOTING_BASE_MINUTES + (
 				normalized_actor_count * SHOOTING_MINUTES_PER_ACTOR
 			)
 		"retake":
-			return RETAKE_BASE_MINUTES + (
+			base_duration = RETAKE_BASE_MINUTES + (
 				normalized_actor_count * RETAKE_MINUTES_PER_ACTOR
 			)
-		_:
-			return REVIEW_MINUTES
+	return _scale_duration(base_duration, time_multiplier)
 
 
 func _calculate_scene_quality(
@@ -766,3 +851,106 @@ func _phase_change_result() -> Dictionary:
 		"completed": false,
 		"retake_required": false,
 	}
+
+
+
+func _get_production_time_multiplier(
+	script: Variant,
+	cast_assignments: Dictionary,
+	scene_setups: Array,
+	technician_count: int,
+	background_performer_ids: Array[String],
+	shift_minutes_per_day: int
+) -> float:
+	var scene_count: int = script.scenes.size()
+	if scene_count < FEATURE_MIN_SCENE_COUNT:
+		return 1.0
+
+	var target_work_days: float = _get_target_feature_work_days(scene_count)
+	var complexity_factor: float = _get_production_complexity_factor(
+		script,
+		cast_assignments,
+		scene_setups,
+		technician_count,
+		background_performer_ids
+	)
+	var target_work_minutes: float = (
+		target_work_days
+		* float(maxi(shift_minutes_per_day, 60))
+		* complexity_factor
+	)
+	var unscaled_estimate: int = _estimate_total_minutes(
+		script,
+		cast_assignments,
+		scene_setups,
+		technician_count,
+		background_performer_ids,
+		1.0
+	)
+	if unscaled_estimate <= 0:
+		return 1.0
+	return clampf(
+		target_work_minutes / float(unscaled_estimate),
+		1.0,
+		60.0
+	)
+
+
+func _get_target_feature_work_days(scene_count: int) -> float:
+	var normalized_count: int = maxi(scene_count, FEATURE_MIN_SCENE_COUNT)
+	if normalized_count <= 12:
+		return lerpf(
+			FEATURE_REFERENCE_WORK_DAYS_AT_EIGHT_SCENES,
+			FEATURE_REFERENCE_WORK_DAYS_AT_TWELVE_SCENES,
+			float(normalized_count - 8) / 4.0
+		)
+	return minf(
+		FEATURE_REFERENCE_WORK_DAYS_AT_TWELVE_SCENES
+		+ float(normalized_count - 12) * FEATURE_EXTRA_SCENE_WORK_DAYS,
+		25.0
+	)
+
+
+func _get_production_complexity_factor(
+	script: Variant,
+	cast_assignments: Dictionary,
+	scene_setups: Array,
+	technician_count: int,
+	background_performer_ids: Array[String]
+) -> float:
+	var scene_count: int = maxi(script.scenes.size(), 1)
+	var total_performers: float = 0.0
+	var total_props: float = 0.0
+	for scene_index in range(script.scenes.size()):
+		total_performers += float(_get_scene_performer_count(
+			script,
+			script.scenes[scene_index],
+			cast_assignments,
+			background_performer_ids
+		))
+		if scene_index < scene_setups.size():
+			var setup: Dictionary = scene_setups[scene_index]
+			total_props += float(setup.get("prop_ids", []).size())
+
+	var average_performers: float = total_performers / float(scene_count)
+	var average_props: float = total_props / float(scene_count)
+	var cast_factor: float = maxf(average_performers - 2.0, 0.0) * 0.04
+	var set_factor: float = maxf(average_props - 3.0, 0.0) * 0.025
+	var technician_efficiency: float = (
+		float(maxi(technician_count - 1, 0)) * 0.02
+	)
+	return clampf(
+		1.0 + cast_factor + set_factor - technician_efficiency,
+		0.85,
+		1.5
+	)
+
+
+func _scale_duration(base_duration: int, time_multiplier: float) -> int:
+	return maxi(
+		ceili(
+			float(maxi(base_duration, 1))
+			* clampf(time_multiplier, 1.0, 60.0)
+		),
+		1
+	)

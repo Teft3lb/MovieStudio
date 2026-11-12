@@ -37,7 +37,88 @@ func _run_tests() -> void:
 	_test_timeline_editing(system, project)
 	_test_serialization(project)
 	_test_editing_progress(system, project)
+	_test_feature_editing_pacing(system)
 	_finish_test("FilmEditingSystemSmokeTest")
+
+
+func _test_feature_editing_pacing(system: RefCounted) -> void:
+	var production: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.new()
+	production.id = "FILM-EDIT-FEATURE"
+	production.film_title = "Долгая дорога домой"
+	production.genre_id = "drama"
+	production.genre_title = "Драма"
+	production.status = "completed"
+	production.total_scene_count = 10
+	production.completed_scene_count = 10
+	production.final_quality = 84
+	for scene_index in range(10):
+		production.scene_results.append({
+			"scene_id": "SCN-EDIT-FEATURE-%02d" % (scene_index + 1),
+			"scene_number": scene_index + 1,
+			"beat": "Сцена %d" % (scene_index + 1),
+			"location": "Павильон",
+			"quality": 84,
+			"retakes": 0,
+		})
+
+	var lower_skill_project: Variant = system.call(
+		"create_project",
+		production,
+		"EMP-EDITOR-LOW",
+		20.0,
+		"EDIT-FEATURE-LOW",
+		1,
+		9,
+		30,
+		480
+	)
+	var higher_skill_project: Variant = system.call(
+		"create_project",
+		production,
+		"EMP-EDITOR-HIGH",
+		90.0,
+		"EDIT-FEATURE-HIGH",
+		1,
+		9,
+		30,
+		480
+	)
+	_expect(
+		lower_skill_project != null
+		and higher_skill_project != null
+		and float(lower_skill_project.get_estimated_work_days()) > 2.5
+		and float(lower_skill_project.get_estimated_work_days()) < 3.5,
+		"A ten-scene feature must require roughly three editor workdays before skill modifiers."
+	)
+	_expect(
+		lower_skill_project != null
+		and higher_skill_project != null
+		and float(higher_skill_project.get_estimated_work_days())
+		< float(lower_skill_project.get_estimated_work_days()),
+		"A more skilled editor must finish the same feature faster."
+	)
+	if higher_skill_project == null:
+		return
+	_expect(
+		bool(system.call("start_editing", higher_skill_project))
+		and int(higher_skill_project.phase_duration_minutes)
+		> 18 + 10 * 3,
+		"Feature editing phases must use the scaled multi-day schedule."
+	)
+	var restored: Variant = FILM_EDITING_PROJECT_SCRIPT.from_dict(
+		higher_skill_project.to_dict()
+	)
+	_expect(
+		is_equal_approx(
+			float(restored.phase_duration_multiplier),
+			float(higher_skill_project.phase_duration_multiplier)
+		)
+		and is_equal_approx(
+			float(restored.get_estimated_work_days()),
+			float(higher_skill_project.get_estimated_work_days())
+		),
+		"Editor pacing, workday length and skill snapshot must survive serialization."
+	)
 
 
 func _create_completed_production() -> Variant:
@@ -154,6 +235,18 @@ func _test_serialization(project: Variant) -> void:
 	_expect(
 		recovered.timeline_order == [0, 1, 2],
 		"Malformed timeline data must recover to the original scene order."
+	)
+	var legacy_payload: Dictionary = payload.duplicate(true)
+	legacy_payload["schema_version"] = 1
+	legacy_payload.erase("work_minutes_per_day")
+	legacy_payload.erase("phase_duration_multiplier")
+	var legacy_restored: Variant = FILM_EDITING_PROJECT_SCRIPT.from_dict(
+		legacy_payload
+	)
+	_expect(
+		int(legacy_restored.work_minutes_per_day) == 480
+		and is_equal_approx(float(legacy_restored.phase_duration_multiplier), 1.0),
+		"Legacy editing projects must retain compact phase timings and receive safe workday defaults."
 	)
 
 

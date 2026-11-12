@@ -48,6 +48,7 @@ func _run_tests() -> void:
 		"A complete script, cast and crew must be startable without waiting for a shift change."
 	)
 	_test_quick_production_pacing(script, crew_assignments, cast_assignments)
+	_test_feature_film_pacing(crew_assignments, cast_assignments)
 	_test_multiple_technicians_reduce_logistics_time(
 		script,
 		crew_assignments,
@@ -102,6 +103,102 @@ func _run_tests() -> void:
 	)
 
 	_finish_test("FilmProductionSystemSmokeTest")
+
+
+func _test_feature_film_pacing(
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary
+) -> void:
+	var system: RefCounted = FILM_PRODUCTION_SYSTEM_SCRIPT.new()
+	var no_background_ids: Array[String] = []
+	for scene_count_value in [8, 10, 12]:
+		var scene_count: int = int(scene_count_value)
+		var script: Variant = _create_script()
+		var template_scene: Dictionary = script.scenes[0].duplicate(true)
+		script.scenes.clear()
+		for scene_index in range(scene_count):
+			var scene: Dictionary = template_scene.duplicate(true)
+			scene["scene_id"] = "SCN-FEATURE-%02d" % (scene_index + 1)
+			scene["scene_number"] = scene_index + 1
+			script.scenes.append(scene)
+		script.scene_count = scene_count
+		var project: Variant = system.call(
+			"start_project",
+			script,
+			crew_assignments,
+			cast_assignments,
+			"FILM-FEATURE-%02d" % scene_count,
+			771100 + scene_count,
+			1,
+			8,
+			0,
+			[],
+			1,
+			no_background_ids,
+			480
+		)
+		var expected_work_days: float = 8.0 + float(scene_count - 8) * 1.75
+		_expect(
+			project != null
+			and int(project.production_shift_minutes_per_day) == 480
+			and absf(
+				float(project.get_estimated_work_days()) - expected_work_days
+			) < 0.1,
+			"%d-scene features must target %.1f shared-shift working days." % [
+				scene_count,
+				expected_work_days,
+			]
+		)
+		_expect(
+			project != null and float(project.phase_duration_multiplier) > 1.0,
+			"Feature-length scripts must scale every production phase above the short-project baseline."
+		)
+		if project != null:
+			var restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(
+				project.to_dict()
+			)
+			_expect(
+				is_equal_approx(
+					float(restored.phase_duration_multiplier),
+					float(project.phase_duration_multiplier)
+				)
+				and is_equal_approx(
+					float(restored.get_estimated_work_days()),
+					float(project.get_estimated_work_days())
+				),
+				"Feature pacing and the shared workday length must survive project serialization."
+			)
+
+	var complex_script: Variant = _create_script()
+	var template: Dictionary = complex_script.scenes[0].duplicate(true)
+	complex_script.scenes.clear()
+	for scene_index in range(8):
+		var scene: Dictionary = template.duplicate(true)
+		scene["scene_id"] = "SCN-COMPLEX-%02d" % (scene_index + 1)
+		scene["scene_number"] = scene_index + 1
+		complex_script.scenes.append(scene)
+	complex_script.scene_count = 8
+	var background_ids: Array[String] = ["EMP-EXTRA-01"]
+	var complex_project: Variant = system.call(
+		"start_project",
+		complex_script,
+		crew_assignments,
+		cast_assignments,
+		"FILM-COMPLEX-FEATURE",
+		771108,
+		1,
+		8,
+		0,
+		[],
+		1,
+		background_ids,
+		480
+	)
+	_expect(
+		complex_project != null
+		and float(complex_project.get_estimated_work_days()) > 8.0,
+		"Additional performers must increase feature shooting time through scene complexity."
+	)
 
 
 func _test_background_performers(
@@ -767,12 +864,16 @@ func _test_project_serialization(project: Variant) -> void:
 	)
 	var legacy_payload: Dictionary = payload.duplicate(true)
 	legacy_payload.erase("current_scene_elapsed_minutes")
+	legacy_payload.erase("production_shift_minutes_per_day")
+	legacy_payload.erase("phase_duration_multiplier")
 	var legacy_restored: Variant = FILM_PRODUCTION_PROJECT_SCRIPT.from_dict(
 		legacy_payload
 	)
 	_expect(
-		legacy_restored.current_scene_elapsed_minutes == 0,
-		"Older production data without scene elapsed time must default safely to zero."
+		legacy_restored.current_scene_elapsed_minutes == 0
+		and int(legacy_restored.production_shift_minutes_per_day) == 540
+		and is_equal_approx(float(legacy_restored.phase_duration_multiplier), 1.0),
+		"Older production data must default scene timing, shift length and phase scaling safely."
 	)
 	_expect(
 		restored.to_dict() == payload

@@ -15,6 +15,12 @@ const COLOR_GRADING_BASE_MINUTES: int = 8
 const COLOR_GRADING_MINUTES_PER_SCENE: int = 1
 const EXPORT_MINUTES: int = 5
 
+const FEATURE_MIN_SCENE_COUNT: int = 8
+const FEATURE_EDITING_DAYS_AT_EIGHT_SCENES: float = 2.0
+const FEATURE_EDITING_DAYS_AT_TWELVE_SCENES: float = 3.5
+const EXTRA_SCENE_EDITING_DAYS: float = 0.25
+const DEFAULT_EDITOR_WORK_MINUTES_PER_DAY: int = 480
+
 
 func create_project(
 	production_project: Variant,
@@ -23,7 +29,8 @@ func create_project(
 	project_id: String,
 	current_day: int,
 	current_hour: int,
-	current_minute: int
+	current_minute: int,
+	work_minutes_per_day: int = DEFAULT_EDITOR_WORK_MINUTES_PER_DAY
 ) -> Variant:
 	if (
 		production_project == null
@@ -50,12 +57,19 @@ func create_project(
 	project.genre_title = str(production_project.genre_title)
 	project.editor_id = editor_id
 	project.editor_skill = clampf(editor_skill, 0.0, 100.0)
+	project.work_minutes_per_day = clampi(work_minutes_per_day, 60, 1440)
 	project.source_quality = clampi(int(production_project.final_quality), 0, 100)
 	project.scene_results = source_scenes.duplicate(true)
+	project.phase_duration_multiplier = _get_editing_time_multiplier(
+		project.scene_results.size(),
+		float(project.editor_skill),
+		int(project.work_minutes_per_day)
+	)
 	for scene_index in range(project.scene_results.size()):
 		project.timeline_order.append(scene_index)
 	project.estimated_total_minutes = _estimate_total_minutes(
-		project.scene_results.size()
+		project.scene_results.size(),
+		float(project.phase_duration_multiplier)
 	)
 	project.started_day = maxi(current_day, 1)
 	project.started_hour = clampi(current_hour, 0, 23)
@@ -138,7 +152,8 @@ func start_editing(project: Variant) -> bool:
 	project.phase_minutes_elapsed = 0
 	project.phase_duration_minutes = _get_phase_duration(
 		"assembly_cut",
-		project.scene_results.size()
+		project.scene_results.size(),
+		float(project.phase_duration_multiplier)
 	)
 	project.last_activity_message = "Монтажёр начал черновую сборку фильма."
 	project.pause_reason = ""
@@ -227,30 +242,49 @@ func _calculate_final_quality(project: Variant) -> int:
 	))
 
 
-func _estimate_total_minutes(scene_count: int) -> int:
+func _estimate_total_minutes(
+	scene_count: int,
+	time_multiplier: float = 1.0
+) -> int:
 	var normalized_count: int = maxi(scene_count, 1)
 	return (
-		_get_phase_duration("assembly_cut", normalized_count)
-		+ _get_phase_duration("fine_cut", normalized_count)
-		+ _get_phase_duration("sound_mix", normalized_count)
-		+ _get_phase_duration("color_grading", normalized_count)
-		+ EXPORT_MINUTES
+		_get_phase_duration("assembly_cut", normalized_count, time_multiplier)
+		+ _get_phase_duration("fine_cut", normalized_count, time_multiplier)
+		+ _get_phase_duration("sound_mix", normalized_count, time_multiplier)
+		+ _get_phase_duration("color_grading", normalized_count, time_multiplier)
+		+ _scale_duration(EXPORT_MINUTES, time_multiplier)
 	)
 
 
-func _get_phase_duration(phase: String, scene_count: int) -> int:
+func _get_phase_duration(
+	phase: String,
+	scene_count: int,
+	time_multiplier: float = 1.0
+) -> int:
 	var normalized_count: int = maxi(scene_count, 1)
+	var base_duration: int = EXPORT_MINUTES
 	match phase:
 		"assembly_cut":
-			return ASSEMBLY_BASE_MINUTES + normalized_count * ASSEMBLY_MINUTES_PER_SCENE
+			base_duration = (
+				ASSEMBLY_BASE_MINUTES
+				+ normalized_count * ASSEMBLY_MINUTES_PER_SCENE
+			)
 		"fine_cut":
-			return FINE_CUT_BASE_MINUTES + normalized_count * FINE_CUT_MINUTES_PER_SCENE
+			base_duration = (
+				FINE_CUT_BASE_MINUTES
+				+ normalized_count * FINE_CUT_MINUTES_PER_SCENE
+			)
 		"sound_mix":
-			return SOUND_MIX_BASE_MINUTES + normalized_count * SOUND_MIX_MINUTES_PER_SCENE
+			base_duration = (
+				SOUND_MIX_BASE_MINUTES
+				+ normalized_count * SOUND_MIX_MINUTES_PER_SCENE
+			)
 		"color_grading":
-			return COLOR_GRADING_BASE_MINUTES + normalized_count * COLOR_GRADING_MINUTES_PER_SCENE
-		_:
-			return EXPORT_MINUTES
+			base_duration = (
+				COLOR_GRADING_BASE_MINUTES
+				+ normalized_count * COLOR_GRADING_MINUTES_PER_SCENE
+			)
+	return _scale_duration(base_duration, time_multiplier)
 
 
 func _set_phase(project: Variant, phase: String) -> void:
@@ -258,7 +292,8 @@ func _set_phase(project: Variant, phase: String) -> void:
 	project.phase_minutes_elapsed = 0
 	project.phase_duration_minutes = _get_phase_duration(
 		phase,
-		project.scene_results.size()
+		project.scene_results.size(),
+		float(project.phase_duration_multiplier)
 	)
 
 
@@ -293,3 +328,57 @@ func _empty_result() -> Dictionary:
 		"phase_changed": false,
 		"completed": false,
 	}
+
+
+
+func _get_editing_time_multiplier(
+	scene_count: int,
+	editor_skill: float,
+	work_minutes_per_day: int
+) -> float:
+	if scene_count < FEATURE_MIN_SCENE_COUNT:
+		return 1.0
+	var target_work_days: float = _get_target_editing_work_days(scene_count)
+	var skill_factor: float = clampf(
+		1.25 - clampf(editor_skill, 0.0, 100.0) * 0.003,
+		0.95,
+		1.25
+	)
+	var target_work_minutes: float = (
+		target_work_days
+		* skill_factor
+		* float(maxi(work_minutes_per_day, 60))
+	)
+	var unscaled_estimate: int = _estimate_total_minutes(scene_count, 1.0)
+	if unscaled_estimate <= 0:
+		return 1.0
+	return clampf(
+		target_work_minutes / float(unscaled_estimate),
+		1.0,
+		60.0
+	)
+
+
+func _get_target_editing_work_days(scene_count: int) -> float:
+	var normalized_count: int = maxi(scene_count, FEATURE_MIN_SCENE_COUNT)
+	if normalized_count <= 12:
+		return lerpf(
+			FEATURE_EDITING_DAYS_AT_EIGHT_SCENES,
+			FEATURE_EDITING_DAYS_AT_TWELVE_SCENES,
+			float(normalized_count - 8) / 4.0
+		)
+	return minf(
+		FEATURE_EDITING_DAYS_AT_TWELVE_SCENES
+		+ float(normalized_count - 12) * EXTRA_SCENE_EDITING_DAYS,
+		5.5
+	)
+
+
+func _scale_duration(base_duration: int, time_multiplier: float) -> int:
+	return maxi(
+		ceili(
+			float(maxi(base_duration, 1))
+			* clampf(time_multiplier, 1.0, 60.0)
+		),
+		1
+	)
