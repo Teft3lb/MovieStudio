@@ -39,14 +39,16 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 7
+		building_ids.size() == 9
 		and building_ids[0] == "cafeteria"
 		and building_ids[1] == "editing_suite"
-		and building_ids[2] == "prop_warehouse"
-		and building_ids[3] == "script_department"
-		and building_ids[4] == "sound_stage"
-		and building_ids[5] == "staff_housing"
-		and building_ids[6] == "star_bungalow",
+		and building_ids[2] == "fitness_center"
+		and building_ids[3] == "prop_warehouse"
+		and building_ids[4] == "script_department"
+		and building_ids[5] == "sound_stage"
+		and building_ids[6] == "staff_housing"
+		and building_ids[7] == "star_bungalow"
+		and building_ids[8] == "studio_lounge",
 		"The building catalogue must expose all production and staff facility buildings."
 	)
 	_expect(
@@ -62,8 +64,11 @@ func _test_catalogue() -> void:
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_stage_footprint(1) == Vector2(10.0, 8.0)
 		and BUILDING_CATALOG_SCRIPT.get_stage_footprint(2) == Vector2(14.0, 12.0)
-		and BUILDING_CATALOG_SCRIPT.get_stage_footprint(3) == Vector2(22.0, 18.0),
-		"Sound stage tiers must expose their configured construction footprints."
+		and BUILDING_CATALOG_SCRIPT.get_stage_footprint(3) == Vector2(22.0, 18.0)
+		and is_equal_approx(BUILDING_CATALOG_SCRIPT.get_stage_height(1), 5.8)
+		and is_equal_approx(BUILDING_CATALOG_SCRIPT.get_stage_height(2), 7.0)
+		and is_equal_approx(BUILDING_CATALOG_SCRIPT.get_stage_height(3), 9.0),
+		"Sound stage tiers must expose their configured construction footprints and distinct heights."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("editing_suite") == 3,
@@ -99,6 +104,13 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_facility_capacity("star_bungalow") == 1
 		and BUILDING_CATALOG_SCRIPT.get_workplace_capacity("star_bungalow") == 0,
 		"A star bungalow must provide one private bed without becoming a workplace."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_facility_capacity("fitness_center") == 4
+		and BUILDING_CATALOG_SCRIPT.get_facility_capacity("studio_lounge") == 6
+		and BUILDING_CATALOG_SCRIPT.get_workplace_capacity("fitness_center") == 0
+		and BUILDING_CATALOG_SCRIPT.get_workplace_capacity("studio_lounge") == 0,
+		"The fitness center and studio lounge must expose four training stations and six social places without becoming workplaces."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
@@ -167,7 +179,13 @@ func _test_building_serialization() -> void:
 
 
 func _test_facility_buildings() -> void:
-	for building_type_id in ["cafeteria", "staff_housing", "star_bungalow"]:
+	for building_type_id in [
+		"cafeteria",
+		"staff_housing",
+		"star_bungalow",
+		"fitness_center",
+		"studio_lounge",
+	]:
 		var building: Variant = BUILDING_DATA_SCRIPT.new()
 		building.id = "BLD-%s" % building_type_id.to_upper()
 		building.building_type_id = building_type_id
@@ -183,7 +201,7 @@ func _test_facility_buildings() -> void:
 			0
 		)
 		_expect(
-			facility_path.size() == 4,
+			facility_path.size() >= 4,
 			"%s must expose an entrance route and an interior facility point."
 			% building_type_id
 		)
@@ -282,9 +300,23 @@ func _test_placement_validation() -> void:
 		0.0,
 		[]
 	)
+	var fitness_placement: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"fitness_center",
+		Vector3(-30.0, 0.0, -20.0),
+		0.0,
+		[]
+	)
+	var lounge_placement: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"studio_lounge",
+		Vector3(30.0, 0.0, -20.0),
+		0.0,
+		[]
+	)
 	_expect(
 		bool(cafeteria_placement.get("valid", false))
-		and bool(housing_placement.get("valid", false)),
+		and bool(housing_placement.get("valid", false))
+		and bool(fitness_placement.get("valid", false))
+		and bool(lounge_placement.get("valid", false)),
 		"Staff facilities must use the standard plot and road placement rules."
 	)
 

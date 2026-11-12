@@ -9,6 +9,12 @@ const BUILDING_CATALOG_SCRIPT = preload(
 )
 
 const STAR_HOUSING_POPULARITY_THRESHOLD: float = 70.0
+const FITNESS_TRAINING_START_HOUR: int = 17
+const FITNESS_TRAINING_END_HOUR: int = 19
+const STUDIO_LOUNGE_START_HOUR: int = 19
+const STUDIO_LOUNGE_END_HOUR: int = 21
+const DEFAULT_FITNESS_TRAINING_CAPACITY: int = 4
+const DEFAULT_STUDIO_LOUNGE_CAPACITY: int = 6
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
@@ -408,14 +414,21 @@ func _route_employee_to_facility(
 	)
 	if route.is_empty():
 		return false
-	var action_id: String = (
-		"eating"
-		if facility_type_id == "cafeteria"
-		else "sleeping"
-	)
+	var action_id: String = "sleeping"
+	match facility_type_id:
+		"cafeteria":
+			action_id = "eating"
+		"fitness_center":
+			action_id = "training"
+		"studio_lounge":
+			action_id = "socializing"
 	var facing_direction: Vector3 = Vector3.ZERO
 	if (
-		facility_type_id == "cafeteria"
+		facility_type_id in [
+			"cafeteria",
+			"fitness_center",
+			"studio_lounge",
+		]
 		and _studio_building_manager.has_method(
 			"get_workplace_facing_direction"
 		)
@@ -1447,7 +1460,227 @@ func _release_employee_to_free_roam(actor: Variant) -> void:
 		actor.call("snap_outside_workplace")
 
 
-func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
+func _get_total_facility_capacity(
+	facility_type_id: String,
+	default_capacity: int
+) -> int:
+	if (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_method("get_total_facility_capacity")
+	):
+		return int(
+			_studio_building_manager.call(
+				"get_total_facility_capacity",
+				facility_type_id
+			)
+		)
+	return default_capacity if is_instance_valid(_studio_building_manager) else 0
+
+
+func _is_employee_in_rotating_facility_group(
+	employee_id: String,
+	employee_ids: Array[String],
+	capacity: int,
+	day: int
+) -> bool:
+	if employee_ids.is_empty() or capacity <= 0:
+		return false
+	if employee_ids.size() <= capacity:
+		return employee_ids.has(employee_id)
+	var first_index: int = posmod(day * capacity, employee_ids.size())
+	for slot_index in range(capacity):
+		var candidate_index: int = posmod(
+			first_index + slot_index,
+			employee_ids.size()
+		)
+		if employee_ids[candidate_index] == employee_id:
+			return true
+	return false
+
+
+func _get_free_time_facility_type(
+	employee: Variant,
+	hour: int,
+	day: int
+) -> String:
+	if (
+		hour >= FITNESS_TRAINING_START_HOUR
+		and hour < FITNESS_TRAINING_END_HOUR
+		and str(employee.profession_id) == "actor"
+	):
+		var training_actor_ids: Array[String] = []
+		for candidate in employees:
+			if (
+				str(candidate.profession_id) == "actor"
+				and float(candidate.physical_fitness) < 98.0
+			):
+				training_actor_ids.append(str(candidate.id))
+		var training_capacity: int = _get_total_facility_capacity(
+			"fitness_center",
+			DEFAULT_FITNESS_TRAINING_CAPACITY
+		)
+		if (
+			float(employee.physical_fitness) < 98.0
+			and _is_employee_in_rotating_facility_group(
+				str(employee.id),
+				training_actor_ids,
+				training_capacity,
+				day
+			)
+		):
+			return "fitness_center"
+	if (
+		hour >= STUDIO_LOUNGE_START_HOUR
+		and hour < STUDIO_LOUNGE_END_HOUR
+	):
+		var social_employee_ids: Array[String] = []
+		for candidate in employees:
+			social_employee_ids.append(str(candidate.id))
+		var social_capacity: int = _get_total_facility_capacity(
+			"studio_lounge",
+			DEFAULT_STUDIO_LOUNGE_CAPACITY
+		)
+		if _is_employee_in_rotating_facility_group(
+			str(employee.id),
+			social_employee_ids,
+			social_capacity,
+			day
+		):
+			return "studio_lounge"
+	return ""
+
+
+func _update_social_relationships() -> void:
+	var attendees_by_building: Dictionary = {}
+	for employee in employees:
+		var actor: Node = get_employee_actor(str(employee.id))
+		if (
+			actor == null
+			or not bool(actor.call("is_at_facility", "studio_lounge"))
+		):
+			continue
+		var building_id: String = str(
+			actor.call("get_facility_building_id")
+		)
+		if not attendees_by_building.has(building_id):
+			attendees_by_building[building_id] = []
+		attendees_by_building[building_id].append(employee)
+	for building_id_value in attendees_by_building.keys():
+		var attendees: Array = attendees_by_building[building_id_value]
+		for first_index in range(attendees.size()):
+			for second_index in range(first_index + 1, attendees.size()):
+				var first: Variant = attendees[first_index]
+				var second: Variant = attendees[second_index]
+				var first_id: String = str(first.id)
+				var second_id: String = str(second.id)
+				var first_sociability: float = clampf(
+					float(first.personality.get("sociability", 0.5)),
+					0.0,
+					1.0
+				)
+				var second_sociability: float = clampf(
+					float(second.personality.get("sociability", 0.5)),
+					0.0,
+					1.0
+				)
+				var average_sociability: float = (
+					first_sociability + second_sociability
+				) * 0.5
+				var ambition_gap: float = absf(
+					float(first.personality.get("ambition", 0.5))
+					- float(second.personality.get("ambition", 0.5))
+				)
+				var discipline_gap: float = absf(
+					float(first.personality.get("discipline", 0.5))
+					- float(second.personality.get("discipline", 0.5))
+				)
+				var compatibility: float = clampf(
+					1.0 - ambition_gap * 0.75 - discipline_gap * 0.45,
+					0.0,
+					1.0
+				)
+				var relationship_gain: float = (
+					0.006
+					* (0.75 + average_sociability * 0.5)
+					* compatibility
+				)
+				if compatibility < 0.35 or average_sociability < 0.22:
+					relationship_gain = -0.0025
+				var first_relationships: Dictionary = first.relationships.duplicate(true)
+				var second_relationships: Dictionary = second.relationships.duplicate(true)
+				first_relationships[second_id] = clampf(
+					float(first_relationships.get(second_id, 0.0))
+					+ relationship_gain,
+					-100.0,
+					100.0
+				)
+				second_relationships[first_id] = clampf(
+					float(second_relationships.get(first_id, 0.0))
+					+ relationship_gain,
+					-100.0,
+					100.0
+				)
+				first.relationships = first_relationships
+				second.relationships = second_relationships
+
+
+func _get_relationship_summary(employee: Variant) -> String:
+	var relationship_ids: Array[String] = []
+	var relationship_scores: Array[float] = []
+	for relationship_id_value in employee.relationships.keys():
+		var relationship_id: String = str(relationship_id_value)
+		var relationship_target: Variant = _find_employee(relationship_id)
+		if relationship_target == null:
+			continue
+		var candidate_score: float = clampf(
+			float(employee.relationships[relationship_id_value]),
+			-100.0,
+			100.0
+		)
+		if absf(candidate_score) < 5.0:
+			continue
+		relationship_ids.append(relationship_id)
+		relationship_scores.append(candidate_score)
+	var summary_lines: Array[String] = []
+	for rank in range(mini(3, relationship_ids.size())):
+		var best_index: int = rank
+		for candidate_index in range(rank + 1, relationship_ids.size()):
+			if (
+				absf(relationship_scores[candidate_index])
+				> absf(relationship_scores[best_index])
+			):
+				best_index = candidate_index
+		if best_index != rank:
+			var swapped_id: String = relationship_ids[rank]
+			relationship_ids[rank] = relationship_ids[best_index]
+			relationship_ids[best_index] = swapped_id
+			var swapped_score: float = relationship_scores[rank]
+			relationship_scores[rank] = relationship_scores[best_index]
+			relationship_scores[best_index] = swapped_score
+		var selected_relationship_target: Variant = _find_employee(
+			relationship_ids[rank]
+		)
+		if selected_relationship_target == null:
+			continue
+		var selected_score: float = relationship_scores[rank]
+		var relationship_title: String = "Знакомство"
+		if selected_score >= 25.0:
+			relationship_title = "Дружба"
+		elif selected_score <= -25.0:
+			relationship_title = "Конфликт"
+		summary_lines.append(
+			"%s · %s %d" % [
+				selected_relationship_target.get_full_name(),
+				relationship_title,
+				roundi(absf(selected_score)),
+			]
+		)
+	if summary_lines.is_empty():
+		return "Отношения: пока нет сложившихся связей"
+	return "Отношения:\n" + "\n".join(summary_lines)
+
+
+func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
 		var employee_id: String = str(employee.id)
 		var actor: Variant = _employee_actors.get(employee_id)
@@ -1466,13 +1699,25 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			and is_instance_valid(actor)
 			and bool(actor.call("is_at_facility", "star_bungalow"))
 		)
+		var at_fitness_center: bool = (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_at_facility", "fitness_center"))
+		)
+		var at_studio_lounge: bool = (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_at_facility", "studio_lounge"))
+		)
 		_needs_system.call(
 			"advance_minute",
 			employee,
 			hour,
 			at_cafeteria,
 			at_staff_housing,
-			at_star_bungalow
+			at_star_bungalow,
+			at_fitness_center,
+			at_studio_lounge
 		)
 
 		if actor == null or not is_instance_valid(actor):
@@ -1536,6 +1781,46 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 					)
 				continue
 		if str(employee.work_state) == "free_time":
+			var free_time_facility_type: String = (
+				_get_free_time_facility_type(employee, hour, day)
+			)
+			if not free_time_facility_type.is_empty():
+				if bool(actor.call("is_in_facility")):
+					var current_facility_type: String = str(
+						actor.call("get_facility_type_id")
+					)
+					if current_facility_type == free_time_facility_type:
+						var is_at_free_time_facility: bool = bool(
+							actor.call(
+								"is_at_facility",
+								free_time_facility_type
+							)
+						)
+						if free_time_facility_type == "fitness_center":
+							employee.current_task = (
+								"Тренируется в фитнес-центре"
+								if is_at_free_time_facility
+								else "Идёт на тренировку"
+							)
+						else:
+							employee.current_task = (
+								"Общается в клубе студии"
+								if is_at_free_time_facility
+								else "Идёт в клуб студии"
+							)
+						continue
+					_release_employee_to_free_roam(actor)
+					continue
+				if _route_employee_to_facility(
+					employee_id,
+					free_time_facility_type
+				):
+					employee.current_task = (
+						"Тренируется в фитнес-центре"
+						if free_time_facility_type == "fitness_center"
+						else "Общается в клубе студии"
+					)
+					continue
 			_release_employee_to_free_roam(actor)
 			employee.current_task = "Свободное время"
 			continue
@@ -1549,9 +1834,18 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 				target_facility_type = "cafeteria"
 			"off_duty":
 				if bool(actor.call("is_in_facility")):
-					target_facility_type = str(
+					var off_duty_facility_type: String = str(
 						actor.call("get_facility_type_id")
 					)
+					if off_duty_facility_type in [
+						"staff_housing",
+						"star_bungalow",
+					]:
+						target_facility_type = off_duty_facility_type
+					else:
+						_release_employee_to_free_roam(actor)
+						employee.current_task = "Покидает зону отдыха"
+						continue
 				elif (
 					str(employee.profession_id) == "actor"
 					and float(employee.popularity)
@@ -1697,9 +1991,11 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 				_employee_task_overrides[employee_id]
 			)
 
+	_update_social_relationships()
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
+
 
 func _on_game_day_advanced(day: int) -> void:
 	for employee in employees:
@@ -2032,11 +2328,17 @@ func _refresh_detail_panel() -> void:
 	_detail_biography_label.text = employee.biography
 
 	if is_market_candidate:
+		var market_physical_fitness_line: String = (
+			"\nФизическая форма: %.0f / 100" % employee.physical_fitness
+			if str(employee.profession_id) == "actor"
+			else ""
+		)
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
+				market_physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
 				employee.growth_points_total,
@@ -2065,11 +2367,17 @@ func _refresh_detail_panel() -> void:
 		_dismiss_button.visible = false
 		_workplace_dispatch_button.visible = false
 	else:
+		var employee_physical_fitness_line: String = (
+			"\nФизическая форма: %.0f / 100" % employee.physical_fitness
+			if str(employee.profession_id) == "actor"
+			else ""
+		)
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
+				employee_physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
 				employee.growth_points_total,
@@ -2176,12 +2484,13 @@ func _refresh_detail_panel() -> void:
 	_detail_skills_label.text = "\n".join(skill_lines)
 
 	_detail_personality_label.text = (
-		"Амбиции: %d%%\nОбщительность: %d%%\nДисциплина: %d%%\nКреативность: %d%%"
+		"Амбиции: %d%%\nОбщительность: %d%%\nДисциплина: %d%%\nКреативность: %d%%\n%s"
 		% [
 			roundi(float(personality.get("ambition", 0.5)) * 100.0),
 			roundi(float(personality.get("sociability", 0.5)) * 100.0),
 			roundi(float(personality.get("discipline", 0.5)) * 100.0),
 			roundi(float(personality.get("creativity", 0.5)) * 100.0),
+			_get_relationship_summary(employee),
 		]
 	)
 

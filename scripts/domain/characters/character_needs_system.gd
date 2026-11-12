@@ -44,7 +44,9 @@ func advance_minute(
 	hour: int,
 	at_cafeteria: bool = false,
 	at_staff_housing: bool = false,
-	at_star_bungalow: bool = false
+	at_star_bungalow: bool = false,
+	at_fitness_center: bool = false,
+	at_studio_lounge: bool = false
 ) -> void:
 	refresh_work_state(character, hour)
 	var needs: Dictionary = character.needs
@@ -66,8 +68,24 @@ func advance_minute(
 			energy += 0.0007
 			stress += 0.0001
 		"free_time":
-			energy += 0.00035
-			stress -= 0.00055
+			if at_fitness_center:
+				energy -= 0.0010
+				stress -= 0.00035
+				morale += 0.00012
+				var fitness: float = clampf(
+					float(character.physical_fitness),
+					0.0,
+					100.0
+				)
+				fitness += 0.004 * (1.0 - fitness / 125.0)
+				character.physical_fitness = clampf(fitness, 0.0, 100.0)
+			elif at_studio_lounge:
+				energy += 0.0002
+				stress -= 0.0011
+				morale += 0.00018
+			else:
+				energy += 0.00035
+				stress -= 0.00055
 		"off_duty":
 			if at_star_bungalow:
 				energy += 0.0015

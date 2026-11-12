@@ -225,6 +225,16 @@ func _advance_performance_animation() -> void:
 			left_arm = 0.12 - motion * 0.12
 			right_arm = 0.12 + motion * 0.12
 			head_motion *= 0.5
+		"training":
+			left_arm = 0.70 + sin(_animation_phase * 2.8) * 0.52
+			right_arm = 0.70 - sin(_animation_phase * 2.8) * 0.52
+			body_lean = sin(_animation_phase * 1.4) * 0.045
+			head_motion *= 0.7
+		"socializing":
+			left_arm = 0.30 + sin(_animation_phase * 1.8) * 0.42
+			right_arm = 0.38 + sin(_animation_phase * 2.2 + 0.8) * 0.42
+			body_lean = sin(_animation_phase * 1.2) * 0.035
+			head_motion *= 1.4
 		"eating":
 			var left_reach: float = pow(
 				maxf(sin(_animation_phase * 1.65), 0.0),
@@ -285,8 +295,8 @@ func _advance_performance_animation() -> void:
 			right_arm = 0.22 + motion * 0.3
 	_set_arm_pose(left_arm, right_arm)
 	if is_instance_valid(_mouth_node):
-		if _performance_action == "speaking":
-			_mouth_node.scale.y = 1.0 + absf(sin(_animation_phase * 7.0)) * 3.2
+		if _performance_action in ["speaking", "socializing"]:
+			_mouth_node.scale.y = 1.0 + absf(sin(_animation_phase * 7.0)) * 2.2
 		elif _performance_action == "eating":
 			_mouth_node.scale.y = 1.0 + absf(sin(_animation_phase * 5.5)) * 0.35
 		else:

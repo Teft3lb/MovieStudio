@@ -34,6 +34,15 @@ class StubFacilityManager extends Node:
 	func is_employee_in_active_production(employee_id: String) -> bool:
 		return employee_id == active_production_employee_id
 
+	func get_total_facility_capacity(building_type_id: String) -> int:
+		match building_type_id:
+			"fitness_center":
+				return 4
+			"studio_lounge":
+				return 6
+		return 0
+
+
 	func get_facility_path_from(
 		_building_id: String,
 		_slot_index: int,
@@ -62,7 +71,12 @@ class StubFacilityManager extends Node:
 		building_id: String,
 		_slot_index: int
 	) -> Array[Vector3]:
-		if building_id in ["BLD-HOUSING", "BLD-STAR-HOUSING"]:
+		if building_id in [
+			"BLD-HOUSING",
+			"BLD-STAR-HOUSING",
+			"BLD-FITNESS",
+			"BLD-LOUNGE",
+		]:
 			return [
 				Vector3(3.0, 0.0, -3.0),
 				Vector3(3.0, 0.0, -2.0),
@@ -429,6 +443,162 @@ func _run_tests() -> void:
 		and float(needs_after_star_sleep.get("stress", 1.0))
 			< float(needs_before_star_sleep.get("stress", 1.0)),
 		"Star bungalow sleep must restore energy and reduce stress at the enhanced rate."
+	)
+
+	var fitness_center: Variant = BUILDING_DATA_SCRIPT.new()
+	fitness_center.id = "BLD-FITNESS"
+	fitness_center.building_type_id = "fitness_center"
+	fitness_center.is_operational = true
+	var studio_lounge: Variant = BUILDING_DATA_SCRIPT.new()
+	studio_lounge.id = "BLD-LOUNGE"
+	studio_lounge.building_type_id = "studio_lounge"
+	studio_lounge.is_operational = true
+	studio_manager.buildings = [
+		cafeteria,
+		housing,
+		star_bungalow,
+		fitness_center,
+		studio_lounge,
+	]
+	var rotating_roster: Array[String] = ["A", "B", "C", "D", "E"]
+	_expect(
+		bool(character_manager.call(
+			"_is_employee_in_rotating_facility_group",
+			"A",
+			rotating_roster,
+			2,
+			0
+		))
+		and bool(character_manager.call(
+			"_is_employee_in_rotating_facility_group",
+			"C",
+			rotating_roster,
+			2,
+			1
+		))
+		and not bool(character_manager.call(
+			"_is_employee_in_rotating_facility_group",
+			"C",
+			rotating_roster,
+			2,
+			0
+		)),
+		"Facility capacity overflow must rotate employees between daily attendance groups."
+	)
+	employee.personality = {
+		"ambition": 0.5,
+		"sociability": 0.8,
+		"discipline": 0.5,
+		"creativity": 0.5,
+	}
+	second_employee.personality = {
+		"ambition": 0.5,
+		"sociability": 0.8,
+		"discipline": 0.5,
+		"creativity": 0.5,
+	}
+	var second_needs: Dictionary = second_employee.needs.duplicate(true)
+	second_needs["energy"] = 0.8
+	second_needs["stress"] = 0.5
+	second_employee.needs = second_needs
+	var employee_social_needs: Dictionary = employee.needs.duplicate(true)
+	employee_social_needs["energy"] = 0.8
+	employee_social_needs["stress"] = 0.5
+	employee.needs = employee_social_needs
+
+	character_manager.call("_on_game_minute_advanced", 5, 17, 0)
+	character_manager.call("_on_game_minute_advanced", 5, 17, 1)
+	_expect(
+		bool(actor.call("is_at_facility", "fitness_center"))
+		and bool(unassigned_actor.call("is_at_facility", "fitness_center"))
+		and str(employee.current_task) == "Тренируется в фитнес-центре",
+		"Actors must autonomously use separate fitness stations during their evening training window."
+	)
+	var fitness_before: float = employee.physical_fitness
+	var fitness_energy_before: float = float(employee.needs.get("energy", 1.0))
+	character_manager.call("_on_game_minute_advanced", 5, 18, 0)
+	_expect(
+		employee.physical_fitness > fitness_before
+		and float(employee.needs.get("energy", 1.0)) < fitness_energy_before,
+		"Training must gradually improve physical fitness while consuming energy."
+	)
+
+	character_manager.call("_on_game_minute_advanced", 5, 19, 0)
+	character_manager.call("_on_game_minute_advanced", 5, 19, 1)
+	_expect(
+		bool(actor.call("is_at_facility", "studio_lounge"))
+		and bool(unassigned_actor.call("is_at_facility", "studio_lounge")),
+		"After training, employees must transition into the studio lounge during the social window."
+	)
+	var stress_before_lounge: float = float(
+		employee.needs.get("stress", 1.0)
+	)
+	character_manager.call("_on_game_minute_advanced", 5, 19, 2)
+	_expect(
+		float(employee.needs.get("stress", 1.0)) < stress_before_lounge,
+		"Time spent in the studio lounge must reduce employee stress."
+	)
+	_expect(
+		float(employee.relationships.get(second_employee.id, 0.0)) > 0.0
+		and float(second_employee.relationships.get(employee.id, 0.0)) > 0.0,
+		"Employees sharing the lounge must develop reciprocal relationship scores."
+	)
+	var relationship_round_trip: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		employee.to_dict()
+	)
+	_expect(
+		is_equal_approx(
+			float(relationship_round_trip.physical_fitness),
+			employee.physical_fitness
+		)
+		and float(
+			relationship_round_trip.relationships.get(
+				second_employee.id,
+				0.0
+			)
+		) > 0.0,
+		"Physical fitness and employee relationships must survive character serialization."
+	)
+	var legacy_character_payload: Dictionary = employee.to_dict()
+	legacy_character_payload["schema_version"] = 7
+	legacy_character_payload.erase("physical_fitness")
+	legacy_character_payload.erase("relationships")
+	var migrated_legacy_character: Variant = CHARACTER_DATA_SCRIPT.from_dict(
+		legacy_character_payload
+	)
+	_expect(
+		is_equal_approx(
+			float(migrated_legacy_character.physical_fitness),
+			50.0
+		)
+		and migrated_legacy_character.relationships.is_empty(),
+		"Legacy character saves must receive safe defaults for fitness and relationships."
+	)
+	employee.relationships = {}
+	second_employee.relationships = {}
+	employee.personality = {
+		"ambition": 0.15,
+		"sociability": 0.8,
+		"discipline": 0.15,
+		"creativity": 0.5,
+	}
+	second_employee.personality = {
+		"ambition": 0.95,
+		"sociability": 0.8,
+		"discipline": 0.95,
+		"creativity": 0.5,
+	}
+	character_manager.call("_update_social_relationships")
+	_expect(
+		float(employee.relationships.get(second_employee.id, 0.0)) < 0.0
+		and float(second_employee.relationships.get(employee.id, 0.0)) < 0.0,
+		"Strong personality incompatibility must be able to create reciprocal conflict scores."
+	)
+	character_manager.call("_on_game_minute_advanced", 5, 21, 0)
+	_expect(
+		not bool(actor.call("is_in_facility"))
+		and not bool(unassigned_actor.call("is_in_facility")),
+		"Employees must leave the social lounge when its evening window ends."
 	)
 
 	character_manager.free()

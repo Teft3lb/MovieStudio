@@ -1,8 +1,8 @@
 # Character System v2
 
 **Status:** first interactive employee-management prototype.  
-**Branch:** `feature/character-system-v2`.  
-**Base:** `feature/character-system-v1`.
+**Branch:** `main`.  
+**Base:** `Character System v1`.
 
 ## Goals
 
@@ -22,7 +22,7 @@ The selection hitbox is separate from the visual meshes. This keeps picking reli
 
 ## Employee profile
 
-CharacterData originally introduced schema version 2. The current schema version 6 also stores birthday progress and per-skill experience. The profile includes:
+CharacterData originally introduced schema version 2. The current schema version 8 stores birthday progress, per-skill experience, physical fitness and pairwise employee relationships. The profile includes:
 - short generated biography;
 - career ambition;
 - shift and break hours;
@@ -61,7 +61,7 @@ godot --headless --path . --script res://tests/character_lifecycle_smoke_test.gd
 
 The test covers:
 1. generated biography, career goal and schedule defaults;
-2. schema v2 serialization round-trip;
+2. CharacterData serialization round-trip, including new schema fields and legacy defaults;
 3. work, break and off-duty state transitions;
 4. energy and stress changes during work and recovery;
 5. employee group registration, selection hitbox and visible selection marker.
@@ -71,7 +71,7 @@ The test covers:
 Not part of v2:
 - hiring and firing;
 - contracts and payroll;
-- relationship graph;
+- complete relationship graph and social-event simulation;
 - advanced autonomous behavior;
 - NavMesh pathfinding and obstacle avoidance;
 - full character customization;
@@ -81,7 +81,7 @@ The current six-person roster remains a deterministic prototype roster. Salary i
 
 ## Skill progression and aging
 
-CharacterData schema version 7 stores:
+CharacterData schema version 7 introduced skill progression and accelerated biological aging. Schema version 8 extends it with physical fitness and pairwise relationships. The v7 fields are:
 - `skill_xp`: per-skill accumulated experience toward the next mastery point;
 - `skill_caps`: the employee's individual potential ceiling for each professional skill;
 - `growth_points_total` and `growth_points_remaining`: a finite career-long development reserve;
@@ -96,3 +96,17 @@ Normal work develops the employee's primary skill and reliability slowly. Rehear
 Biological aging is intentionally faster than the operational clock: one biological year passes every 73 game days, so a full 365-day game year advances a character by exactly five biological years. The calendar itself is unchanged; work shifts, lunch, sleep, needs and production schedules continue to use the same game minutes. Legacy schema v6 age progress is migrated proportionally to the new 73-day cycle.
 
 The initial roster remains six employees. Film roles, optional crew positions and background performers are assigned from existing employees; the simulation does not automatically hire or spawn staff. Only player-driven hiring may increase the employee count.
+
+## Character schema version 8 additions
+
+CharacterData now persists two additional fields:
+- physical_fitness: persistent 0–100 physical condition, generated with profession- and age-aware variation and improved by Fitness Center training.
+- relationships: dictionary keyed by employee ID with reciprocal relationship scores from −100 to +100.
+
+CharacterManager advances relationship scores only when two employees have arrived at the same Studio Lounge. Sociability, ambition and discipline influence compatibility; incompatible pairs can develop negative scores. The employee inspector displays the strongest current relationships.
+
+Older saves remain compatible: missing physical_fitness defaults to 50, and missing relationships defaults to an empty dictionary.
+
+## Schema version 8 additions
+
+CharacterData adds persistent physical_fitness and reciprocal employee relationship scores. Older saves remain compatible: missing physical_fitness defaults to 50 and missing relationships defaults to an empty dictionary. CharacterManager advances relationship scores when employees share a Studio Lounge; personality compatibility can produce either positive friendship or negative conflict scores.

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 7
+const SCHEMA_VERSION: int = 8
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -16,6 +16,8 @@ var age_days: int = 0
 
 var experience: float = 0.0
 var popularity: float = 0.0
+var physical_fitness: float = 50.0
+var relationships: Dictionary = {}
 var daily_salary: int = 0
 var biography: String = ""
 var career_goal: String = ""
@@ -109,6 +111,7 @@ func get_ui_summary() -> Dictionary:
 		"age": age,
 		"experience": experience,
 		"popularity": popularity,
+		"physical_fitness": physical_fitness,
 		"current_task": current_task,
 		"work_state_title": get_work_state_title(),
 		"energy": roundi(float(needs.get("energy", 1.0)) * 100.0),
@@ -132,6 +135,8 @@ func to_dict() -> Dictionary:
 		"age_days": age_days,
 		"experience": experience,
 		"popularity": popularity,
+		"physical_fitness": physical_fitness,
+		"relationships": relationships.duplicate(true),
 		"daily_salary": daily_salary,
 		"biography": biography,
 		"career_goal": career_goal,
@@ -180,6 +185,24 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		result.age_days = clampi(source_age_days, 0, 72)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
+	result.physical_fitness = clampf(
+		float(payload.get("physical_fitness", 50.0)),
+		0.0,
+		100.0
+	)
+	var raw_relationships: Variant = payload.get("relationships", {})
+	var restored_relationships: Dictionary = {}
+	if raw_relationships is Dictionary:
+		for relationship_id_value in raw_relationships.keys():
+			var relationship_id: String = str(relationship_id_value)
+			if relationship_id.is_empty() or relationship_id == result.id:
+				continue
+			restored_relationships[relationship_id] = clampf(
+				float(raw_relationships[relationship_id_value]),
+				-100.0,
+				100.0
+			)
+	result.relationships = restored_relationships
 	result.daily_salary = maxi(int(payload.get("daily_salary", 0)), 0)
 	result.biography = str(payload.get("biography", ""))
 	result.career_goal = str(payload.get("career_goal", ""))

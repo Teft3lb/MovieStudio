@@ -705,6 +705,14 @@ func _face_facility() -> void:
 				global_position + facing_direction.normalized(),
 				Vector3.UP
 			)
+		"fitness_center", "studio_lounge":
+			var facility_facing_direction: Vector3 = _facility_facing_direction
+			if facility_facing_direction.length_squared() <= 0.001:
+				facility_facing_direction = Vector3.BACK
+			look_at(
+				global_position + facility_facing_direction.normalized(),
+				Vector3.UP
+			)
 		"staff_housing", "star_bungalow":
 			rotation.y = 0.0
 

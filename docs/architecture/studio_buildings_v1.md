@@ -2,7 +2,7 @@
 
 **Engine:** Godot 4.7.2  
 **Branch:** \`main\`
-**Status:** interactive placement, workplace assignment and cutaway interiors for three production facilities plus a dedicated prop warehouse.
+**Status:** interactive placement, workplace assignment, cutaway production interiors and staff/social facilities.
 
 ## Scope
 
@@ -101,7 +101,7 @@ The current implementation does **not** yet:
 - persist workplace assignments in a campaign save;
 - use NavMesh pathfinding or dynamic obstacle avoidance;
 - provide full skeletal work animations or interactive interior equipment;
-- assign dedicated buildings to facility, catering, administration and marketing staff;
+- assign dedicated buildings to administration and marketing staff;
 - persist building state in a campaign save.
 
 Studio Operations v1 consumes accepted-profession lists and workplace capacities, routes employees through building entrances, and provides visible cutaway interiors with procedural props and work animations. Film Production v1 adds casting and shooting; Film Editing v1 adds the post-production workflow in the Editing Suite.
@@ -133,3 +133,34 @@ The interior test covers room props in all three building types
 ## Звёздный домик
 
 Звёздный домик — отдельное жилое помещение с одной кроватью. В него направляется популярный актёр с популярностью от 70 пунктов, если свободное место доступно; остальные сотрудники продолжают пользоваться общим домиком персонала. Сон в звёздном домике восстанавливает энергию и снижает стресс быстрее, чем обычное жильё.
+
+## Follow-up: distinct sound-stage architecture
+
+Sound-stage tiers are separate architectural compositions, not scaled copies of one building:
+- Small: compact low-rise studio with a gable roof, narrow loading entrance, compact set and six crew positions (10 × 8 m).
+- Medium: rectangular industrial pavilion with a flat roof, standard loading door, two-camera interior and eight crew positions (14 × 12 m).
+- Large: high-bay production hangar with roof trusses, skylights, a control-room window, taller loading door, expanded set/camera layout and twelve crew positions (22 × 18 m).
+
+Each model keeps an identity interior transform. Footprint, wall positions, roof geometry, set dimensions, camera/light placement, navigation bounds and crew marks are authored for that tier.
+
+## New staff/social buildings
+
+- Fitness Center: 12 × 10 m, four training stations. Actors visit between 17:00 and 19:00; training gradually increases persistent physical fitness while consuming energy.
+- Studio Lounge: 14 × 12 m, six social places. Employees visit between 19:00 and 21:00; lounge time reduces stress, improves morale and advances reciprocal relationship scores.
+- Star Bungalow: 10 × 8 m, one private bed for an eligible popular actor.
+
+Building inspector cards show the selected stage's architecture profile and explain each facility's capacity and effects.
+
+## Current building catalog and stage architecture
+
+The initial catalog table above describes the original Buildings v1 set. The current catalog also includes cafeteria, staff housing, star bungalow, fitness center and studio lounge. Sound stages now have three distinct architectural models, not one model scaled to different footprints:
+
+| Stage model | Footprint | Crew slots | Architecture |
+|---|---:|---:|---|
+| Small | 10 × 8 m | 6 | Compact low-rise studio with a gable roof and narrow loading entrance |
+| Medium | 14 × 12 m | 8 | Rectangular industrial pavilion with a flat roof and standard loading door |
+| Large | 22 × 18 m | 12 | High-bay production hangar with roof trusses, skylights, control-room glazing and a taller loading door |
+
+All three models have identity interior transforms. Their wall positions, roof geometry, set dimensions, camera/light placement, navigation bounds and crew marks are authored independently for each tier. The production selector chooses the smallest operational stage that satisfies the current script and owned set-piece requirements.
+
+The Fitness Center provides four training stations; the Studio Lounge provides six social places. See staff_facilities_v1.md for schedules and simulation effects.

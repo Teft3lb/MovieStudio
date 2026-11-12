@@ -552,6 +552,18 @@ func get_facility_path_from(
 		source_slot_index
 	)
 
+func get_total_facility_capacity(building_type_id: String) -> int:
+	var total_capacity: int = 0
+	for building in _buildings:
+		if (
+			str(building.building_type_id) == building_type_id
+			and bool(building.is_operational)
+		):
+			total_capacity += BUILDING_CATALOG_SCRIPT.get_facility_capacity(
+				building_type_id
+			)
+	return total_capacity
+
 func _get_building_navigation_obstacles() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for building in _buildings:
@@ -904,6 +916,26 @@ func _build_ui() -> void:
 	)
 	build_layout.add_child(star_housing_button)
 
+	var fitness_button := Button.new()
+	fitness_button.text = "＋ Фитнес-центр"
+	fitness_button.tooltip_text = "Построить зал для физической подготовки актёров"
+	fitness_button.custom_minimum_size = Vector2(0.0, 42.0)
+	fitness_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fitness_button.pressed.connect(
+		_begin_placement.bind("fitness_center")
+	)
+	build_layout.add_child(fitness_button)
+
+	var lounge_button := Button.new()
+	lounge_button.text = "＋ Клуб студии"
+	lounge_button.tooltip_text = "Построить место отдыха и общения сотрудников"
+	lounge_button.custom_minimum_size = Vector2(0.0, 42.0)
+	lounge_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lounge_button.pressed.connect(
+		_begin_placement.bind("studio_lounge")
+	)
+	build_layout.add_child(lounge_button)
+
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_build_status_label.add_theme_font_size_override("font_size", 11)
@@ -1131,9 +1163,7 @@ func _set_placement_message(message: String) -> void:
 			size.y,
 		]
 	_placement_hint_label.text = (
-		"Размещение: %s
-%s
-ЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
+		"Размещение: %s\n%s\nЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
 		% [title, message]
 	)
 
@@ -1263,10 +1293,21 @@ func _refresh_building_detail() -> void:
 	)
 	if BUILDING_CATALOG_SCRIPT.is_sound_stage(building_type_id):
 		var stage_note := Label.new()
-		stage_note.text = "Размер: %s · рабочих мест: %d" % [
+		var stage_architecture_title: String = ""
+		match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
+			int(building.stage_size_tier)
+		):
+			1:
+				stage_architecture_title = "одноэтажная студия с двускатной крышей"
+			3:
+				stage_architecture_title = "высокий производственный ангар с фермами"
+			_:
+				stage_architecture_title = "классический прямоугольный павильон"
+		stage_note.text = "%s · %s · рабочих мест: %d" % [
 			BUILDING_CATALOG_SCRIPT.get_stage_size_title(
 				int(building.stage_size_tier)
 			),
+			stage_architecture_title,
 			capacity,
 		]
 		stage_note.add_theme_font_size_override("font_size", 11)
@@ -1337,6 +1378,18 @@ func _refresh_building_detail() -> void:
 				facility_note.text = (
 					"Отдельный домик доступен одному популярному актёру. "
 					+ "Сон здесь восстанавливает энергию и снижает стресс быстрее."
+				)
+			"fitness_center":
+				facility_note.text = (
+					"Актёры посещают зал с 17:00 до 19:00. "
+					+ "Тренировки постепенно повышают физическую форму, "
+					+ "но расходуют энергию. Одновременно тренируются до четырёх человек."
+				)
+			"studio_lounge":
+				facility_note.text = (
+					"Сотрудники приходят сюда с 19:00 до 21:00. "
+					+ "Общение снижает стресс, улучшает настроение и укрепляет "
+					+ "взаимоотношения между присутствующими."
 				)
 			_:
 				facility_note.text = (
@@ -2605,19 +2658,29 @@ func get_preferred_stage_building_id() -> String:
 
 
 func _get_sound_stage_building_id() -> String:
-	var selected_id: String = ""
-	var selected_tier: int = 0
+	var required_tier: int = _get_required_stage_size_tier()
+	var best_suitable_id: String = ""
+	var best_suitable_tier: int = 4
+	var largest_available_id: String = ""
+	var largest_available_tier: int = 0
 	for building in _buildings:
 		if (
 			str(building.building_type_id) != "sound_stage"
 			or not bool(building.is_operational)
 		):
 			continue
-		var tier: int = int(building.stage_size_tier)
-		if tier > selected_tier:
-			selected_tier = tier
-			selected_id = str(building.id)
-	return selected_id
+		var tier: int = BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
+			int(building.stage_size_tier)
+		)
+		if tier > largest_available_tier:
+			largest_available_tier = tier
+			largest_available_id = str(building.id)
+		if tier >= required_tier and tier < best_suitable_tier:
+			best_suitable_tier = tier
+			best_suitable_id = str(building.id)
+	if not best_suitable_id.is_empty():
+		return best_suitable_id
+	return largest_available_id
 
 
 func _dispatch_film_crew_to_stage() -> void:

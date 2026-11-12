@@ -6,7 +6,7 @@ const STAGE_FOOTPRINTS: Dictionary = {
 	2: Vector2(14.0, 12.0),
 	3: Vector2(22.0, 18.0),
 }
-const STAGE_HEIGHTS: Dictionary = {1: 6.4, 2: 7.0, 3: 8.4}
+const STAGE_HEIGHTS: Dictionary = {1: 5.8, 2: 7.0, 3: 9.0}
 const STAGE_WORKPLACE_CAPACITIES: Dictionary = {1: 6, 2: 8, 3: 12}
 
 const BUILDINGS: Dictionary = {
@@ -72,6 +72,28 @@ const BUILDINGS: Dictionary = {
 		"accepted_professions": [],
 		"primary_profession": "",
 		"accent_color": Color(0.66, 0.53, 0.32),
+	},
+	"fitness_center": {
+		"title": "Фитнес-центр",
+		"description": "Тренировочное пространство с кардио- и силовыми станциями. Актёры приходят сюда после смены, постепенно улучшают физическую форму, расходуют энергию и снимают напряжение.",
+		"footprint": Vector2(12.0, 10.0),
+		"building_height": 5.8,
+		"workplace_capacity": 0,
+		"facility_capacity": 4,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.28, 0.48, 0.55),
+	},
+	"studio_lounge": {
+		"title": "Клуб студии",
+		"description": "Общее пространство отдыха с мягкой мебелью и кофейной зоной. Сотрудники общаются, снижают стресс и постепенно укрепляют личные отношения.",
+		"footprint": Vector2(14.0, 12.0),
+		"building_height": 5.8,
+		"workplace_capacity": 0,
+		"facility_capacity": 6,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.42, 0.54, 0.48),
 	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",

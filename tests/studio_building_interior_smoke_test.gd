@@ -27,6 +27,9 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
+	_test_small_sound_stage_geometry()
+	_test_fitness_center_interior()
+	_test_studio_lounge_interior()
 	_test_cafeteria_seating_layout()
 	_test_prop_warehouse_interior()
 	_test_editing_suite_interior()
@@ -167,6 +170,13 @@ func _test_sound_stage_interior() -> void:
 	_expect(
 		actor.get_node_or_null("Interior/StageFloor") != null,
 		"Sound Stage must contain an interior floor."
+	)
+	_expect(
+		(actor.get_node("Interior") as Node3D).scale.is_equal_approx(Vector3.ONE)
+		and actor.get_node_or_null("RoofAssembly/StageRoof") != null
+		and actor.get_node_or_null("RoofAssembly/SmallStageGableRoofLeft") == null
+		and actor.get_node_or_null("RoofAssembly/HighBayRoofDeck") == null,
+		"The medium sound stage must keep its own unscaled rectangular architecture."
 	)
 	_expect(
 		actor.get_node_or_null("Interior/MainSetBackdrop") != null,
@@ -546,6 +556,28 @@ func _test_facility_poses() -> void:
 		maximum_arm_angle - minimum_arm_angle > 0.08,
 		"Eating must animate alternating hand movement instead of holding a static pose."
 	)
+	visual.call("set_performance_action", "training")
+	var training_arm_min: float = INF
+	var training_arm_max: float = -INF
+	for _step in range(12):
+		visual.call("advance_simulation", 0.1)
+		training_arm_min = minf(training_arm_min, left_arm.rotation.x)
+		training_arm_max = maxf(training_arm_max, left_arm.rotation.x)
+	_expect(
+		training_arm_max - training_arm_min > 0.35,
+		"Fitness training must animate repeated exercise movement instead of a static idle pose."
+	)
+	visual.call("set_performance_action", "socializing")
+	var social_arm_min: float = INF
+	var social_arm_max: float = -INF
+	for _step in range(12):
+		visual.call("advance_simulation", 0.1)
+		social_arm_min = minf(social_arm_min, left_arm.rotation.x)
+		social_arm_max = maxf(social_arm_max, left_arm.rotation.x)
+	_expect(
+		social_arm_max - social_arm_min > 0.2,
+		"Studio lounge socializing must use a visible conversational gesture."
+	)
 	visual.call("set_performance_action", "sleeping")
 	visual.call("advance_simulation", 0.25)
 	_expect(
@@ -649,24 +681,100 @@ func _test_star_bungalow_interior() -> void:
 	)
 
 
-func _test_large_sound_stage_geometry() -> void:
-	var actor: Node3D = _create_building("sound_stage", 0.0, 3)
+func _test_small_sound_stage_geometry() -> void:
+	var actor: Node3D = _create_building("sound_stage", 0.0, 1)
 	var interior: Node3D = actor.get_node("Interior") as Node3D
 	_expect(
-		interior.scale.is_equal_approx(Vector3(22.0 / 14.0, 1.0, 18.0 / 12.0)),
-		"Large sound stage must scale the interior to its selected footprint."
+		interior.scale.is_equal_approx(Vector3.ONE)
+		and actor.get_node_or_null(
+			"RoofAssembly/SmallStageGableRoofLeft"
+		) != null
+		and actor.get_node_or_null(
+			"RoofAssembly/SmallStageGableRoofRight"
+		) != null
+		and actor.get_node_or_null("Interior/SmallSetBackdrop") != null,
+		"The small sound stage must use its own compact gable-roof building and set layout, not a scaled medium model."
 	)
-	var workplace_path: Array[Vector3] = actor.call("get_workplace_path", 10)
+	var last_route: Array[Vector3] = actor.call("get_workplace_path", 5)
+	var local_workplace: Vector3 = Vector3.ZERO
+	if not last_route.is_empty():
+		local_workplace = actor.to_local(last_route.back())
 	_expect(
-		not workplace_path.is_empty(),
-		"Large sound stage must expose expanded crew navigation points."
+		last_route.size() >= 4
+		and absf(local_workplace.x) < 5.0
+		and absf(local_workplace.z) < 4.0,
+		"Small stage crew routes must terminate inside its ten-by-eight-metre footprint."
 	)
 	var local_mark: Vector3 = interior.to_local(
 		actor.call("get_scene_mark", 0, "shooting", 0)
 	)
 	_expect(
-		local_mark.distance_to(Vector3(-2.62, 0.0, -1.78)) < 0.15,
-		"Scene blocking marks must be transformed through the scaled stage interior."
+		local_mark.distance_to(Vector3(-1.42, 0.0, -2.13)) < 0.2,
+		"Small stage actor blocking must use compact set-specific marks."
+	)
+
+
+func _test_fitness_center_interior() -> void:
+	var actor: Node3D = _create_building("fitness_center", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/FitnessFloor") != null
+		and actor.get_node_or_null("Interior/FitnessMirror_0") != null
+		and actor.get_node_or_null("Interior/FitnessTreadmillBase_0") != null
+		and actor.get_node_or_null("Interior/FitnessTreadmillConsole_3") != null,
+		"Fitness center must contain mirrors and four distinct cardio stations."
+	)
+	for slot_index in range(4):
+		var route: Array[Vector3] = actor.call(
+			"get_workplace_path",
+			slot_index
+		)
+		_expect(
+			route.size() >= 4,
+			"Every fitness station must have a complete entrance and interior route."
+		)
+
+
+func _test_studio_lounge_interior() -> void:
+	var actor: Node3D = _create_building("studio_lounge", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/LoungeCoffeeCounter") != null
+		and actor.get_node_or_null("Interior/LoungeCoffeeTable") != null
+		and actor.get_node_or_null("Interior/LoungeSofaBaseLeft") != null
+		and actor.get_node_or_null("Interior/LoungeSofaBaseRight") != null,
+		"Studio lounge must contain a coffee area, a shared table and two distinct seating zones."
+	)
+	var first_route: Array[Vector3] = actor.call("get_workplace_path", 0)
+	var last_route: Array[Vector3] = actor.call("get_workplace_path", 5)
+	_expect(
+		first_route.size() >= 4
+		and last_route.size() >= 4
+		and first_route.back().distance_to(last_route.back()) > 3.0,
+		"Studio lounge must expose six separated social positions with navigable routes."
+	)
+
+
+func _test_large_sound_stage_geometry() -> void:
+	var actor: Node3D = _create_building("sound_stage", 0.0, 3)
+	var interior: Node3D = actor.get_node("Interior") as Node3D
+	_expect(
+		interior.scale.is_equal_approx(Vector3.ONE)
+		and actor.get_node_or_null("RoofAssembly/HighBayRoofDeck") != null
+		and actor.get_node_or_null("RoofAssembly/HighBayRoofTruss_8") != null
+		and actor.get_node_or_null("HighBayFrontSign") != null
+		and actor.get_node_or_null("Interior/HighBayMainSetBackdrop") != null,
+		"Large sound stage must use a separate high-bay building with roof trusses, control-room glazing and an expanded set."
+	)
+	var workplace_path: Array[Vector3] = actor.call("get_workplace_path", 10)
+	_expect(
+		workplace_path.size() >= 4,
+		"Large sound stage must expose all twelve crew navigation points."
+	)
+	var local_mark: Vector3 = interior.to_local(
+		actor.call("get_scene_mark", 0, "shooting", 0)
+	)
+	_expect(
+		local_mark.distance_to(Vector3(-4.62, 0.0, -4.78)) < 0.15,
+		"Large stage blocking marks must use the expanded high-bay set layout."
 	)
 
 

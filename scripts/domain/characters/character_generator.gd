@@ -125,10 +125,17 @@ func generate(
 
 	if data.profession_id == "actor":
 		data.popularity = rng.randf_range(0.0, 26.0)
+		data.physical_fitness = clampf(
+			rng.randf_range(48.0, 82.0) - maxf(float(data.age - 40), 0.0) * 0.3,
+			28.0,
+			90.0
+		)
 	elif data.profession_id == "extra":
 		data.popularity = rng.randf_range(0.0, 4.0)
+		data.physical_fitness = rng.randf_range(45.0, 78.0)
 	else:
 		data.popularity = rng.randf_range(0.0, 9.0)
+		data.physical_fitness = rng.randf_range(35.0, 70.0)
 
 	var primary_skill_value: float = float(skills.get(primary_skill_id, 50.0))
 	var base_salary: float = float(
