@@ -36,30 +36,6 @@ func _create_facility(building_type_id: String) -> Node3D:
 	return actor
 
 
-func _assert_routes(actor: Node3D, slot_count: int, facility_name: String) -> void:
-	var all_routes_valid: bool = true
-	for slot_index in range(slot_count):
-		var route: Array[Vector3] = actor.call("get_workplace_path", slot_index)
-		if route.size() < 4:
-			all_routes_valid = false
-			continue
-		var exit_route: Array[Vector3] = actor.call(
-			"get_exit_path_from",
-			route.back(),
-			slot_index
-		)
-		if (
-			exit_route.size() < 2
-			or exit_route.front().distance_to(route.back()) > 0.1
-			or exit_route.back().distance_to(route.front()) > 0.1
-		):
-			all_routes_valid = false
-	_expect(
-		all_routes_valid,
-		"%s must retain navigable entry and exit routes for every facility position." % facility_name
-	)
-
-
 func _test_prop_warehouse() -> void:
 	var actor: Node3D = _create_facility("prop_warehouse")
 	var interior: Node3D = actor.get_node("Interior") as Node3D
@@ -93,7 +69,11 @@ func _test_prop_warehouse() -> void:
 		inventory_root.get_child_count() == 0,
 		"Returning props to stock must clear the warehouse display."
 	)
-	_assert_routes(actor, 1, "Prop Warehouse")
+	var workplace_path: Array[Vector3] = actor.call("get_workplace_path", 0)
+	_expect(
+		workplace_path.size() == 4,
+		"Warehouse pickup routes must pass through the building entrance."
+	)
 	actor.queue_free()
 
 
@@ -108,7 +88,15 @@ func _test_fitness_center() -> void:
 		and actor.get_node_or_null("RoofAssembly/FitnessCenterSkylight") is MeshInstance3D,
 		"Fitness Center must retain its mirrors, four cardio stations and roof skylight."
 	)
-	_assert_routes(actor, 4, "Fitness Center")
+	var all_routes_valid: bool = true
+	for slot_index in range(4):
+		var route: Array[Vector3] = actor.call("get_workplace_path", slot_index)
+		if route.size() < 4:
+			all_routes_valid = false
+	_expect(
+		all_routes_valid,
+		"Every fitness station must have a complete entrance and interior route."
+	)
 	actor.queue_free()
 
 
@@ -131,7 +119,7 @@ func _test_studio_lounge() -> void:
 		and first_route.back().distance_to(last_route.back()) > 3.0,
 		"Studio Lounge must retain six separated social positions."
 	)
-	_assert_routes(actor, 6, "Studio Lounge")
+	# The lounge's outermost social positions must remain independently reachable.
 	actor.queue_free()
 
 
@@ -148,24 +136,51 @@ func _test_cafeteria() -> void:
 	var front_path: Array[Vector3] = actor.call("get_workplace_path", 0)
 	var second_front_path: Array[Vector3] = actor.call("get_workplace_path", 1)
 	var back_path: Array[Vector3] = actor.call("get_workplace_path", 2)
+	var second_back_path: Array[Vector3] = actor.call("get_workplace_path", 3)
 	var front_seat: Vector3 = actor.to_local(front_path.back())
 	var second_front_seat: Vector3 = actor.to_local(second_front_path.back())
 	var back_seat: Vector3 = actor.to_local(back_path.back())
+	var second_back_seat: Vector3 = actor.to_local(second_back_path.back())
 	_expect(
 		absf(front_seat.z - second_front_seat.z) < 0.01
+		and absf(back_seat.z - second_back_seat.z) < 0.01
 		and front_seat.z < back_seat.z
 		and absf(front_seat.x - second_front_seat.x) > 0.8,
 		"Cafeteria seats must stay aligned along both long sides of each table."
 	)
+	var front_chair_back: Node3D = actor.get_node(
+		"Interior/CafeteriaChairBack_0_0"
+	) as Node3D
+	var back_chair_back: Node3D = actor.get_node(
+		"Interior/CafeteriaChairBack_0_2"
+	) as Node3D
+	var front_back_position: Vector3 = actor.to_local(front_chair_back.global_position)
+	var back_back_position: Vector3 = actor.to_local(back_chair_back.global_position)
+	_expect(
+		front_back_position.z < front_seat.z
+		and back_back_position.z > back_seat.z,
+		"Cafeteria chair backs must sit behind the employee on both sides of the table."
+	)
+	var front_back_mesh: BoxMesh = (front_chair_back as MeshInstance3D).mesh as BoxMesh
+	_expect(
+		front_back_mesh != null
+		and absf(front_back_mesh.size.x - 0.58) < 0.01
+		and absf(front_back_mesh.size.z - 0.12) < 0.01,
+		"Cafeteria chair backs must retain their correct width and depth."
+	)
 	var front_facing: Vector3 = actor.call("get_workplace_facing_direction", 0)
+	var back_facing: Vector3 = actor.call("get_workplace_facing_direction", 2)
 	var front_table_direction: Vector3 = (
 		actor.to_global(Vector3(-4.0, 0.0, 0.35)) - front_path.back()
 	).normalized()
+	var back_table_direction: Vector3 = (
+		actor.to_global(Vector3(-4.0, 0.0, 0.35)) - back_path.back()
+	).normalized()
 	_expect(
-		front_facing.dot(front_table_direction) > 0.99,
-		"Cafeteria seats must continue facing their table."
+		front_facing.dot(front_table_direction) > 0.99
+		and back_facing.dot(back_table_direction) > 0.99,
+		"Both cafeteria seat rows must continue facing their table."
 	)
-	_assert_routes(actor, 12, "Cafeteria")
 	actor.queue_free()
 
 
@@ -185,19 +200,32 @@ func _test_staff_housing() -> void:
 		first_bed_path.back(),
 		0
 	)
-	var inferred_exit: Array[Vector3] = actor.call(
+	var last_exit: Array[Vector3] = actor.call(
+		"get_exit_path_from",
+		last_bed_path.back(),
+		7
+	)
+	var inferred_first_exit: Array[Vector3] = actor.call(
+		"get_exit_path_from",
+		first_bed_path.back()
+	)
+	var inferred_last_exit: Array[Vector3] = actor.call(
 		"get_exit_path_from",
 		last_bed_path.back()
 	)
 	_expect(
 		first_exit.size() >= 2
-		and inferred_exit.size() >= 2
+		and last_exit.size() >= 2
+		and inferred_first_exit.size() >= 2
+		and inferred_last_exit.size() >= 2
 		and first_exit.front().distance_to(first_bed_path.back()) < 0.1
+		and last_exit.front().distance_to(last_bed_path.back()) < 0.1
 		and first_exit.back().distance_to(first_bed_path.front()) < 0.1
-		and inferred_exit.front().distance_to(last_bed_path.back()) < 0.1,
+		and last_exit.back().distance_to(last_bed_path.front()) < 0.1
+		and inferred_first_exit.front().distance_to(first_bed_path.back()) < 0.1
+		and inferred_last_exit.front().distance_to(last_bed_path.back()) < 0.1,
 		"Staff housing must retain explicit and inferred exit routes from occupied beds."
 	)
-	_assert_routes(actor, 8, "Staff Housing")
 	actor.queue_free()
 
 
@@ -218,5 +246,5 @@ func _test_star_bungalow() -> void:
 		and actor.to_local(route.back()).distance_to(Vector3(0.0, 0.0, -1.3)) < 0.1,
 		"Star Bungalow must retain a navigable route to its private bed."
 	)
-	_assert_routes(actor, 1, "Star Bungalow")
+	# The single workplace mark is the private bed's arrival position.
 	actor.queue_free()

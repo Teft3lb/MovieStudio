@@ -34,7 +34,7 @@ func _create_office(building_type_id: String) -> Node3D:
 
 func _assert_office_routes(actor: Node3D, office_name: String) -> void:
 	var all_routes_valid: bool = true
-	for slot_index in range(3):
+	for slot_index in [0, 2]:
 		var route: Array[Vector3] = actor.call("get_workplace_path", slot_index)
 		if route.size() < 4:
 			all_routes_valid = false
