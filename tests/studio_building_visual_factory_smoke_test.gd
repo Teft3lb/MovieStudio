@@ -100,6 +100,8 @@ func _run_tests() -> void:
 	_expect(
 		slate.get("scene_label") is Label3D
 		and slate.get("phase_label") is Label3D
+		and (slate.get("scene_label") as Label3D).name == "ProductionSceneSlate"
+		and (slate.get("phase_label") as Label3D).name == "ProductionPhaseSlate"
 		and root_node.get_node_or_null("FilmSlateBody") is MeshInstance3D,
 		"Film slate construction must return both live labels to the building actor."
 	)

@@ -2865,7 +2865,7 @@ func _create_camera_rig(
 		local_position,
 		metal_color,
 		equipment_color
-	)
+	) as Node3D
 
 
 func _create_light_stand(
@@ -2980,7 +2980,7 @@ func _create_box(
 	color: Color,
 	local_position: Vector3
 ) -> MeshInstance3D:
-	return _visual_factory.call("create_box", parent, node_name, size, color, local_position)
+	return _visual_factory.call("create_box", parent, node_name, size, color, local_position) as MeshInstance3D
 
 
 func _create_cylinder(
@@ -3009,11 +3009,11 @@ func _create_sphere(
 	color: Color,
 	local_position: Vector3
 ) -> MeshInstance3D:
-	return _visual_factory.call("create_sphere", parent, node_name, radius, color, local_position)
+	return _visual_factory.call("create_sphere", parent, node_name, radius, color, local_position) as MeshInstance3D
 
 
 func _make_material(color: Color) -> StandardMaterial3D:
-	return _visual_factory.call("make_material", color)
+	return _visual_factory.call("make_material", color) as StandardMaterial3D
 
 
 func _update_cutaway() -> void:
