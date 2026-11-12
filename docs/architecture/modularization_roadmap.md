@@ -175,9 +175,9 @@ Keep a small top-level runner that invokes the focused suites.
 
 ## Recommended order
 
-1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing and film-production controller group.
+1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
 2. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
-4. Split CharacterManager presentation from employee simulation coordination.
-5. Split the interior smoke test into focused suites.
+3. Split CharacterManager presentation from employee simulation coordination.
+4. Split the interior smoke test into focused suites.
 
-The order intentionally starts with the most cohesive manager-owned subsystem. Geometry and employee UI are larger extractions and should follow only after the manager's state boundaries become clearer.
+The building-manager UI extractions are complete. The next large structural boundary is StudioBuildingActor: procedural visuals must be separated from the building's stable identity, navigation and gameplay interfaces before the project adds more building types and richer 3D assets.

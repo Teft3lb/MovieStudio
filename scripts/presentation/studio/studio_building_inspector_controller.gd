@@ -82,6 +82,7 @@ func build_panel(studio_hud: Node) -> PanelContainer:
 func select_building(building_id: String) -> void:
 	_selected_building_id = building_id
 	if _get_selected_building() == null:
+		_selected_building_id = ""
 		hide_inspector()
 		return
 	if is_instance_valid(_studio_hud):
@@ -150,6 +151,7 @@ func _on_generate_script_pressed() -> void:
 func refresh_selected_building() -> void:
 	if not is_instance_valid(_detail_layout):
 		return
+	_reset_script_ui_references()
 	var building: Variant = _get_selected_building()
 	if building == null:
 		_detail_panel.visible = false
@@ -698,11 +700,3 @@ func _build_tv_studio_detail(eligible_staff: Array) -> void:
 
 
 
-func build_film_production_detail(assigned_staff: Array) -> void:
-	if is_instance_valid(_manager):
-		_manager.call("build_film_production_detail", _detail_layout, assigned_staff)
-
-
-func build_film_editing_detail(assigned_staff: Array) -> void:
-	if is_instance_valid(_manager):
-		_manager.call("build_film_editing_detail", _detail_layout, assigned_staff)
