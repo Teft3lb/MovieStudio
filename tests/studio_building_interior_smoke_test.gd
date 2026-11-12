@@ -640,9 +640,12 @@ func _test_star_bungalow_interior() -> void:
 		"Star bungalow must contain private furniture."
 	)
 	var route: Array[Vector3] = actor.call("get_workplace_path", 0)
+	var interior: Node3D = actor.get_node("Interior") as Node3D
+	var local_bed_arrival: Vector3 = interior.to_local(route.back())
 	_expect(
-		route.size() >= 4,
-		"Star bungalow must expose a navigable route to its single bed."
+		route.size() >= 4
+		and local_bed_arrival.distance_to(Vector3(0.0, 0.0, -1.3)) < 0.1,
+		"Star bungalow must expose a navigable route that ends on its private bed."
 	)
 
 

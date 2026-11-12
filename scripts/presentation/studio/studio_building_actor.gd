@@ -180,11 +180,12 @@ func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 						})
 					bed_slot_index += 1
 		"star_bungalow":
-			obstacles.append({
-				"center": Vector2(0.0, -1.3),
-				"half_extents": Vector2(1.12, 1.25),
-				"clearance": 0.18,
-			})
+			if slot_index != 0:
+				obstacles.append({
+					"center": Vector2(0.0, -1.3),
+					"half_extents": Vector2(1.12, 1.25),
+					"clearance": 0.18,
+				})
 			obstacles.append({
 				"center": Vector2(-3.2, -1.3),
 				"half_extents": Vector2(0.58, 0.62),
@@ -1494,7 +1495,7 @@ func _build_star_bungalow(
 	_create_box(_interior_root, "StarNightstand", Vector3(0.78, 0.72, 0.68), Color(0.35, 0.25, 0.18), Vector3(2.65, 0.36, -1.3))
 	_create_cylinder(_interior_root, "StarBedsideLamp", 0.12, 0.42, Color(0.86, 0.72, 0.48), Vector3(2.65, 0.91, -1.3))
 	_create_box(_interior_root, "StarLoungeChair", Vector3(1.05, 0.78, 0.92), Color(0.34, 0.25, 0.25), Vector3(2.65, 0.42, 1.05))
-	_workplace_points = [Vector3(0.0, 0.0, 0.45)]
+	_workplace_points = [Vector3(0.0, 0.0, -1.3)]
 
 func _build_script_department(
 	footprint: Vector2,
