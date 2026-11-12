@@ -61,8 +61,10 @@ const SET_INVENTORY_SCRIPT = preload(
 const SET_LOGISTICS_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_set_logistics_controller.gd"
 )
+const BUILDING_PLACEMENT_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_placement_controller.gd"
+)
 
-const GRID_SIZE: float = 2.0
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
 const PROP_WAREHOUSE_START_POSITION: Vector3 = Vector3(20.0, 0.0, 10.0)
@@ -86,6 +88,7 @@ var _active_production_technician_ids: Array[String]:
 var _set_logistics_controller: RefCounted
 var _film_editing_controller: RefCounted
 var _film_production_controller: RefCounted
+var _building_placement_controller: RefCounted
 
 var _set_logistics_phase: String:
 	get:
@@ -152,17 +155,10 @@ var _completed_film_archive: Array = []
 var _buildings: Array = []
 var _building_actors: Dictionary = {}
 var _selected_building_id: String = ""
-var _placing_building_type_id: String = ""
-var _placement_rotation_degrees: float = 0.0
-var _placement_stage_size_tier: int = 2
-var _stage_size_option: OptionButton
-var _stage_size_label: Label
 var _next_building_sequence: int = 1
 var _next_script_sequence: int = 1
 var _latest_script: Variant
 
-var _build_status_label: Label
-var _placement_hint_label: Label
 var _building_detail_panel: PanelContainer
 var _building_detail_layout: VBoxContainer
 
@@ -175,8 +171,6 @@ var _script_progress_bar: ProgressBar
 var _script_progress_label: Label
 var _script_result_label: Label
 
-var _preview_mesh: MeshInstance3D
-var _preview_material: StandardMaterial3D
 
 
 func setup(game_clock: Node, character_manager: Node) -> void:
@@ -191,6 +185,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_set_inventory = SET_INVENTORY_SCRIPT.new()
 	_get_set_logistics_controller()
 	_get_film_production_controller()
+	_get_building_placement_controller()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
@@ -287,6 +282,17 @@ func _get_film_production_controller() -> RefCounted:
 	return _film_production_controller
 
 
+func _get_building_placement_controller() -> RefCounted:
+	if _building_placement_controller == null:
+		_building_placement_controller = BUILDING_PLACEMENT_CONTROLLER_SCRIPT.new()
+		_building_placement_controller.call("setup", self, _buildings)
+		_building_placement_controller.connect(
+			"building_placement_requested",
+			Callable(self, "_on_building_placement_requested")
+		)
+	return _building_placement_controller
+
+
 func _on_developer_funds_requested(amount: int) -> void:
 	if _set_inventory == null:
 		return
@@ -324,12 +330,11 @@ func _on_employee_roster_changed() -> void:
 
 
 func _process(_delta: float) -> void:
-	if not _placing_building_type_id.is_empty():
-		_update_placement_preview(get_viewport().get_mouse_position())
+	_get_building_placement_controller().call("process")
 
 
 func is_placing_building() -> bool:
-	return not _placing_building_type_id.is_empty()
+	return bool(_get_building_placement_controller().call("is_placing_building"))
 
 
 func get_buildings() -> Array:
@@ -788,8 +793,8 @@ func set_stage_camera_target(
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _placing_building_type_id.is_empty():
-		_handle_placement_input(event)
+	if is_placing_building():
+		_get_building_placement_controller().call("handle_input", event)
 		return
 	if not event is InputEventMouseButton:
 		return
@@ -886,170 +891,19 @@ func _create_building(
 
 
 func _build_ui() -> void:
-	var build_panel := PanelContainer.new()
-	build_panel.name = "BuildingPalettePanel"
-	build_panel.custom_minimum_size = Vector2(0.0, 0.0)
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	if studio_hud == null:
 		push_error("StudioBuildingManager: StudioHUD node is missing.")
 		return
+	var build_panel: PanelContainer = _get_building_placement_controller().call(
+		"build_palette"
+	)
 	studio_hud.call(
 		"register_workspace_panel",
 		"studio",
 		"Студия",
 		build_panel
 	)
-
-	var build_layout := VBoxContainer.new()
-	build_layout.add_theme_constant_override("separation", 9)
-	build_panel.add_child(build_layout)
-
-	var heading := Label.new()
-	heading.text = "СТРОИТЕЛЬСТВО"
-	heading.add_theme_font_size_override("font_size", 12)
-	heading.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	build_layout.add_child(heading)
-
-	var script_button := Button.new()
-	script_button.text = "＋ Сценарный отдел"
-	script_button.tooltip_text = "Построить сценарный отдел"
-	script_button.custom_minimum_size = Vector2(0.0, 42.0)
-	script_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	script_button.pressed.connect(
-		_begin_placement.bind("script_department")
-	)
-	build_layout.add_child(script_button)
-
-	var stage_button := Button.new()
-	stage_button.text = "＋ Съёмочный павильон"
-	stage_button.tooltip_text = "Построить съёмочный павильон"
-	stage_button.custom_minimum_size = Vector2(0.0, 42.0)
-	stage_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage_button.pressed.connect(
-		_begin_placement.bind("sound_stage")
-	)
-	build_layout.add_child(stage_button)
-
-	_stage_size_label = Label.new()
-	_stage_size_label.text = "РАЗМЕР ПАВИЛЬОНА"
-	_stage_size_label.add_theme_font_size_override("font_size", 10)
-	_stage_size_label.visible = false
-	build_layout.add_child(_stage_size_label)
-	_stage_size_option = OptionButton.new()
-	_stage_size_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for tier in range(1, 4):
-		var size: Vector2 = BUILDING_CATALOG_SCRIPT.get_stage_footprint(tier)
-		_stage_size_option.add_item(
-			"%s · %.0f × %.0f м" % [
-				BUILDING_CATALOG_SCRIPT.get_stage_size_title(tier),
-				size.x,
-				size.y,
-			]
-		)
-		_stage_size_option.set_item_metadata(tier - 1, tier)
-	_stage_size_option.select(1)
-	_stage_size_option.visible = false
-	_stage_size_option.item_selected.connect(_on_stage_size_selected)
-	build_layout.add_child(_stage_size_option)
-
-	var tv_studio_button := Button.new()
-	tv_studio_button.text = "＋ Телевизионная студия"
-	tv_studio_button.tooltip_text = "Построить отдельный павильон для сериалов и ток-шоу"
-	tv_studio_button.custom_minimum_size = Vector2(0.0, 42.0)
-	tv_studio_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tv_studio_button.pressed.connect(
-		_begin_placement.bind("tv_studio")
-	)
-	build_layout.add_child(tv_studio_button)
-
-	var warehouse_button := Button.new()
-	warehouse_button.text = "＋ Склад реквизита"
-	warehouse_button.tooltip_text = "Построить дополнительный склад съёмочного инвентаря"
-	warehouse_button.custom_minimum_size = Vector2(0.0, 42.0)
-	warehouse_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	warehouse_button.pressed.connect(
-		_begin_placement.bind("prop_warehouse")
-	)
-	build_layout.add_child(warehouse_button)
-
-	var editing_button := Button.new()
-	editing_button.text = "＋ Монтажный отдел"
-	editing_button.tooltip_text = "Построить монтажный отдел"
-	editing_button.custom_minimum_size = Vector2(0.0, 42.0)
-	editing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	editing_button.pressed.connect(
-		_begin_placement.bind("editing_suite")
-	)
-	build_layout.add_child(editing_button)
-
-	var cafeteria_button := Button.new()
-	cafeteria_button.text = "＋ Столовая"
-	cafeteria_button.tooltip_text = "Построить столовую для обеденных перерывов персонала"
-	cafeteria_button.custom_minimum_size = Vector2(0.0, 42.0)
-	cafeteria_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cafeteria_button.pressed.connect(
-		_begin_placement.bind("cafeteria")
-	)
-	build_layout.add_child(cafeteria_button)
-
-	var housing_button := Button.new()
-	housing_button.text = "＋ Домик персонала"
-	housing_button.tooltip_text = "Построить жилой домик для отдыха сотрудников после смены"
-	housing_button.custom_minimum_size = Vector2(0.0, 42.0)
-	housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	housing_button.pressed.connect(
-		_begin_placement.bind("staff_housing")
-	)
-	build_layout.add_child(housing_button)
-
-	var star_housing_button := Button.new()
-	star_housing_button.text = "＋ Звёздный домик"
-	star_housing_button.tooltip_text = "Построить отдельное жильё с одной кроватью для популярного актёра"
-	star_housing_button.custom_minimum_size = Vector2(0.0, 42.0)
-	star_housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	star_housing_button.pressed.connect(
-		_begin_placement.bind("star_bungalow")
-	)
-	build_layout.add_child(star_housing_button)
-
-	var fitness_button := Button.new()
-	fitness_button.text = "＋ Фитнес-центр"
-	fitness_button.tooltip_text = "Построить зал для физической подготовки актёров"
-	fitness_button.custom_minimum_size = Vector2(0.0, 42.0)
-	fitness_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	fitness_button.pressed.connect(
-		_begin_placement.bind("fitness_center")
-	)
-	build_layout.add_child(fitness_button)
-
-	var lounge_button := Button.new()
-	lounge_button.text = "＋ Клуб студии"
-	lounge_button.tooltip_text = "Построить место отдыха и общения сотрудников"
-	lounge_button.custom_minimum_size = Vector2(0.0, 42.0)
-	lounge_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lounge_button.pressed.connect(
-		_begin_placement.bind("studio_lounge")
-	)
-	build_layout.add_child(lounge_button)
-
-	_build_status_label = Label.new()
-	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_build_status_label.add_theme_font_size_override("font_size", 11)
-	_build_status_label.add_theme_color_override(
-		"font_color",
-		Color(0.60, 0.80, 0.78, 1.0)
-	)
-	build_layout.add_child(_build_status_label)
-
-	_placement_hint_label = Label.new()
-	_placement_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_placement_hint_label.add_theme_font_size_override("font_size", 11)
-	_placement_hint_label.visible = false
-	build_layout.add_child(_placement_hint_label)
-
 	_build_building_detail_panel()
 	_build_decor_shop_panel(studio_hud)
 
@@ -1084,217 +938,49 @@ func _build_building_detail_panel() -> void:
 
 
 func _refresh_build_status() -> void:
-	if not is_instance_valid(_build_status_label):
-		return
-	_build_status_label.text = "Построено зданий: %d" % _buildings.size()
+	_get_building_placement_controller().call(
+		"refresh_build_status",
+		_buildings.size()
+	)
 
 
 func _begin_placement(building_type_id: String) -> void:
-	if not BUILDING_CATALOG_SCRIPT.has_building_type(building_type_id):
-		return
-	_placing_building_type_id = building_type_id
-	_placement_rotation_degrees = 0.0
-	if building_type_id == "sound_stage" and _stage_size_option.selected >= 0:
-		_placement_stage_size_tier = int(
-			_stage_size_option.get_item_metadata(_stage_size_option.selected)
-		)
-	_stage_size_label.visible = building_type_id == "sound_stage"
-	_stage_size_option.visible = building_type_id == "sound_stage"
-	_building_detail_panel.visible = false
+	if is_instance_valid(_building_detail_panel):
+		_building_detail_panel.visible = false
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	if studio_hud != null:
 		studio_hud.call("show_inspector_panel", "building", false)
-	_create_placement_preview()
-	_placement_hint_label.visible = true
-	_set_placement_message("Выбери точку на территории.")
-	_update_placement_preview(get_viewport().get_mouse_position())
-
-
-func _on_stage_size_selected(selected_index: int) -> void:
-	if selected_index < 0 or selected_index >= _stage_size_option.get_item_count():
-		return
-	_placement_stage_size_tier = int(
-		_stage_size_option.get_item_metadata(selected_index)
-	)
-	if _placing_building_type_id == "sound_stage":
-		_create_placement_preview()
-		_update_placement_preview(get_viewport().get_mouse_position())
-		_set_placement_message("Размер павильона изменён.")
-
-
-func _create_placement_preview() -> void:
-	if is_instance_valid(_preview_mesh):
-		_preview_mesh.queue_free()
-	var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
-		_placing_building_type_id,
-		_placement_rotation_degrees,
-		_placement_stage_size_tier
-	)
-	var mesh := BoxMesh.new()
-	mesh.size = Vector3(footprint.x, 0.12, footprint.y)
-	_preview_mesh = MeshInstance3D.new()
-	_preview_mesh.name = "BuildingPlacementPreview"
-	_preview_mesh.mesh = mesh
-	_preview_mesh.position.y = 0.08
-	_preview_material = StandardMaterial3D.new()
-	_preview_material.albedo_color = Color(0.2, 0.85, 0.42, 0.38)
-	_preview_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_preview_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_preview_material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_preview_mesh.material_override = _preview_material
-	add_child(_preview_mesh)
-
-
-func _update_placement_preview(screen_position: Vector2) -> void:
-	if not is_instance_valid(_preview_mesh):
-		return
-	var ground_position: Vector3 = _get_ground_position(screen_position)
-	if absf(ground_position.x) > 5000.0:
-		_preview_mesh.visible = false
-		return
-	var snapped_position := Vector3(
-		roundf(ground_position.x / GRID_SIZE) * GRID_SIZE,
-		0.08,
-		roundf(ground_position.z / GRID_SIZE) * GRID_SIZE
-	)
-	_preview_mesh.position = snapped_position
-	_preview_mesh.visible = true
-	var validation: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
-		_placing_building_type_id,
-		Vector3(snapped_position.x, 0.0, snapped_position.z),
-		_placement_rotation_degrees,
-		_buildings,
-		PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE,
-		_placement_stage_size_tier
-	)
-	_preview_material.albedo_color = (
-		Color(0.2, 0.85, 0.42, 0.38)
-		if bool(validation.get("valid", false))
-		else Color(0.92, 0.2, 0.16, 0.42)
+	_get_building_placement_controller().call(
+		"begin_placement",
+		building_type_id
 	)
 
 
-func _handle_placement_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		var key_event := event as InputEventKey
-		if not key_event.pressed or key_event.echo:
-			return
-		if key_event.keycode == KEY_ESCAPE:
-			_cancel_placement()
-			get_viewport().set_input_as_handled()
-		elif key_event.keycode == KEY_R:
-			_placement_rotation_degrees = fposmod(
-				_placement_rotation_degrees + 90.0,
-				360.0
-			)
-			_create_placement_preview()
-			_update_placement_preview(get_viewport().get_mouse_position())
-			get_viewport().set_input_as_handled()
-		return
-
-	if not event is InputEventMouseButton:
-		return
-	var mouse_event := event as InputEventMouseButton
-	if not mouse_event.pressed:
-		return
-
-	if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
-		_cancel_placement()
-		get_viewport().set_input_as_handled()
-	elif mouse_event.button_index == MOUSE_BUTTON_LEFT:
-		_try_place_building(mouse_event.position)
-		get_viewport().set_input_as_handled()
-
-
-func _try_place_building(screen_position: Vector2) -> void:
-	var ground_position: Vector3 = _get_ground_position(screen_position)
-	if absf(ground_position.x) > 5000.0:
-		_set_placement_message("Не удалось определить точку на территории.")
-		return
-	var snapped_position := Vector3(
-		roundf(ground_position.x / GRID_SIZE) * GRID_SIZE,
-		0.0,
-		roundf(ground_position.z / GRID_SIZE) * GRID_SIZE
-	)
-	var validation: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
-		_placing_building_type_id,
-		snapped_position,
-		_placement_rotation_degrees,
-		_buildings,
-		PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE,
-		_placement_stage_size_tier
-	)
-	if not bool(validation.get("valid", false)):
-		_set_placement_message(str(validation.get("reason", "Здесь нельзя строить.")))
-		return
+func _on_building_placement_requested(
+	building_type_id: String,
+	world_position: Vector3,
+	rotation_degrees: float,
+	stage_size_tier: int
+) -> void:
 	var display_name: String = "%s %d" % [
-		BUILDING_CATALOG_SCRIPT.get_title(_placing_building_type_id),
+		BUILDING_CATALOG_SCRIPT.get_title(building_type_id),
 		_next_building_sequence,
 	]
 	var building: Variant = _create_building(
-		_placing_building_type_id,
-		snapped_position,
-		_placement_rotation_degrees,
+		building_type_id,
+		world_position,
+		rotation_degrees,
 		display_name,
 		true,
-		_placement_stage_size_tier
+		stage_size_tier
 	)
-	if building != null:
-		_select_building(str(building.id))
-		_set_placement_message("Здание размещено. Можно построить ещё одно.")
-
-
-func _set_placement_message(message: String) -> void:
-	if not is_instance_valid(_placement_hint_label):
+	if building == null:
 		return
-	var title: String = BUILDING_CATALOG_SCRIPT.get_title(
-		_placing_building_type_id
+	_select_building(str(building.id))
+	_get_building_placement_controller().call(
+		"set_placement_message",
+		"Здание размещено. Можно построить ещё одно."
 	)
-	if _placing_building_type_id == "sound_stage":
-		var size: Vector2 = BUILDING_CATALOG_SCRIPT.get_stage_footprint(
-			_placement_stage_size_tier
-		)
-		title += " · %s · %.0f × %.0f м" % [
-			BUILDING_CATALOG_SCRIPT.get_stage_size_title(
-				_placement_stage_size_tier
-			),
-			size.x,
-			size.y,
-		]
-	_placement_hint_label.text = (
-		"Размещение: %s\n%s\nЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
-		% [title, message]
-	)
-
-
-func _cancel_placement() -> void:
-	_placing_building_type_id = ""
-	_placement_rotation_degrees = 0.0
-	_stage_size_label.visible = false
-	_stage_size_option.visible = false
-	if is_instance_valid(_preview_mesh):
-		_preview_mesh.queue_free()
-	_preview_mesh = null
-	_preview_material = null
-	if is_instance_valid(_placement_hint_label):
-		_placement_hint_label.visible = false
-	_refresh_build_status()
-
-
-func _get_ground_position(screen_position: Vector2) -> Vector3:
-	var camera := get_viewport().get_camera_3d()
-	if camera == null:
-		return Vector3(9999.0, 0.0, 9999.0)
-
-	var ray_origin: Vector3 = camera.project_ray_origin(screen_position)
-	var ray_direction: Vector3 = camera.project_ray_normal(screen_position)
-	if absf(ray_direction.y) <= 0.0001:
-		return Vector3(9999.0, 0.0, 9999.0)
-
-	var distance: float = -ray_origin.y / ray_direction.y
-	if distance < 0.0:
-		return Vector3(9999.0, 0.0, 9999.0)
-	return ray_origin + ray_direction * distance
 
 
 func _get_building_actor_at(screen_position: Vector2) -> Node:

@@ -35,7 +35,8 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 ### Presentation
 
 - \`StudioBuildingActor\` creates the exterior, cutaway walls, roof assembly, interior props, workplace routes, building hitbox, name label and selection marker.
-- \`StudioBuildingManager\` owns placed building instances, build mode, preview, selection and building detail panels.
+- \`StudioBuildingManager\` owns placed building instances, building creation, selection and subsystem composition.
+- \`StudioBuildingPlacementController\` owns the construction palette, placement mode, preview, grid snapping, rotation and placement validation. It emits a placement request; the manager remains responsible for creating the building actor and notifying dependent systems.
 - \`StudioSetLogisticsController\` owns the set-dressing / set-strike task state machine, technician assignments, warehouse transfers and logistics route composition. \`StudioBuildingManager\` supplies building/scene operations through a narrow adapter and retains compatibility wrappers for the production coordinator.
 - \`CharacterManager.get_employees()\` exposes a copy of the active roster for workplace and production interfaces.
 - \`main.gd\` initializes the building manager after scene children have completed their setup.

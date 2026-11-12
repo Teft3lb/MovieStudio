@@ -16,7 +16,7 @@ Current approximate source line counts after the production, editing and logisti
 
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
-| `studio_building_manager.gd` | 2,613 | Building placement, inspectors, script writing, inventory and module composition |
+| `studio_building_manager.gd` | 2,299 | Building lifecycle, inspector composition, script writing, inventory and module composition |
 | `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
@@ -75,6 +75,21 @@ The Domain `FilmProductionSystem` and `FilmProductionProject` are unchanged. The
 
 The manager drops from 4,750 to 2,613 lines in this extraction. The extracted presentation responsibilities are split across controllers of approximately 1,798, 502 and 545 lines rather than being collected into one replacement monolith.
 
+### StudioBuildingPlacementController
+
+Extracted from `StudioBuildingManager` into:
+
+`scripts/presentation/studio/studio_building_placement_controller.gd`
+
+Owns:
+- the construction palette and its building-type controls;
+- placement-mode state, stage-size selection and rotation;
+- the placement preview, 2 m grid snapping and preview validity feedback;
+- input handling for placement, rotation and cancellation;
+- final placement-rule validation before emitting a placement request.
+
+The manager retains building-data creation, actor instantiation, selection, building-change notifications and navigation/workplace refreshes. The controller receives the manager node and the shared building-data array explicitly; it does not create or own buildings. A focused smoke test covers palette creation, placement-mode transitions, stage-size selection and cancellation.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -83,7 +98,7 @@ Keep the manager as a composition root and public façade. Extract in small step
 
 | Target module | Responsibility |
 |---|---|
-| `StudioBuildingPlacementController` | Build mode, preview, rotation, placement input and placement validation |
+| `StudioBuildingPlacementController` | Build mode, preview, rotation, placement input and placement validation; extracted in this pass |
 | `StudioBuildingInspectorController` | Building detail panel lifecycle and inspector selection |
 | `FilmProductionController` | Production project/phase orchestration, shared-shift timing, set-dressing coordination and status; extracted in this pass |
 | `FilmProductionAssignmentController` | Crew/cast/background selection and production-start validation; extracted in this pass |
@@ -146,7 +161,7 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing and film-production controller group.
-2. Separate building placement/inspector UI from the manager.
+2. Extract the building inspector UI from the manager.
 3. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
 4. Split CharacterManager presentation from employee simulation coordination.
 5. Split the interior smoke test into focused suites.
