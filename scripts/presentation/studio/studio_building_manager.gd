@@ -2728,6 +2728,7 @@ func _advance_film_production(hour: int = -1) -> void:
 		resolved_hour = DEFAULT_FILM_SHIFT_START_HOUR
 	var current_phase: String = str(_active_film_project.current_phase)
 	if not is_film_production_work_hour(resolved_hour):
+		_film_phase_actions_pending = true
 		var logistics_pending: bool = (
 			current_phase in ["set_dressing", "set_strike"]
 			and not _are_set_logistics_tasks_complete()
