@@ -16,7 +16,7 @@ Current approximate source line counts after the production, editing and logisti
 
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
-| `studio_building_manager.gd` | 2,303 | Building lifecycle, inspector composition, script writing, inventory and module composition |
+| `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
 | `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
@@ -90,6 +90,21 @@ Owns:
 
 The manager retains building-data creation, actor instantiation, selection, building-change notifications and navigation/workplace refreshes. The controller receives the manager node and the shared building-data array explicitly; it does not create or own buildings. A focused smoke test covers palette creation, placement-mode transitions, stage-size selection and cancellation.
 
+### StudioBuildingInspectorController
+
+Extracted from `StudioBuildingManager` into:
+
+`scripts/presentation/studio/studio_building_inspector_controller.gd`
+
+Owns:
+- the selected building ID and context-inspector panel lifecycle;
+- shared building overview, footprint, capacity, occupancy and staff summaries;
+- facility-specific information, sound-stage architecture notes and TV Studio overview;
+- Script Department controls, progress/result presentation and script summary formatting;
+- the UI-side script-generation request, emitted as a typed signal to the manager.
+
+The manager remains the owner of building data and 3D actor highlighting. It supplies narrow read/build adapters for employee eligibility, assigned staff, profession titles and the existing Film Production / Film Editing detail controllers. Script-writing state, project progression, ID allocation and Domain system calls remain in the manager. The inspector only collects user input and renders the supplied state. A focused smoke test covers selection, HUD lifecycle, script-generation request payloads and delegation to the specialized production/editing controllers.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -99,7 +114,7 @@ Keep the manager as a composition root and public façade. Extract in small step
 | Target module | Responsibility |
 |---|---|
 | `StudioBuildingPlacementController` | Build mode, preview, rotation, placement input and placement validation; extracted in this pass |
-| `StudioBuildingInspectorController` | Building detail panel lifecycle and inspector selection |
+| `StudioBuildingInspectorController` | Building detail panel lifecycle and inspector selection; extracted in this pass |
 | `FilmProductionController` | Production project/phase orchestration, shared-shift timing, set-dressing coordination and status; extracted in this pass |
 | `FilmProductionAssignmentController` | Crew/cast/background selection and production-start validation; extracted in this pass |
 | `FilmScenePerformanceController` | Scene blocking, camera/performer staging and off-camera holding; extracted in this pass |
@@ -161,8 +176,7 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing and film-production controller group.
-2. Extract the building inspector UI from the manager.
-3. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
+2. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
 4. Split CharacterManager presentation from employee simulation coordination.
 5. Split the interior smoke test into focused suites.
 
