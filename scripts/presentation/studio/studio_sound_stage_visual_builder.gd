@@ -60,7 +60,7 @@ func _build_small_sound_stage(
 		Color(0.53, 0.43, 0.33)
 	)
 	_actor.call("_create_floor", footprint, Color(0.20, 0.21, 0.22), "SmallStageFloor")
-	_actor.call("_create_perimeter_walls", 
+	_actor.call("_create_perimeter_walls",
 		width,
 		depth,
 		wall_height,
@@ -71,7 +71,7 @@ func _build_small_sound_stage(
 	_roof_assembly = Node3D.new()
 	_roof_assembly.name = "RoofAssembly"
 	_actor.add_child(_roof_assembly)
-	var left_roof: MeshInstance3D = _actor.call("_create_box", 
+	var left_roof: MeshInstance3D = _actor.call("_create_box",
 		_roof_assembly,
 		"SmallStageGableRoofLeft",
 		Vector3(width + 0.55, 0.28, depth * 0.64),
@@ -79,7 +79,7 @@ func _build_small_sound_stage(
 		Vector3(0.0, height - 0.55, -depth * 0.20)
 	) as MeshInstance3D
 	left_roof.rotation.x = -0.42
-	var right_roof: MeshInstance3D = _actor.call("_create_box", 
+	var right_roof: MeshInstance3D = _actor.call("_create_box",
 		_roof_assembly,
 		"SmallStageGableRoofRight",
 		Vector3(width + 0.55, 0.28, depth * 0.64),
@@ -87,35 +87,35 @@ func _build_small_sound_stage(
 		Vector3(0.0, height - 0.55, depth * 0.20)
 	) as MeshInstance3D
 	right_roof.rotation.x = 0.42
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_roof_assembly,
 		"SmallStageRidgeBeam",
 		Vector3(width + 0.7, 0.28, 0.34),
 		trim_color,
 		Vector3(0.0, height + 0.05, 0.0)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"SmallStageLoadingCanopy",
 		Vector3(4.0, 0.18, 1.0),
 		trim_color,
 		Vector3(0.0, 3.55, depth * 0.5 + 0.45)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"SmallStageSign",
 		Vector3(4.8, 0.58, 0.18),
 		accent_color,
 		Vector3(0.0, 4.25, depth * 0.5 + 0.24)
 	)
-	_actor.call("_create_label", 
+	_actor.call("_create_label",
 		_actor,
 		"SmallStageSignText",
 		"МАЛАЯ СТУДИЯ",
 		Vector3(0.0, 4.25, depth * 0.5 + 0.34),
 		18
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor.call("get_wall_group_for_visual_builder", "front"),
 		"SmallStageFrontWindow",
 		Vector3(1.45, 0.95, 0.12),
@@ -140,7 +140,7 @@ func _build_medium_sound_stage(
 		Color(0.53, 0.43, 0.33)
 	)
 	_actor.call("_create_floor", footprint, Color(0.19, 0.20, 0.21), "StageFloor")
-	_actor.call("_create_perimeter_walls", 
+	_actor.call("_create_perimeter_walls",
 		width,
 		depth,
 		wall_height,
@@ -151,35 +151,35 @@ func _build_medium_sound_stage(
 	_roof_assembly = Node3D.new()
 	_roof_assembly.name = "RoofAssembly"
 	_actor.add_child(_roof_assembly)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_roof_assembly,
 		"StageRoof",
 		Vector3(width + 0.45, 0.55, depth + 0.45),
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_roof_assembly,
 		"VentilationUnit",
 		Vector3(2.4, 0.7, 1.8),
 		trim_color,
 		Vector3(width * 0.26, height + 0.35, -depth * 0.18)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"RollDoorRaisedPanel",
 		Vector3(4.4, 0.35, 0.16),
 		trim_color,
 		Vector3(0.0, 4.35, depth * 0.5 + 0.24)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"FrontSign",
 		Vector3(5.2, 0.72, 0.18),
 		accent_color,
 		Vector3(0.0, 5.0, depth * 0.5 + 0.24)
 	)
-	_actor.call("_create_label", 
+	_actor.call("_create_label",
 		_actor,
 		"StageSignText",
 		"СЪЁМОЧНЫЙ ПАВИЛЬОН",
@@ -204,7 +204,7 @@ func _build_large_sound_stage(
 		Color(0.53, 0.43, 0.33)
 	)
 	_actor.call("_create_floor", footprint, Color(0.17, 0.19, 0.21), "HighBayStageFloor")
-	_actor.call("_create_perimeter_walls", 
+	_actor.call("_create_perimeter_walls",
 		width,
 		depth,
 		wall_height,
@@ -215,7 +215,7 @@ func _build_large_sound_stage(
 	_roof_assembly = Node3D.new()
 	_roof_assembly.name = "RoofAssembly"
 	_actor.add_child(_roof_assembly)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_roof_assembly,
 		"HighBayRoofDeck",
 		Vector3(width + 0.8, 0.65, depth + 0.8),
@@ -223,7 +223,7 @@ func _build_large_sound_stage(
 		Vector3(0.0, height - 0.325, 0.0)
 	)
 	for beam_x in [-8.0, -4.0, 0.0, 4.0, 8.0]:
-		_actor.call("_create_box", 
+		_actor.call("_create_box",
 			_roof_assembly,
 			"HighBayRoofTruss_%d" % roundi(beam_x + 8.0),
 			Vector3(0.24, 1.15, depth + 0.3),
@@ -231,42 +231,42 @@ func _build_large_sound_stage(
 			Vector3(beam_x, height - 1.0, 0.0)
 		)
 	for skylight_x in [-4.0, 4.0]:
-		_actor.call("_create_box", 
+		_actor.call("_create_box",
 			_roof_assembly,
 			"HighBaySkylight_%d" % roundi(skylight_x + 4.0),
 			Vector3(2.6, 0.16, depth - 2.0),
 			Color(0.30, 0.43, 0.48),
 			Vector3(skylight_x, height + 0.025, 0.0)
 		)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"HighBayLoadingDoorHeader",
 		Vector3(7.2, 0.32, 0.2),
 		truss_color,
 		Vector3(0.0, 5.85, depth * 0.5 + 0.25)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor,
 		"HighBayFrontSign",
 		Vector3(8.2, 0.82, 0.2),
 		accent_color,
 		Vector3(0.0, 6.8, depth * 0.5 + 0.25)
 	)
-	_actor.call("_create_label", 
+	_actor.call("_create_label",
 		_actor,
 		"HighBayFrontSignText",
 		"БОЛЬШОЙ СЪЁМОЧНЫЙ АНГАР",
 		Vector3(0.0, 6.8, depth * 0.5 + 0.36),
 		22
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor.call("get_wall_group_for_visual_builder", "front"),
 		"HighBayControlRoomWindow",
 		Vector3(3.8, 1.35, 0.12),
 		Color(0.13, 0.30, 0.38),
 		Vector3(-7.0, 6.4, depth * 0.5 + 0.22)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_actor.call("get_wall_group_for_visual_builder", "right"),
 		"HighBayServiceWindow",
 		Vector3(0.12, 1.2, 2.8),
@@ -283,14 +283,14 @@ func _build_small_sound_stage_interior() -> void:
 	_set_dressing_root = Node3D.new()
 	_set_dressing_root.name = "SetDressing"
 	_interior_root.add_child(_set_dressing_root)
-	_actor.call("_create_wall_panel", 
+	_actor.call("_create_wall_panel",
 		_interior_root,
 		"SmallSetBackdrop",
 		Vector3(5.8, 3.3, 0.22),
 		set_color,
 		Vector3(0.0, 1.7, -3.3)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"SmallSetPlatform",
 		Vector3(5.8, 0.16, 2.8),
@@ -298,7 +298,7 @@ func _build_small_sound_stage_interior() -> void:
 		Vector3(0.0, 0.12, -2.35)
 	)
 	for side in [-1.0, 1.0]:
-		_actor.call("_create_wall_panel", 
+		_actor.call("_create_wall_panel",
 			_interior_root,
 			"SmallSetSideWallLeft" if side < 0.0 else "SmallSetSideWallRight",
 			Vector3(0.18, 2.6, 2.4),
@@ -306,7 +306,7 @@ func _build_small_sound_stage_interior() -> void:
 			Vector3(side * 2.8, 1.35, -2.15)
 		)
 	for mark_x in [-2.0, -1.0, 0.0, 1.0, 2.0]:
-		_actor.call("_create_box", 
+		_actor.call("_create_box",
 			_interior_root,
 			"SmallStageFloorMark_%d" % roundi(mark_x + 2.0),
 			Vector3(0.08, 0.025, 1.2),
@@ -325,14 +325,14 @@ func _build_small_sound_stage_interior() -> void:
 	)
 	_actor.call("_create_light_stand", Vector3(-3.5, 0.0, -3.0), metal_color)
 	_actor.call("_create_light_stand", Vector3(3.5, 0.0, -3.0), metal_color)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"SmallStageEquipmentRack",
 		Vector3(0.85, 1.45, 0.55),
 		equipment_color,
 		Vector3(3.75, 0.72, 2.55)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"SmallStageDirectorDesk",
 		Vector3(1.25, 0.78, 0.58),
@@ -357,28 +357,28 @@ func _build_medium_sound_stage_interior() -> void:
 	_set_dressing_root = Node3D.new()
 	_set_dressing_root.name = "SetDressing"
 	_interior_root.add_child(_set_dressing_root)
-	_actor.call("_create_wall_panel", 
+	_actor.call("_create_wall_panel",
 		_interior_root,
 		"MainSetBackdrop",
 		Vector3(8.2, 4.0, 0.24),
 		set_color,
 		Vector3(0.0, 2.0, -5.0)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"SetPlatform",
 		Vector3(8.2, 0.16, 3.2),
 		Color(0.29, 0.28, 0.25),
 		Vector3(0.0, 0.12, -2.6)
 	)
-	_actor.call("_create_wall_panel", 
+	_actor.call("_create_wall_panel",
 		_interior_root,
 		"SetSideWallLeft",
 		Vector3(0.18, 3.0, 2.8),
 		Color(0.34, 0.32, 0.29),
 		Vector3(-3.9, 1.6, -2.3)
 	)
-	_actor.call("_create_wall_panel", 
+	_actor.call("_create_wall_panel",
 		_interior_root,
 		"SetSideWallRight",
 		Vector3(0.18, 3.0, 2.8),
@@ -386,7 +386,7 @@ func _build_medium_sound_stage_interior() -> void:
 		Vector3(3.9, 1.6, -2.3)
 	)
 	for mark_x in [-4.5, -1.5, 1.5, 4.5]:
-		_actor.call("_create_box", 
+		_actor.call("_create_box",
 			_interior_root,
 			"FloorMark",
 			Vector3(0.10, 0.025, 2.0),
@@ -414,21 +414,21 @@ func _build_medium_sound_stage_interior() -> void:
 	)
 	_actor.call("_create_light_stand", Vector3(-5.6, 0.0, -4.1), metal_color)
 	_actor.call("_create_light_stand", Vector3(5.6, 0.0, -4.1), metal_color)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"TechnicalEquipmentRack",
 		Vector3(1.3, 1.8, 0.65),
 		equipment_color,
 		Vector3(6.0, 0.9, 5.0)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"DirectorMonitorDesk",
 		Vector3(1.8, 0.9, 0.65),
 		Color(0.23, 0.20, 0.18),
 		Vector3(-5.9, 0.48, 5.0)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"DirectorMonitor",
 		Vector3(0.85, 0.48, 0.08),
@@ -459,14 +459,14 @@ func _build_large_sound_stage_interior() -> void:
 	_set_dressing_root = Node3D.new()
 	_set_dressing_root.name = "SetDressing"
 	_interior_root.add_child(_set_dressing_root)
-	_actor.call("_create_wall_panel", 
+	_actor.call("_create_wall_panel",
 		_interior_root,
 		"HighBayMainSetBackdrop",
 		Vector3(13.2, 5.0, 0.28),
 		set_color,
 		Vector3(0.0, 2.5, -7.2)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"HighBaySetPlatform",
 		Vector3(13.2, 0.18, 5.4),
@@ -474,7 +474,7 @@ func _build_large_sound_stage_interior() -> void:
 		Vector3(0.0, 0.13, -4.45)
 	)
 	for side in [-1.0, 1.0]:
-		_actor.call("_create_wall_panel", 
+		_actor.call("_create_wall_panel",
 			_interior_root,
 			"HighBaySetSideWallLeft" if side < 0.0 else "HighBaySetSideWallRight",
 			Vector3(0.22, 4.2, 4.8),
@@ -482,7 +482,7 @@ func _build_large_sound_stage_interior() -> void:
 			Vector3(side * 6.4, 2.1, -4.85)
 		)
 	for mark_x in [-7.5, -4.5, -1.5, 1.5, 4.5, 7.5]:
-		_actor.call("_create_box", 
+		_actor.call("_create_box",
 			_interior_root,
 			"HighBayFloorMark_%d" % roundi(mark_x + 7.5),
 			Vector3(0.10, 0.025, 3.0),
@@ -501,25 +501,25 @@ func _build_large_sound_stage_interior() -> void:
 		) as Node3D
 	)
 	for light_x in [-8.0, -2.7, 2.7, 8.0]:
-		_actor.call("_create_light_stand", 
+		_actor.call("_create_light_stand",
 			Vector3(light_x, 0.0, -6.1 if absf(light_x) > 4.0 else -1.0),
 			metal_color
 		)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"HighBayTechnicalEquipmentRack",
 		Vector3(1.7, 2.1, 0.8),
 		equipment_color,
 		Vector3(9.2, 1.05, 6.8)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"HighBayDirectorControlDesk",
 		Vector3(2.5, 1.0, 0.85),
 		Color(0.20, 0.22, 0.24),
 		Vector3(-9.2, 0.55, 6.8)
 	)
-	_actor.call("_create_box", 
+	_actor.call("_create_box",
 		_interior_root,
 		"HighBayDirectorControlMonitor",
 		Vector3(1.35, 0.72, 0.08),

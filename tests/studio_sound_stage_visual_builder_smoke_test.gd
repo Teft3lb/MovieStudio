@@ -52,7 +52,7 @@ func _test_stage_tier(
 	data.id = "BLD-SOUND-STAGE-%s" % tier_label.to_upper()
 	data.building_type_id = "sound_stage"
 	data.display_name = "Test %s Sound Stage" % tier_label.capitalize()
-	data.position = Vector3.ZERO
+	data.position = Vector3(float(stage_size_tier) * 30.0, 0.0, 0.0)
 	data.rotation_degrees = 0.0
 	data.stage_size_tier = stage_size_tier
 
@@ -94,11 +94,13 @@ func _test_stage_tier(
 		workplace_path.size() >= 4,
 		"%s sound stage must keep its workplace route connected to the entrance." % tier_label.capitalize()
 	)
-	var exit_path: Array[Vector3] = actor.call(
-		"get_exit_path_from",
-		workplace_path.back(),
-		0
-	) if not workplace_path.is_empty() else []
+	var exit_path: Array[Vector3] = []
+	if not workplace_path.is_empty():
+		exit_path = actor.call(
+			"get_exit_path_from",
+			workplace_path.back(),
+			0
+		)
 	_expect(
 		exit_path.size() >= 2
 		and exit_path.front().distance_to(workplace_path.back()) <= 0.1,
