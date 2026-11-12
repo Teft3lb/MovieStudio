@@ -163,7 +163,7 @@ static func get_prop_ids_for_group(group_id: String) -> Array[String]:
 	return result
 
 
-static static func get_prop_definition(prop_id: String) -> Dictionary:
+static func get_prop_definition(prop_id: String) -> Dictionary:
 	if not PROPS.has(prop_id):
 		return {}
 	var definition: Dictionary = PROPS[prop_id].duplicate(true)
@@ -233,7 +233,7 @@ static func _match_scene_context(context: String) -> String:
 	return ""
 
 
-static static func build_scene_setups(
+static func build_scene_setups(
 	scenes: Array,
 	owned_prop_ids: Array[String],
 	genre_id: String = "",
