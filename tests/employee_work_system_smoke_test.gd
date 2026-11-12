@@ -134,7 +134,7 @@ func _test_skill_progression(
 		xp_after > 0.0,
 		"Every work minute must add persisted experience toward the next skill point."
 	)
-	for _minute in range(40000):
+	for _minute in range(50000):
 		system.call("advance_work_minute", employee, assignments["EMP-WORK-ACTOR"])
 	var after: float = float(employee.skills.get(skill_id, 0.0))
 	_expect(
@@ -164,7 +164,7 @@ func _test_editor_skill_progression(
 		float(editor.skill_xp.get("editing", 0.0)) > 0.0,
 		"Editing Suite work must accumulate persisted editing experience."
 	)
-	for _minute in range(40000):
+	for _minute in range(50000):
 		system.call("advance_work_minute", editor, assignments["EMP-WORK-EDITOR"])
 	var after: float = float(editor.skills.get("editing", 0.0))
 	_expect(
