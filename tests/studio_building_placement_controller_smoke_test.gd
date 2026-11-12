@@ -60,6 +60,14 @@ func _run_tests() -> void:
 		int(controller.call("get_stage_size_tier")) == 2,
 		"The default sound-stage size must remain medium."
 	)
+	var rotate_event := InputEventKey.new()
+	rotate_event.keycode = KEY_R
+	rotate_event.pressed = true
+	controller.call("handle_input", rotate_event)
+	_expect(
+		int(controller.call("get_rotation_degrees")) == 90,
+		"Pressing R must rotate the placement preview by 90 degrees."
+	)
 
 	controller.call("_on_stage_size_selected", 2)
 	_expect(

@@ -233,6 +233,10 @@ func get_stage_size_tier() -> int:
 	return _placement_stage_size_tier
 
 
+func get_rotation_degrees() -> float:
+	return _placement_rotation_degrees
+
+
 func _create_placement_preview() -> void:
 	if is_instance_valid(_preview_mesh):
 		_preview_mesh.queue_free()

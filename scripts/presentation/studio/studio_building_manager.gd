@@ -287,10 +287,6 @@ func _get_building_placement_controller() -> RefCounted:
 		_building_placement_controller = BUILDING_PLACEMENT_CONTROLLER_SCRIPT.new()
 		_building_placement_controller.call("setup", self, _buildings)
 		_building_placement_controller.connect(
-			"placement_mode_requested",
-			Callable(self, "_begin_placement")
-		)
-		_building_placement_controller.connect(
 			"building_placement_requested",
 			Callable(self, "_on_building_placement_requested")
 		)

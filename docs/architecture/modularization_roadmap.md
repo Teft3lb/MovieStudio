@@ -16,7 +16,7 @@ Current approximate source line counts after the production, editing and logisti
 
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
-| `studio_building_manager.gd` | 2,299 | Building lifecycle, inspector composition, script writing, inventory and module composition |
+| `studio_building_manager.gd` | 2,303 | Building lifecycle, inspector composition, script writing, inventory and module composition |
 | `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
