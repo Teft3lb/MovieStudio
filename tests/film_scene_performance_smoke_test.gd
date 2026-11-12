@@ -492,6 +492,12 @@ func _test_set_strike_assigns_every_installed_prop() -> void:
 		"BLD-TEST-STAGE",
 		"set_strike:SCENE-02"
 	)
+	var logistics_controller: Variant = manager.get("_set_logistics_controller")
+	_expect(
+		logistics_controller != null
+		and str(logistics_controller.call("get_phase")) == "set_strike",
+		"StudioBuildingManager must delegate set logistics state to its dedicated controller."
+	)
 	var worker_tasks: Dictionary = manager.get("_set_logistics_worker_tasks")
 	var pending_prop_ids: Array = manager.get("_set_logistics_pending_prop_ids")
 	var assigned_prop_ids: Array[String] = []
