@@ -2538,6 +2538,7 @@ func _on_start_film_production_pressed() -> void:
 		_sync_film_scene_performance()
 		_sync_film_set_dressing()
 	else:
+		_film_phase_actions_pending = true
 		var next_shift: Vector2i = get_film_production_shift()
 		_active_film_project.pause_reason = (
 			"Съёмочная смена завершена. Продолжение в %02d:00."
