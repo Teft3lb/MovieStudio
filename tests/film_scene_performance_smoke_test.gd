@@ -415,6 +415,14 @@ func _test_camera_crew_remains_at_workstations() -> void:
 		)),
 		"The camera operator must remain at the camera rig instead of being moved to a generic holding mark."
 	)
+	var production_controller: Variant = studio_manager.get(
+		"_film_production_controller"
+	)
+	_expect(
+		production_controller != null
+		and production_controller.get("_scene_performance_controller") != null,
+		"Scene blocking decisions must be delegated to FilmScenePerformanceController."
+	)
 	_expect(
 		not bool(studio_manager.call(
 			"_should_move_stage_employee_off_camera",

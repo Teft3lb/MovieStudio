@@ -14,11 +14,21 @@ This slice deliberately stops when principal photography is complete. Editing, r
 
 - \`FilmProductionSystem\` owns deterministic production rules and phase transitions.
 - \`FilmProductionProject\` owns the runtime project state and its serializable representation.
-- \`StudioBuildingManager\` coordinates the active script, crew/cast selection, GameClock updates, production UI, stage presentation and off-camera crew staging.
+- `FilmCrewCatalog` owns the shared static crew-role definitions, technician role IDs and background-performer limit.
+- `FilmProductionController` owns active production project/script state, phase progression, shared-shift timing, set-dressing coordination, skill progression and production status.
+- `FilmProductionAssignmentController` owns crew/cast/background assignment controls, selection state and production-start validation.
+- `FilmScenePerformanceController` owns scene blocking, performer staging, camera targeting and off-camera bystander movement/return.
+- `StudioBuildingManager` remains the composition root and compatibility façade. It supplies dependencies and building/stage APIs, owns building data, the shared script sequence and completed-film archive, and coordinates the production-to-editing handoff.
 - \`CharacterManager\` exposes employee lookup, workplace assignment checks, task updates and actor access without transferring ownership of the roster. Production roles keep their workplace assignment for later dispatch, but do not automatically occupy an idle Sound Stage; the employee inspector can manually call an assigned employee to the stage or editing suite and release them again. Active production takes precedence over manual calls. An editor is auto-dispatched only for an active draft/in-progress editing project.
 - \`CharacterActor\` handles movement between the assigned workplace and a scene blocking mark.
 - \`CharacterVisual\` plays procedural acting and crew poses using the existing Character System v2 model.
 - \`StudioBuildingActor\` owns the physical scene marks, production slate and camera rigs.
+
+### Presentation controller boundary
+
+The presentation controllers are located under `scripts/presentation/studio/`. The main controller coordinates production state and delegates assignment and scene-performance responsibilities to focused collaborators. The collaborators receive explicit dependencies and use the manager's public building/stage adapters; they do not access its private building arrays or duplicate Domain simulation rules.
+
+`FilmCrewCatalog` is data-only. It is shared by the main and assignment controllers so required roles, technician IDs and background limits are defined in one place.
 
 The film system does not own or duplicate employee data. Projects store stable employee IDs for crew and cast assignments. Outside an active film, the player can select an assigned employee and use the inspector's stage-call or editing-room button; that manual assignment persists across shift boundaries until the player releases the employee. This is a workplace call/hold control, not yet a separate free-form rehearsal session or skill-training loop.
 
@@ -108,6 +118,7 @@ Run with Godot 4.7.2 from the project root:
 ~~~powershell
 & $godot --headless --path . --script res://tests/film_editing_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/film_production_assignment_controller_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_scene_performance_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_navigation_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_set_inventory_smoke_test.gd
@@ -128,7 +139,7 @@ Run with Godot 4.7.2 from the project root:
 
 All smoke-test scripts defer their test bodies until the SceneTree is ready. They share `smoke_test_base.gd`, which accumulates failed expectations and exits with code 1 instead of printing a false PASS.
 
-The production domain test covers role resolution, unavailable-crew pauses and automatic recovery, technician-scaled installation/strike timing, project serialization, all phase transitions, retakes, final quality and completion. The production-session test verifies that active crew remain ready at their scene/holding marks instead of being incorrectly recalled to their desks. The performance test covers workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers the warehouse, prop pickup/return visuals, phase-specific blocking marks, camera tracking and the production slate.
+The production domain test covers role resolution, unavailable-crew pauses and automatic recovery, technician-scaled installation/strike timing, project serialization, all phase transitions, retakes, final quality and completion. The assignment-controller test covers required crew, scripted cast, optional background performers, technician selection and start validation. The production-session test verifies that the manager façade exposes the controller-owned project and that active crew remain ready at their scene/holding marks. The performance test covers scene-controller delegation, workplace-to-set movement, acting pose, dialogue display and return to the workstation. The interior test covers the warehouse, prop pickup/return visuals, phase-specific blocking marks, camera tracking and the production slate.
 
 ## Manual verification
 

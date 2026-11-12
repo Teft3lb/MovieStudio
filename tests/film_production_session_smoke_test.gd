@@ -51,6 +51,14 @@ func _run_tests() -> void:
 		"ROLE-01": "EMP-ACTOR",
 	}
 	studio_manager.set("_active_film_project", project)
+	var production_controller: Variant = studio_manager.get(
+		"_film_production_controller"
+	)
+	_expect(
+		production_controller != null
+		and production_controller.call("get_active_project") == project,
+		"StudioBuildingManager must expose its active production project through FilmProductionController."
+	)
 
 	var character_manager: Node = CHARACTER_MANAGER_SCRIPT.new()
 	character_manager.set("_studio_building_manager", studio_manager)

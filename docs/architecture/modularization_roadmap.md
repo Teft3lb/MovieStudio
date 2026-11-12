@@ -12,11 +12,11 @@ The refactoring must reduce coupling without changing gameplay behavior. This is
 
 ## Current hotspots
 
-Current approximate source line counts after the first two extractions:
+Current approximate source line counts after the production, editing and logistics extractions:
 
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
-| `studio_building_manager.gd` | 4,750 | Building placement, inspectors, script writing, film production, inventory and production composition |
+| `studio_building_manager.gd` | 2,613 | Building placement, inspectors, script writing, inventory and module composition |
 | `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
@@ -60,6 +60,21 @@ The controller receives the building manager, CharacterManager, FilmEditingSyste
 
 A focused controller smoke test covers project creation, timeline reordering, editor availability pauses, the full editing pipeline and completion notification. The manager drops from 5,178 to 4,750 lines in this extraction. FilmEditingSystem and FilmEditingProject remain unchanged in Domain.
 
+### FilmProductionController and focused collaborators
+
+The production workflow has been separated from `StudioBuildingManager` into a small controller group:
+
+- `scripts/presentation/studio/film_production_controller.gd` — active project/script state, production phases, shift timing, set-dressing orchestration, skill progression and production status.
+- `scripts/presentation/studio/film_production_assignment_controller.gd` — crew, cast and background-performer UI, selection state and production-start validation.
+- `scripts/presentation/studio/film_scene_performance_controller.gd` — performer blocking, camera targets, off-camera holding marks, cast release and return-to-workplace staging.
+- `scripts/domain/film_production/film_crew_catalog.gd` — shared static role definitions and technician/background limits.
+
+The main controller receives the building manager adapter, CharacterManager, Domain FilmProductionSystem, skill progression, GameClock and set inventory. The assignment and scene controllers receive only the dependencies they need. The manager retains building ownership, scene-mark/navigation APIs, the shared script sequence, completed-film archive, set-logistics composition and compatibility methods used by CharacterManager and existing callers.
+
+The Domain `FilmProductionSystem` and `FilmProductionProject` are unchanged. The production-session test verifies project-state ownership, the scene-performance test verifies delegation to the scene controller, and a focused assignment-controller test covers required crew, scripted casting, optional background performers and technician selection.
+
+The manager drops from 4,750 to 2,613 lines in this extraction. The extracted presentation responsibilities are split across controllers of approximately 1,798, 502 and 545 lines rather than being collected into one replacement monolith.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -70,7 +85,10 @@ Keep the manager as a composition root and public façade. Extract in small step
 |---|---|
 | `StudioBuildingPlacementController` | Build mode, preview, rotation, placement input and placement validation |
 | `StudioBuildingInspectorController` | Building detail panel lifecycle and inspector selection |
-| `FilmProductionController` | Crew/cast assignment, production phase orchestration, scene performance coordination and production status |
+| `FilmProductionController` | Production project/phase orchestration, shared-shift timing, set-dressing coordination and status; extracted in this pass |
+| `FilmProductionAssignmentController` | Crew/cast/background selection and production-start validation; extracted in this pass |
+| `FilmScenePerformanceController` | Scene blocking, camera/performer staging and off-camera holding; extracted in this pass |
+| `FilmCrewCatalog` | Shared production role and technician configuration; extracted in this pass |
 | `FilmEditingController` | Editor assignment, editing draft, timeline operations and editing progression; extracted in this pass |
 | `StudioSetLogisticsController` | Technician/prop logistics; extracted in the previous pass |
 
@@ -127,11 +145,10 @@ Keep a small top-level runner that invokes the focused suites.
 
 ## Recommended order
 
-1. Run Godot 4.7.2 parse and smoke tests for the set-logistics and film-editing extractions.
-2. Extract Film Production orchestration, keeping the Domain FilmProductionSystem unchanged.
-3. Separate building placement/inspector UI from the manager.
-4. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
-5. Split CharacterManager presentation from employee simulation coordination.
-6. Split the interior smoke test into focused suites.
+1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing and film-production controller group.
+2. Separate building placement/inspector UI from the manager.
+3. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
+4. Split CharacterManager presentation from employee simulation coordination.
+5. Split the interior smoke test into focused suites.
 
 The order intentionally starts with the most cohesive manager-owned subsystem. Geometry and employee UI are larger extractions and should follow only after the manager's state boundaries become clearer.
