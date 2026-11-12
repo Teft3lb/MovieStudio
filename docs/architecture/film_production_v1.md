@@ -181,3 +181,13 @@ Background extras are assigned separately from scripted cast roles. Up to four e
 Professional mastery is persistent. Normal work develops an employee's primary skill and reliability. Rehearsal develops actors' acting, diction, movement and improvisation, and the director's actor-direction skills. Shooting develops the cast and the selected camera, lighting, sound, equipment, set, costume and makeup specialists. Set Dressing and Review develop the staff working in those phases. Skill experience is stored separately from the 0–100 mastery value; the amount of experience required for each next point rises with mastery, and age modifies the learning rate.
 
 The production shift is calculated from the overlap of the selected crew's working schedules. This prevents optional crew members from being silently required outside their own shifts. Project schema v4 persists background performer assignments.
+
+## Career pacing and staffing constraints
+
+The career target is approximately 30–40 released feature films for a highly demanded actor over a full career. With five biological years passing per 365 game days, an actor's age-20-to-65 career spans roughly nine game years. The corresponding average interval between major acting credits is 82–110 game days. The intended studio release cadence is 30–45 game days per feature, with an actor appearing in a subset of releases rather than every project.
+
+The intended shooting block is 8–15 working days for an 8–12-scene feature. Individual scenes should contain setup, set dressing, rehearsal, takes, review, possible retakes and strike work; poor takes consume time and energy, while experience and preparation reduce their probability. These are pacing targets for the upcoming production-time rebalance; the current minute-scale phase durations are not yet at this target.
+
+Feature-film career credits will count released feature films, not background appearances or uncompleted shoots. That counter belongs with the future distribution/release flow and must not be inferred from scene count alone.
+
+Staffing remains player-controlled. The initial six-person team is not automatically expanded to fill optional crew roles or background positions. Those positions must be assigned from existing employees; only an explicit player hiring action can grow the roster.

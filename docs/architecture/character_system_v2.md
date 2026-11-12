@@ -81,12 +81,18 @@ The current six-person roster remains a deterministic prototype roster. Salary i
 
 ## Skill progression and aging
 
-CharacterData schema version 6 stores:
+CharacterData schema version 7 stores:
 - `skill_xp`: per-skill accumulated experience toward the next mastery point;
-- `age_days`: days elapsed since the employee's last birthday.
+- `skill_caps`: the employee's individual potential ceiling for each professional skill;
+- `growth_points_total` and `growth_points_remaining`: a finite career-long development reserve;
+- `age_days`: progress toward the next biological year, measured in game days (0–72).
 
 The starting six-person roster is generated as junior staff: primary skills begin at 18–40, specialization skills at 16–38 and professional experience at 0–5 years. The employee market continues to generate a broader range of candidates, including experienced specialists.
 
-CharacterSkillProgressionSystem converts work and production activity into skill experience. A skill remains capped at 100; each next point requires more experience than the previous one. Employees gain experience through normal work, rehearsals, shooting, set dressing and review according to their profession and assigned production role. Character cards show both mastery and progress toward the next point.
+Professional mastery is persistent but not unlimited. Every skill has an employee-specific potential ceiling below 100 for newly generated characters. The primary profession skill and selected specialization can develop further than secondary skills; reliability and supporting skills have their own lower ceilings. Each mastery point also consumes one point from a shared career-long development reserve. Once the reserve is exhausted, no skill can improve further. This makes role assignments and practical experience meaningful choices instead of allowing every employee to become universally perfect.
 
-CharacterAgingSystem advances each employee's birthday counter once per GameClock day. After 365 in-game days the employee gains one year. CharacterVisual gradually greys hair from the mid-forties onward. Age currently modifies the rate of learning; it does not automatically reduce existing mastery or force retirement. Age progress and skill experience are serialized with CharacterData.
+Normal work develops the employee's primary skill and reliability slowly. Rehearsal and shooting develop the cast and the selected crew. Production experience is distributed across the duration of a phase, so increasing the length of a rehearsal or take does not multiply the total training reward. Age modifies the learning rate, while personal potential and the remaining career reserve bound total growth.
+
+Biological aging is intentionally faster than the operational clock: one biological year passes every 73 game days, so a full 365-day game year advances a character by exactly five biological years. The calendar itself is unchanged; work shifts, lunch, sleep, needs and production schedules continue to use the same game minutes. Legacy schema v6 age progress is migrated proportionally to the new 73-day cycle.
+
+The initial roster remains six employees. Film roles, optional crew positions and background performers are assigned from existing employees; the simulation does not automatically hire or spawn staff. Only player-driven hiring may increase the employee count.
