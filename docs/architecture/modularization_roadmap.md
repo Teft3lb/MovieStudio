@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 2,214 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
+| `studio_building_actor.gd` | 1,922 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -149,6 +149,21 @@ Owns the complete independent television pavilion composition:
 
 The builder receives the shared visual factory explicitly and uses the actor only for the common perimeter-wall shell and wall-group access. It returns the roof and workplace points to the actor; building identity, cutaway state and navigation remain with the actor. A focused smoke test covers the visual hierarchy, equipment counts and all ten workplace entry/exit routes.
 
+### StudioOfficeVisualBuilder
+
+Extracted from `StudioBuildingActor` into:
+
+`scripts/presentation/studio/studio_office_visual_builder.gd`
+
+Owns the separate Script Department and Editing Suite architectures:
+- office-specific roof, base trim, facade glazing and signage;
+- writer desks, computer stations, keyboards, chairs, bookshelves and research board;
+- three editing workstations with timeline/preview monitors, keyboards and audio mixers;
+- shared reference display and audio equipment rack;
+- the three workplace marks for each office type.
+
+The builder receives the shared visual factory and delegates only the common perimeter-wall shell and wall-group lookup to the actor. It returns the roof and workplace points without owning building identity, navigation or office workflow state. A focused smoke test covers both office variants, their distinct node hierarchies, equipment counts and workplace entry/exit routes.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -220,8 +235,8 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Extract office and remaining facility geometry into focused builders using the shared visual factory.
+2. Extract remaining staff/social facility and housing geometry into focused builders using the shared visual factory.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 
-The building-manager UI extractions and the first building-visual extraction are complete. TV Studio geometry is now isolated. Continue extracting office and facility builders before separating navigation and production-marker presentation from StudioBuildingActor.
+The building-manager UI extractions and the first building-visual extraction are complete. TV Studio and office geometry are now isolated. Continue extracting staff/social facility and housing builders before separating navigation and production-marker presentation from StudioBuildingActor.
