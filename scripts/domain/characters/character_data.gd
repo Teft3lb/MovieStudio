@@ -274,7 +274,7 @@ static func _get_legacy_skill_cap(
 	current_value: float
 ) -> float:
 	var seed_value: int = hash("%s:%s" % [character_id, skill_id])
-	var offset: int = posmod(seed_value, 15)
+	var offset: int = absi(seed_value) % 15
 	var primary_skill_id: String = PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(
 		profession_id
 	)
