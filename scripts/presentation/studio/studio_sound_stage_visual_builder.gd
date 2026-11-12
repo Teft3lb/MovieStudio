@@ -77,7 +77,7 @@ func _build_small_sound_stage(
 		Vector3(width + 0.55, 0.28, depth * 0.64),
 		roof_color,
 		Vector3(0.0, height - 0.55, -depth * 0.20)
-	)
+	) as MeshInstance3D
 	left_roof.rotation.x = -0.42
 	var right_roof: MeshInstance3D = _actor.call("_create_box", 
 		_roof_assembly,
@@ -85,7 +85,7 @@ func _build_small_sound_stage(
 		Vector3(width + 0.55, 0.28, depth * 0.64),
 		roof_color,
 		Vector3(0.0, height - 0.55, depth * 0.20)
-	)
+	) as MeshInstance3D
 	right_roof.rotation.x = 0.42
 	_actor.call("_create_box", 
 		_roof_assembly,
@@ -95,21 +95,21 @@ func _build_small_sound_stage(
 		Vector3(0.0, height + 0.05, 0.0)
 	)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"SmallStageLoadingCanopy",
 		Vector3(4.0, 0.18, 1.0),
 		trim_color,
 		Vector3(0.0, 3.55, depth * 0.5 + 0.45)
 	)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"SmallStageSign",
 		Vector3(4.8, 0.58, 0.18),
 		accent_color,
 		Vector3(0.0, 4.25, depth * 0.5 + 0.24)
 	)
 	_actor.call("_create_label", 
-		self,
+		_actor,
 		"SmallStageSignText",
 		"МАЛАЯ СТУДИЯ",
 		Vector3(0.0, 4.25, depth * 0.5 + 0.34),
@@ -166,21 +166,21 @@ func _build_medium_sound_stage(
 		Vector3(width * 0.26, height + 0.35, -depth * 0.18)
 	)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"RollDoorRaisedPanel",
 		Vector3(4.4, 0.35, 0.16),
 		trim_color,
 		Vector3(0.0, 4.35, depth * 0.5 + 0.24)
 	)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"FrontSign",
 		Vector3(5.2, 0.72, 0.18),
 		accent_color,
 		Vector3(0.0, 5.0, depth * 0.5 + 0.24)
 	)
 	_actor.call("_create_label", 
-		self,
+		_actor,
 		"StageSignText",
 		"СЪЁМОЧНЫЙ ПАВИЛЬОН",
 		Vector3(0.0, 5.0, depth * 0.5 + 0.34),
@@ -239,21 +239,21 @@ func _build_large_sound_stage(
 			Vector3(skylight_x, height + 0.025, 0.0)
 		)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"HighBayLoadingDoorHeader",
 		Vector3(7.2, 0.32, 0.2),
 		truss_color,
 		Vector3(0.0, 5.85, depth * 0.5 + 0.25)
 	)
 	_actor.call("_create_box", 
-		self,
+		_actor,
 		"HighBayFrontSign",
 		Vector3(8.2, 0.82, 0.2),
 		accent_color,
 		Vector3(0.0, 6.8, depth * 0.5 + 0.25)
 	)
 	_actor.call("_create_label", 
-		self,
+		_actor,
 		"HighBayFrontSignText",
 		"БОЛЬШОЙ СЪЁМОЧНЫЙ АНГАР",
 		Vector3(0.0, 6.8, depth * 0.5 + 0.36),
@@ -339,7 +339,7 @@ func _build_small_sound_stage_interior() -> void:
 		Color(0.23, 0.20, 0.18),
 		Vector3(-3.65, 0.42, 2.55)
 	)
-	_actor.call("_create_film_slate", )
+	_actor.call("_create_film_slate")
 	_workplace_points = [
 		Vector3(-1.35, 0.0, -1.1),
 		Vector3(1.35, 0.0, -1.1),
@@ -435,7 +435,7 @@ func _build_medium_sound_stage_interior() -> void:
 		Color(0.10, 0.25, 0.30),
 		Vector3(-5.9, 1.18, 5.0)
 	)
-	_actor.call("_create_film_slate", )
+	_actor.call("_create_film_slate")
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
 		Vector3(1.8, 0.0, -1.6),
@@ -526,7 +526,7 @@ func _build_large_sound_stage_interior() -> void:
 		Color(0.10, 0.29, 0.37),
 		Vector3(-9.2, 1.38, 6.8)
 	)
-	_actor.call("_create_film_slate", )
+	_actor.call("_create_film_slate")
 	_workplace_points = [
 		Vector3(-4.0, 0.0, -3.0),
 		Vector3(0.0, 0.0, -3.0),

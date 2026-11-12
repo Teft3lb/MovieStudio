@@ -36,7 +36,6 @@ var _warehouse_storage_positions: Array[Vector3] = []
 var _navigation_system: RefCounted
 var _visual_factory: RefCounted
 
-
 func setup(data: Variant) -> void:
 	building_data = data
 	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
@@ -50,23 +49,19 @@ func setup(data: Variant) -> void:
 	_create_selection_marker()
 	_create_name_tag()
 
-
 func _process(_delta: float) -> void:
 	_update_cutaway()
-
 
 func get_building_id() -> String:
 	if building_data == null:
 		return ""
 	return str(building_data.id)
 
-
 func set_selected(value: bool) -> void:
 	_is_selected = value
 	if is_instance_valid(_selection_marker):
 		_selection_marker.visible = value
 	_update_cutaway()
-
 
 func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	var path: Array[Vector3] = []
@@ -109,7 +104,6 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 			path.append(world_point)
 	return path
 
-
 func _resolve_exit_navigation_slot(
 	local_start: Vector3,
 	requested_slot_index: int
@@ -131,7 +125,6 @@ func _resolve_exit_navigation_slot(
 			nearest_distance_squared = distance_squared
 			nearest_slot_index = slot_index
 	return nearest_slot_index
-
 
 func get_exit_path_from(
 	start_world_position: Vector3,
@@ -160,7 +153,6 @@ func get_exit_path_from(
 		result.append(outside_position)
 	return result
 
-
 func _get_interior_navigation_bounds() -> Rect2:
 	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
 		str(building_data.building_type_id),
@@ -178,7 +170,6 @@ func _get_interior_navigation_bounds() -> Rect2:
 			footprint.y - margin * 2.0
 		)
 	)
-
 
 func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 	var obstacles: Array[Dictionary] = []
@@ -336,13 +327,11 @@ func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 			})
 	return obstacles
 
-
 func get_workplace_position(slot_index: int) -> Vector3:
 	var path: Array[Vector3] = get_workplace_path(slot_index)
 	if path.is_empty():
 		return global_position
 	return path[path.size() - 1]
-
 
 func get_workplace_facing_direction(slot_index: int) -> Vector3:
 	if _workplace_points.is_empty():
@@ -388,7 +377,6 @@ func get_workplace_facing_direction(slot_index: int) -> Vector3:
 	if local_direction.length_squared() <= 0.001:
 		return Vector3.ZERO
 	return (global_basis * local_direction).normalized()
-
 
 func get_scene_path(
 	start_world_position: Vector3,
@@ -462,7 +450,6 @@ func get_scene_path(
 		result.append(_interior_root.to_global(local_point))
 	return result
 
-
 func _is_point_inside_bounds(
 	point: Vector2,
 	center: Vector2,
@@ -474,18 +461,15 @@ func _is_point_inside_bounds(
 		and absf(point.y - center.y) <= half_extents.y + clearance
 	)
 
-
 func get_set_dressing_prop_count() -> int:
 	if not is_instance_valid(_set_dressing_root):
 		return 0
 	return _set_dressing_root.get_child_count()
 
-
 func get_set_dressing_mark(prop_index: int) -> Vector3:
 	var positions: Array[Vector3] = _get_set_dressing_positions()
 	var index: int = clampi(prop_index, 0, positions.size() - 1)
 	return _interior_root.to_global(positions[index])
-
 
 func _get_set_dressing_positions() -> Array[Vector3]:
 	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
@@ -512,7 +496,6 @@ func _get_set_dressing_positions() -> Array[Vector3]:
 				Vector3(2.65, 0.0, -4.0),
 				Vector3(0.0, 0.0, -2.0),
 			]
-
 
 func prepare_scene_set_dressing(setup: Dictionary) -> bool:
 	if not is_instance_valid(_set_dressing_root):
@@ -550,7 +533,6 @@ func prepare_scene_set_dressing(setup: Dictionary) -> bool:
 		prop_root.visible = false
 	return true
 
-
 func install_set_prop(prop_id: String) -> bool:
 	var prop_node: Node3D = _find_set_prop(prop_id)
 	if prop_node == null:
@@ -558,14 +540,12 @@ func install_set_prop(prop_id: String) -> bool:
 	prop_node.visible = true
 	return true
 
-
 func remove_set_prop(prop_id: String) -> bool:
 	var prop_node: Node3D = _find_set_prop(prop_id)
 	if prop_node == null:
 		return false
 	prop_node.visible = false
 	return true
-
 
 func clear_scene_set_dressing() -> void:
 	if not is_instance_valid(_set_dressing_root):
@@ -575,14 +555,12 @@ func clear_scene_set_dressing() -> void:
 		child.queue_free()
 	_active_set_scene_key = ""
 
-
 func _find_set_prop(prop_id: String) -> Node3D:
 	if not is_instance_valid(_set_dressing_root):
 		return null
 	return _set_dressing_root.get_node_or_null(
 		"SetProp_%s" % prop_id
 	) as Node3D
-
 
 func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 	if not prepare_scene_set_dressing(setup):
@@ -602,13 +580,11 @@ func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 		) as Node3D
 		prop_node.visible = prop_index < visible_count
 
-
 func get_storage_mark(prop_index: int) -> Vector3:
 	if _warehouse_storage_positions.is_empty():
 		return global_position
 	var index: int = posmod(prop_index, _warehouse_storage_positions.size())
 	return to_global(_warehouse_storage_positions[index])
-
 
 func set_warehouse_inventory(prop_ids: Array) -> void:
 	if not is_instance_valid(_warehouse_inventory_root):
@@ -635,7 +611,6 @@ func set_warehouse_inventory(prop_ids: Array) -> void:
 		prop_root.scale = Vector3.ONE * 0.22
 		_build_set_prop_visual(prop_root, prop_id)
 		_warehouse_inventory_root.add_child(prop_root)
-
 
 func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
 	var wood: Color = Color(0.38, 0.25, 0.16)
@@ -735,7 +710,6 @@ func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
 		_:
 			_create_box(parent, "NeutralProp", Vector3(0.8, 0.8, 0.8), wood, Vector3(0.0, 0.4, 0.0))
 
-
 func get_scene_mark(
 	slot_index: int,
 	phase_id: String = "preparation",
@@ -794,7 +768,6 @@ func get_scene_mark(
 			mark.z += 0.12
 	return _interior_root.to_global(mark)
 
-
 func get_scene_hold_mark(slot_index: int) -> Vector3:
 	var hold_marks: Array[Vector3] = []
 	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
@@ -842,7 +815,6 @@ func get_scene_hold_mark(slot_index: int) -> Vector3:
 	var normalized_index: int = posmod(slot_index, hold_marks.size())
 	return _interior_root.to_global(hold_marks[normalized_index])
 
-
 func get_scene_focus_point() -> Vector3:
 	var focus_point: Vector3 = Vector3(0.0, 1.45, -4.35)
 	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
@@ -853,7 +825,6 @@ func get_scene_focus_point() -> Vector3:
 		3:
 			focus_point = Vector3(0.0, 1.8, -6.0)
 	return _interior_root.to_global(focus_point)
-
 
 func set_production_scene(
 	scene_number: int,
@@ -870,7 +841,6 @@ func set_production_scene(
 	if is_instance_valid(_production_phase_label):
 		_production_phase_label.text = phase_title
 
-
 func set_camera_target(target_position: Vector3, active: bool) -> void:
 	for camera_rig in _camera_rigs:
 		if not is_instance_valid(camera_rig):
@@ -879,7 +849,6 @@ func set_camera_target(target_position: Vector3, active: bool) -> void:
 			camera_rig.look_at(target_position, Vector3.UP)
 		else:
 			camera_rig.rotation = Vector3.ZERO
-
 
 func _build_visual() -> void:
 	var building_type_id: String = str(building_data.building_type_id)
@@ -920,12 +889,10 @@ func _build_visual() -> void:
 		_:
 			_build_script_department(footprint, height, definition)
 
-
 func _create_interior_root() -> void:
 	_interior_root = Node3D.new()
 	_interior_root.name = "Interior"
 	add_child(_interior_root)
-
 
 func _build_sound_stage(
 	footprint: Vector2,
@@ -943,13 +910,6 @@ func _build_sound_stage(
 		int(building_data.stage_size_tier)
 	)
 	_apply_sound_stage_visual_state(visual_state)
-
-
-
-
-
-
-
 
 func _build_tv_studio(
 	footprint: Vector2,
@@ -1039,7 +999,6 @@ func _build_tv_studio(
 		Vector3(width * 0.5 + 0.05, 4.3, -1.0)
 	)
 	_build_tv_studio_interior(footprint)
-
 
 func _build_tv_studio_interior(_footprint: Vector2) -> void:
 	var stage_color: Color = Color(0.18, 0.22, 0.27)
@@ -1244,7 +1203,6 @@ func _build_tv_studio_interior(_footprint: Vector2) -> void:
 		Vector3(-8.0, 0.0, -5.4),
 	]
 
-
 func _build_editing_suite(
 	footprint: Vector2,
 	height: float,
@@ -1323,7 +1281,6 @@ func _build_editing_suite(
 	)
 
 	_build_editing_suite_interior(width, depth)
-
 
 func _build_editing_suite_interior(width: float, depth: float) -> void:
 	var desk_color: Color = Color(0.22, 0.24, 0.26)
@@ -1416,7 +1373,6 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		Vector3(0.0, 0.0, 1.55),
 		Vector3(3.0, 0.0, 1.55),
 	]
-
 
 func _build_prop_warehouse(
 	footprint: Vector2,
@@ -1525,7 +1481,6 @@ func _build_prop_warehouse(
 	_warehouse_inventory_root = Node3D.new()
 	_warehouse_inventory_root.name = "WarehouseInventory"
 	_interior_root.add_child(_warehouse_inventory_root)
-
 
 func _build_fitness_center(
 	footprint: Vector2,
@@ -1655,7 +1610,6 @@ func _build_fitness_center(
 		Vector3(1.25, 0.0, 0.15),
 		Vector3(3.75, 0.0, 0.15),
 	]
-
 
 func _build_studio_lounge(
 	footprint: Vector2,
@@ -1812,7 +1766,6 @@ func _build_studio_lounge(
 		Vector3(2.6, 0.0, 2.0),
 	]
 
-
 func _build_cafeteria(
 	footprint: Vector2,
 	height: float,
@@ -1966,7 +1919,6 @@ func _build_cafeteria(
 			)
 	_workplace_points = seat_positions
 
-
 func _build_staff_housing(
 	footprint: Vector2,
 	height: float,
@@ -2086,7 +2038,6 @@ func _build_staff_housing(
 			Vector3(side * 5.5, 0.95, 0.0)
 		)
 	_workplace_points = sleeping_positions
-
 
 func _build_star_bungalow(
 	footprint: Vector2,
@@ -2243,7 +2194,6 @@ func _build_script_department(
 
 	_build_script_department_interior(width, depth)
 
-
 func _build_script_department_interior(width: float, depth: float) -> void:
 	var desk_color: Color = Color(0.34, 0.23, 0.16)
 	var metal_color: Color = Color(0.17, 0.19, 0.21)
@@ -2317,7 +2267,6 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 		Vector3(width * 0.5 - 1.2, 2.0, -depth * 0.5 + 0.12)
 	)
 
-
 func _apply_sound_stage_visual_state(visual_state: Dictionary) -> void:
 	_roof_assembly = visual_state.get("roof_assembly") as Node3D
 	_set_dressing_root = visual_state.get("set_dressing_root") as Node3D
@@ -2332,10 +2281,8 @@ func _apply_sound_stage_visual_state(visual_state: Dictionary) -> void:
 		if typeof(workplace_point) == TYPE_VECTOR3:
 			_workplace_points.append(workplace_point)
 
-
 func get_wall_group_for_visual_builder(group_id: String) -> Node3D:
 	return _wall_groups.get(group_id) as Node3D
-
 
 func _create_perimeter_walls(
 	width: float,
@@ -2364,14 +2311,12 @@ func _create_perimeter_walls(
 	_entrance_inside = Vector3(0.0, 0.0, half_depth - 0.8)
 	_entrance_outside = Vector3(0.0, 0.0, half_depth + 1.4)
 
-
 func _create_wall_group(group_id: String) -> Node3D:
 	var group := Node3D.new()
 	group.name = "%sWallGroup" % group_id.capitalize()
 	_interior_root.add_child(group)
 	_wall_groups[group_id] = group
 	return group
-
 
 func _create_floor(
 	footprint: Vector2,
@@ -2380,12 +2325,10 @@ func _create_floor(
 ) -> void:
 	_visual_factory.call("create_floor", _interior_root, footprint, color, node_name)
 
-
 func _create_film_slate() -> void:
 	var labels: Dictionary = _visual_factory.call("create_film_slate", _interior_root)
 	_production_slate_label = labels.get("scene_label") as Label3D
 	_production_phase_label = labels.get("phase_label") as Label3D
-
 
 func _create_camera_rig(
 	local_position: Vector3,
@@ -2405,13 +2348,11 @@ func _create_camera_rig(
 		equipment_color
 	) as Node3D
 
-
 func _create_light_stand(
 	local_position: Vector3,
 	metal_color: Color
 ) -> void:
 	_visual_factory.call("create_light_stand", _interior_root, local_position, metal_color)
-
 
 func _create_wall_panel(
 	parent: Node3D,
@@ -2421,8 +2362,6 @@ func _create_wall_panel(
 	local_position: Vector3
 ) -> void:
 	_visual_factory.call("create_wall_panel", parent, node_name, size, color, local_position)
-
-
 
 func _create_hitbox() -> void:
 	var building_type_id: String = str(building_data.building_type_id)
@@ -2447,7 +2386,6 @@ func _create_hitbox() -> void:
 	body.add_child(collision)
 	add_child(body)
 
-
 func _create_selection_marker() -> void:
 	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
 		str(building_data.building_type_id),
@@ -2469,7 +2407,6 @@ func _create_selection_marker() -> void:
 	_create_marker_strip(marker, "Left", Vector3(thickness, thickness, footprint.y), Vector3(-footprint.x * 0.5, 0.0, 0.0), material)
 	_create_marker_strip(marker, "Right", Vector3(thickness, thickness, footprint.y), Vector3(footprint.x * 0.5, 0.0, 0.0), material)
 
-
 func _create_marker_strip(
 	parent: Node3D,
 	node_name: String,
@@ -2486,7 +2423,6 @@ func _create_marker_strip(
 	instance.material_override = material
 	parent.add_child(instance)
 
-
 func _create_name_tag() -> void:
 	var height: float = BUILDING_CATALOG_SCRIPT.get_building_height(
 		str(building_data.building_type_id),
@@ -2500,7 +2436,6 @@ func _create_name_tag() -> void:
 		26
 	)
 
-
 func _create_label(
 	parent: Node3D,
 	node_name: String,
@@ -2510,7 +2445,6 @@ func _create_label(
 ) -> void:
 	_visual_factory.call("create_label", parent, node_name, label_text, local_position, font_size)
 
-
 func _create_box(
 	parent: Node3D,
 	node_name: String,
@@ -2519,7 +2453,6 @@ func _create_box(
 	local_position: Vector3
 ) -> MeshInstance3D:
 	return _visual_factory.call("create_box", parent, node_name, size, color, local_position) as MeshInstance3D
-
 
 func _create_cylinder(
 	parent: Node3D,
@@ -2539,7 +2472,6 @@ func _create_cylinder(
 		local_position
 	)
 
-
 func _create_sphere(
 	parent: Node3D,
 	node_name: String,
@@ -2549,10 +2481,8 @@ func _create_sphere(
 ) -> MeshInstance3D:
 	return _visual_factory.call("create_sphere", parent, node_name, radius, color, local_position) as MeshInstance3D
 
-
 func _make_material(color: Color) -> StandardMaterial3D:
 	return _visual_factory.call("make_material", color) as StandardMaterial3D
-
 
 func _update_cutaway() -> void:
 	if not is_instance_valid(_roof_assembly):
