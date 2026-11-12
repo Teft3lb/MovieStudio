@@ -1,6 +1,7 @@
 extends RefCounted
 class_name StudioBuildingPlacementController
 
+signal placement_mode_requested(building_type_id: String)
 signal building_placement_requested(
 	building_type_id: String,
 	world_position: Vector3,
@@ -60,7 +61,7 @@ func build_palette() -> PanelContainer:
 	script_button.tooltip_text = "Построить сценарный отдел"
 	script_button.custom_minimum_size = Vector2(0.0, 42.0)
 	script_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	script_button.pressed.connect(begin_placement.bind("script_department"))
+	script_button.pressed.connect(_request_placement.bind("script_department"))
 	build_layout.add_child(script_button)
 
 	var stage_button := Button.new()
@@ -68,7 +69,7 @@ func build_palette() -> PanelContainer:
 	stage_button.tooltip_text = "Построить съёмочный павильон"
 	stage_button.custom_minimum_size = Vector2(0.0, 42.0)
 	stage_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stage_button.pressed.connect(begin_placement.bind("sound_stage"))
+	stage_button.pressed.connect(_request_placement.bind("sound_stage"))
 	build_layout.add_child(stage_button)
 
 	_stage_size_label = Label.new()
@@ -99,7 +100,7 @@ func build_palette() -> PanelContainer:
 	tv_studio_button.tooltip_text = "Построить отдельный павильон для сериалов и ток-шоу"
 	tv_studio_button.custom_minimum_size = Vector2(0.0, 42.0)
 	tv_studio_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tv_studio_button.pressed.connect(begin_placement.bind("tv_studio"))
+	tv_studio_button.pressed.connect(_request_placement.bind("tv_studio"))
 	build_layout.add_child(tv_studio_button)
 
 	var warehouse_button := Button.new()
@@ -107,7 +108,7 @@ func build_palette() -> PanelContainer:
 	warehouse_button.tooltip_text = "Построить дополнительный склад съёмочного инвентаря"
 	warehouse_button.custom_minimum_size = Vector2(0.0, 42.0)
 	warehouse_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	warehouse_button.pressed.connect(begin_placement.bind("prop_warehouse"))
+	warehouse_button.pressed.connect(_request_placement.bind("prop_warehouse"))
 	build_layout.add_child(warehouse_button)
 
 	var editing_button := Button.new()
@@ -115,7 +116,7 @@ func build_palette() -> PanelContainer:
 	editing_button.tooltip_text = "Построить монтажный отдел"
 	editing_button.custom_minimum_size = Vector2(0.0, 42.0)
 	editing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	editing_button.pressed.connect(begin_placement.bind("editing_suite"))
+	editing_button.pressed.connect(_request_placement.bind("editing_suite"))
 	build_layout.add_child(editing_button)
 
 	var cafeteria_button := Button.new()
@@ -123,7 +124,7 @@ func build_palette() -> PanelContainer:
 	cafeteria_button.tooltip_text = "Построить столовую для обеденных перерывов персонала"
 	cafeteria_button.custom_minimum_size = Vector2(0.0, 42.0)
 	cafeteria_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cafeteria_button.pressed.connect(begin_placement.bind("cafeteria"))
+	cafeteria_button.pressed.connect(_request_placement.bind("cafeteria"))
 	build_layout.add_child(cafeteria_button)
 
 	var housing_button := Button.new()
@@ -131,7 +132,7 @@ func build_palette() -> PanelContainer:
 	housing_button.tooltip_text = "Построить жилой домик для отдыха сотрудников после смены"
 	housing_button.custom_minimum_size = Vector2(0.0, 42.0)
 	housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	housing_button.pressed.connect(begin_placement.bind("staff_housing"))
+	housing_button.pressed.connect(_request_placement.bind("staff_housing"))
 	build_layout.add_child(housing_button)
 
 	var star_housing_button := Button.new()
@@ -139,7 +140,7 @@ func build_palette() -> PanelContainer:
 	star_housing_button.tooltip_text = "Построить отдельное жильё с одной кроватью для популярного актёра"
 	star_housing_button.custom_minimum_size = Vector2(0.0, 42.0)
 	star_housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	star_housing_button.pressed.connect(begin_placement.bind("star_bungalow"))
+	star_housing_button.pressed.connect(_request_placement.bind("star_bungalow"))
 	build_layout.add_child(star_housing_button)
 
 	var fitness_button := Button.new()
@@ -147,7 +148,7 @@ func build_palette() -> PanelContainer:
 	fitness_button.tooltip_text = "Построить зал для физической подготовки актёров"
 	fitness_button.custom_minimum_size = Vector2(0.0, 42.0)
 	fitness_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	fitness_button.pressed.connect(begin_placement.bind("fitness_center"))
+	fitness_button.pressed.connect(_request_placement.bind("fitness_center"))
 	build_layout.add_child(fitness_button)
 
 	var lounge_button := Button.new()
@@ -155,7 +156,7 @@ func build_palette() -> PanelContainer:
 	lounge_button.tooltip_text = "Построить место отдыха и общения сотрудников"
 	lounge_button.custom_minimum_size = Vector2(0.0, 42.0)
 	lounge_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lounge_button.pressed.connect(begin_placement.bind("studio_lounge"))
+	lounge_button.pressed.connect(_request_placement.bind("studio_lounge"))
 	build_layout.add_child(lounge_button)
 
 	_build_status_label = Label.new()
@@ -174,6 +175,10 @@ func build_palette() -> PanelContainer:
 	build_layout.add_child(_placement_hint_label)
 
 	return build_panel
+
+
+func _request_placement(building_type_id: String) -> void:
+	placement_mode_requested.emit(building_type_id)
 
 
 func process() -> void:

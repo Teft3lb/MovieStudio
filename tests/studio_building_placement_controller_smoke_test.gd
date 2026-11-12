@@ -4,9 +4,15 @@ const PLACEMENT_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_placement_controller.gd"
 )
 
+var _requested_placement_type: String = ""
+
 
 func _initialize() -> void:
 	call_deferred("_run_tests")
+
+
+func _on_placement_mode_requested(building_type_id: String) -> void:
+	_requested_placement_type = building_type_id
 
 
 func _run_tests() -> void:
@@ -28,6 +34,21 @@ func _run_tests() -> void:
 	_expect(
 		not bool(controller.call("is_placing_building")),
 		"Placement mode must be inactive before the player chooses a building."
+	)
+	controller.connect(
+		"placement_mode_requested",
+		Callable(self, "_on_placement_mode_requested")
+	)
+	var layout: VBoxContainer = palette.get_child(0) as VBoxContainer
+	var script_button: Button = layout.get_child(1) as Button
+	script_button.pressed.emit()
+	_expect(
+		_requested_placement_type == "script_department",
+		"Construction palette buttons must request placement through the manager-facing signal."
+	)
+	_expect(
+		not bool(controller.call("is_placing_building")),
+		"The placement controller must not bypass the manager when a palette button is pressed."
 	)
 
 	controller.call("begin_placement", "sound_stage")
