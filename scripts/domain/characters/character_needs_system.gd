@@ -43,15 +43,14 @@ func advance_minute(
 	character: Variant,
 	hour: int,
 	at_cafeteria: bool = false,
-	at_staff_housing: bool = false
+	at_staff_housing: bool = false,
+	at_star_bungalow: bool = false
 ) -> void:
 	refresh_work_state(character, hour)
-
 	var needs: Dictionary = character.needs
 	var energy: float = float(needs.get("energy", 1.0))
 	var morale: float = float(needs.get("morale", 0.75))
 	var stress: float = float(needs.get("stress", 0.1))
-
 	match character.work_state:
 		"working":
 			energy -= 0.0005
@@ -70,22 +69,21 @@ func advance_minute(
 			energy += 0.00035
 			stress -= 0.00055
 		"off_duty":
-			if at_staff_housing:
+			if at_star_bungalow:
+				energy += 0.0015
+				stress -= 0.0016
+			elif at_staff_housing:
 				energy += 0.0011
 				stress -= 0.0012
 		_:
 			energy += 0.00025
 			stress -= 0.0003
-
 	if stress > 0.7 or energy < 0.2:
 		morale -= 0.00025
 	elif stress < 0.35 and energy > 0.55:
 		morale += 0.00008
-
 	needs["energy"] = clampf(energy, 0.0, 1.0)
 	needs["morale"] = clampf(morale, 0.0, 1.0)
 	needs["stress"] = clampf(stress, 0.0, 1.0)
 	character.needs = needs
-
 	refresh_work_state(character, hour)
-

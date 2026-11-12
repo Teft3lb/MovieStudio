@@ -21,23 +21,29 @@ func _init() -> void:
 	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
 
 
-func build_assignments(employees: Array, buildings: Array) -> Dictionary:
+func build_assignments(
+	employees: Array,
+	buildings: Array,
+	preferred_stage_building_id: String = ""
+) -> Dictionary:
 	var assignments: Dictionary = {}
 	var occupied_slots: Dictionary = {}
-
 	for employee in employees:
 		var employee_id: String = str(employee.id)
 		var profession_id: String = str(employee.profession_id)
-		var preferred_types: Array[String] = get_preferred_building_types(
-			profession_id
-		)
+		var preferred_types: Array[String] = get_preferred_building_types(profession_id)
 		if preferred_types.is_empty():
 			continue
-
 		for preferred_type in preferred_types:
 			for building in buildings:
 				var building_type_id: String = str(building.building_type_id)
 				if building_type_id != preferred_type:
+					continue
+				if (
+					preferred_type == "sound_stage"
+					and not preferred_stage_building_id.is_empty()
+					and str(building.id) != preferred_stage_building_id
+				):
 					continue
 				if not bool(building.is_operational):
 					continue
@@ -46,32 +52,24 @@ func build_assignments(employees: Array, buildings: Array) -> Dictionary:
 					profession_id
 				):
 					continue
-
 				var building_id: String = str(building.id)
 				var slot_index: int = int(occupied_slots.get(building_id, 0))
-				var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity(
-					building_type_id
+				var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(
+					building
 				)
 				if slot_index >= capacity:
 					continue
-
 				assignments[employee_id] = {
 					"building_id": building_id,
 					"building_type_id": building_type_id,
 					"slot_index": slot_index,
-					"task_title": PROFESSION_CATALOG_SCRIPT.get_default_task(
-						profession_id
-					),
-					"primary_skill_id": PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(
-						profession_id
-					),
+					"task_title": PROFESSION_CATALOG_SCRIPT.get_default_task(profession_id),
+					"primary_skill_id": PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(profession_id),
 				}
 				occupied_slots[building_id] = slot_index + 1
 				break
-
 			if assignments.has(employee_id):
 				break
-
 	return assignments
 
 

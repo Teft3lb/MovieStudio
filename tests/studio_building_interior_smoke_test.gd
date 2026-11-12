@@ -31,6 +31,8 @@ func _run_tests() -> void:
 	_test_prop_warehouse_interior()
 	_test_editing_suite_interior()
 	_test_staff_housing_beds()
+	_test_star_bungalow_interior()
+	_test_large_sound_stage_geometry()
 	_test_profession_work_animation()
 	_test_facility_poses()
 	_test_employee_enters_and_leaves_workplace()
@@ -38,14 +40,18 @@ func _run_tests() -> void:
 	_finish_test("StudioBuildingInteriorSmokeTest")
 
 
-func _create_building(building_type_id: String, rotation: float) -> Node3D:
+func _create_building(
+	building_type_id: String,
+	rotation: float,
+	stage_size_tier: int = 2
+) -> Node3D:
 	var data: Variant = BUILDING_DATA_SCRIPT.new()
 	data.id = "BLD-INTERIOR-%s" % building_type_id
 	data.building_type_id = building_type_id
 	data.display_name = "Test %s" % building_type_id
 	data.position = Vector3(12.0, 0.0, -8.0)
 	data.rotation_degrees = rotation
-
+	data.stage_size_tier = stage_size_tier
 	var actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
 	actor.call("setup", data)
 	root.add_child(actor)
@@ -618,6 +624,46 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 	_expect(
 		not bool(actor.call("is_work_animation_active")),
 		"An employee must stop the work animation after leaving."
+	)
+
+
+func _test_star_bungalow_interior() -> void:
+	var actor: Node3D = _create_building("star_bungalow", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/StarBedMattress") != null
+		and actor.get_node_or_null("Interior/StarBedPillow") != null,
+		"Star bungalow must contain a private bed and pillow."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/StarWardrobe") != null
+		and actor.get_node_or_null("Interior/StarLoungeChair") != null,
+		"Star bungalow must contain private furniture."
+	)
+	var route: Array[Vector3] = actor.call("get_workplace_path", 0)
+	_expect(
+		route.size() >= 4,
+		"Star bungalow must expose a navigable route to its single bed."
+	)
+
+
+func _test_large_sound_stage_geometry() -> void:
+	var actor: Node3D = _create_building("sound_stage", 0.0, 3)
+	var interior: Node3D = actor.get_node("Interior") as Node3D
+	_expect(
+		interior.scale.is_equal_approx(Vector3(22.0 / 14.0, 1.0, 18.0 / 12.0)),
+		"Large sound stage must scale the interior to its selected footprint."
+	)
+	var workplace_path: Array[Vector3] = actor.call("get_workplace_path", 10)
+	_expect(
+		not workplace_path.is_empty(),
+		"Large sound stage must expose expanded crew navigation points."
+	)
+	var local_mark: Vector3 = interior.to_local(
+		actor.call("get_scene_mark", 0, "shooting", 0)
+	)
+	_expect(
+		local_mark.distance_to(Vector3(-2.62, 0.0, -1.78)) < 0.15,
+		"Scene blocking marks must be transformed through the scaled stage interior."
 	)
 
 

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name StudioBuildingData
 
-const SCHEMA_VERSION: int = 1
+const SCHEMA_VERSION: int = 2
 
 var id: String = ""
 var building_type_id: String = ""
@@ -9,6 +9,7 @@ var display_name: String = ""
 var position: Vector3 = Vector3.ZERO
 var rotation_degrees: float = 0.0
 var is_operational: bool = true
+var stage_size_tier: int = 2
 
 
 func to_dict() -> Dictionary:
@@ -24,6 +25,7 @@ func to_dict() -> Dictionary:
 		},
 		"rotation_degrees": rotation_degrees,
 		"is_operational": is_operational,
+		"stage_size_tier": clampi(stage_size_tier, 1, 3),
 	}
 
 
@@ -46,4 +48,9 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		360.0
 	)
 	result.is_operational = bool(payload.get("is_operational", true))
+	result.stage_size_tier = clampi(
+		int(payload.get("stage_size_tier", 2)),
+		1,
+		3
+	)
 	return result

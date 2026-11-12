@@ -115,3 +115,8 @@ The navigation test checks detours around outdoor building footprints and Sound 
 - Visuals use primitive meshes; imported models, production lighting, dressing presets and environment-specific wall kits are future work.
 - Navigation is grid-based and static; crowd avoidance, arbitrary rotated polygons and dynamic obstacles are future work.
 - The production estimate covers phase work rounds; actual walking time between the stage and warehouse is simulated by the world clock and is not included in the displayed remaining-work estimate.
+
+
+## Габариты реквизита и требования к павильону
+
+Каждый предмет декораций дополнительно хранит класс размера, примерные габариты и минимальный уровень павильона. Малые предметы доступны в малом павильоне, средние требуют среднего, крупные — большого. Масштаб сценария учитывается отдельно: более пяти сцен требуют среднего павильона, более двенадцати — большого. Ограничения проверяются до запуска производства, чтобы не останавливать уже начатую съёмку.

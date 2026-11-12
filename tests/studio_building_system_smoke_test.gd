@@ -39,13 +39,14 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 6
+		building_ids.size() == 7
 		and building_ids[0] == "cafeteria"
 		and building_ids[1] == "editing_suite"
 		and building_ids[2] == "prop_warehouse"
 		and building_ids[3] == "script_department"
 		and building_ids[4] == "sound_stage"
-		and building_ids[5] == "staff_housing",
+		and building_ids[5] == "staff_housing"
+		and building_ids[6] == "star_bungalow",
 		"The building catalogue must expose all production and staff facility buildings."
 	)
 	_expect(
@@ -53,8 +54,16 @@ func _test_catalogue() -> void:
 		"The script department must expose three workplace slots."
 	)
 	_expect(
-		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("sound_stage") == 8,
-		"The sound stage must expose eight workplace slots."
+		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("sound_stage") == 8
+		and BUILDING_CATALOG_SCRIPT.get_stage_workplace_capacity(1) == 6
+		and BUILDING_CATALOG_SCRIPT.get_stage_workplace_capacity(3) == 12,
+		"The default sound stage must expose eight slots, with six and twelve slots for small and large tiers."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_stage_footprint(1) == Vector2(10.0, 8.0)
+		and BUILDING_CATALOG_SCRIPT.get_stage_footprint(2) == Vector2(14.0, 12.0)
+		and BUILDING_CATALOG_SCRIPT.get_stage_footprint(3) == Vector2(22.0, 18.0),
+		"Sound stage tiers must expose their configured construction footprints."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.get_workplace_capacity("editing_suite") == 3,
@@ -85,6 +94,11 @@ func _test_catalogue() -> void:
 			"actor"
 		),
 		"Staff housing must provide eight beds without becoming a staff workplace."
+	)
+	_expect(
+		BUILDING_CATALOG_SCRIPT.get_facility_capacity("star_bungalow") == 1
+		and BUILDING_CATALOG_SCRIPT.get_workplace_capacity("star_bungalow") == 0,
+		"A star bungalow must provide one private bed without becoming a workplace."
 	)
 	_expect(
 		BUILDING_CATALOG_SCRIPT.accepts_profession(
@@ -130,6 +144,7 @@ func _test_building_serialization() -> void:
 	building.position = Vector3(12.0, 0.0, -8.0)
 	building.rotation_degrees = 90.0
 	building.is_operational = true
+	building.stage_size_tier = 3
 
 	var restored: Variant = BUILDING_DATA_SCRIPT.from_dict(building.to_dict())
 	_expect(restored.id == building.id, "Building ID must survive serialization.")
@@ -145,10 +160,14 @@ func _test_building_serialization() -> void:
 		is_equal_approx(restored.rotation_degrees, 90.0),
 		"Building rotation must survive serialization."
 	)
+	_expect(
+		restored.stage_size_tier == 3,
+		"Sound stage size tier must survive serialization."
+	)
 
 
 func _test_facility_buildings() -> void:
-	for building_type_id in ["cafeteria", "staff_housing"]:
+	for building_type_id in ["cafeteria", "staff_housing", "star_bungalow"]:
 		var building: Variant = BUILDING_DATA_SCRIPT.new()
 		building.id = "BLD-%s" % building_type_id.to_upper()
 		building.building_type_id = building_type_id
@@ -280,6 +299,18 @@ func _test_placement_validation() -> void:
 		"Buildings must not be placed on top of an existing building."
 	)
 
+	var large_stage_bounds_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"sound_stage",
+		Vector3(-30.0, 0.0, 35.0),
+		0.0,
+		[],
+		PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE,
+		3
+	)
+	_expect(
+		bool(large_stage_bounds_result.get("valid", false)),
+		"A large stage must be placeable when its complete footprint fits the plot."
+	)
 	var bounds_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
 		"sound_stage",
 		Vector3(50.0, 0.0, 50.0),

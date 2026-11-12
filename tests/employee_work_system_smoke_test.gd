@@ -57,6 +57,12 @@ func _run_tests() -> void:
 	editing_suite.building_type_id = "editing_suite"
 	editing_suite.is_operational = true
 
+	var large_sound_stage: Variant = BUILDING_DATA_SCRIPT.new()
+	large_sound_stage.id = "BLD-STAGE-LARGE"
+	large_sound_stage.building_type_id = "sound_stage"
+	large_sound_stage.stage_size_tier = 3
+	large_sound_stage.is_operational = true
+
 	var system: RefCounted = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
 	var employees: Array = [
 		writer,
@@ -74,6 +80,19 @@ func _run_tests() -> void:
 	)
 
 	_test_profession_assignments(assignments)
+	var preferred_stage_assignments: Dictionary = system.call(
+		"build_assignments",
+		employees,
+		[script_department, sound_stage, large_sound_stage, editing_suite],
+		large_sound_stage.id
+	)
+	_expect(
+		str(preferred_stage_assignments["EMP-WORK-ACTOR"].get("building_id", ""))
+			== "BLD-STAGE-LARGE"
+		and str(preferred_stage_assignments["EMP-WORK-DIRECTOR"].get("building_id", ""))
+			== "BLD-STAGE-LARGE",
+		"The workplace allocator must route production staff to the selected preferred stage."
+	)
 	_test_skill_progression(system, actor, assignments)
 	_test_editor_skill_progression(system, editor, assignments)
 	_test_non_working_employees_do_not_gain_skills(system, actor, assignments)

@@ -131,6 +131,25 @@ func _run_tests() -> void:
 	)
 
 	var owned_props: Array[String] = inventory.get_owned_prop_ids()
+	var large_prop_definition: Dictionary = SET_CATALOG_SCRIPT.get_prop_definition(
+		"street_storefront"
+	)
+	_expect(
+		str(large_prop_definition.get("size_class", "")) == "large"
+		and int(large_prop_definition.get("required_stage_tier", 0)) == 3,
+		"Large reusable set pieces must declare their footprint class and minimum stage tier."
+	)
+	var long_script_scenes: Array[Dictionary] = []
+	for scene_index in range(13):
+		long_script_scenes.append(scenes[0])
+	_expect(
+		SET_CATALOG_SCRIPT.get_required_stage_tier(
+			long_script_scenes,
+			owned_props,
+			"adventure"
+		) == 3,
+		"Scripts longer than twelve scenes must require a large sound stage."
+	)
 	var setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		scenes,
 		owned_props,

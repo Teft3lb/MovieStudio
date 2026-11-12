@@ -122,6 +122,9 @@ var _building_actors: Dictionary = {}
 var _selected_building_id: String = ""
 var _placing_building_type_id: String = ""
 var _placement_rotation_degrees: float = 0.0
+var _placement_stage_size_tier: int = 2
+var _stage_size_option: OptionButton
+var _stage_size_label: Label
 var _next_building_sequence: int = 1
 var _next_script_sequence: int = 1
 var _latest_script: Variant
@@ -303,7 +306,8 @@ func get_roaming_route(
 	for building in _buildings:
 		var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
 			str(building.building_type_id),
-			float(building.rotation_degrees)
+			float(building.rotation_degrees),
+			int(building.stage_size_tier)
 		)
 		var inside_building: bool = (
 			absf(start_position.x - building.position.x) <= footprint.x * 0.5
@@ -553,7 +557,8 @@ func _get_building_navigation_obstacles() -> Array[Dictionary]:
 	for building in _buildings:
 		var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
 			str(building.building_type_id),
-			float(building.rotation_degrees)
+			float(building.rotation_degrees),
+			int(building.stage_size_tier)
 		)
 		result.append({
 			"center": Vector2(building.position.x, building.position.z),
@@ -734,11 +739,11 @@ func _create_building(
 	world_position: Vector3,
 	rotation_degrees: float,
 	display_name: String = "",
-	is_player_placed: bool = true
+	is_player_placed: bool = true,
+	stage_size_tier: int = 2
 ) -> Variant:
 	if not BUILDING_CATALOG_SCRIPT.has_building_type(building_type_id):
 		return null
-
 	var building_data: Variant = BUILDING_DATA_SCRIPT.new()
 	building_data.id = "BLD-%04d" % _next_building_sequence
 	building_data.building_type_id = building_type_id
@@ -752,8 +757,12 @@ func _create_building(
 	)
 	building_data.position = world_position
 	building_data.rotation_degrees = fposmod(rotation_degrees, 360.0)
+	building_data.stage_size_tier = (
+		BUILDING_CATALOG_SCRIPT.get_stage_size_tier(stage_size_tier)
+		if BUILDING_CATALOG_SCRIPT.is_sound_stage(building_type_id)
+		else 2
+	)
 	_next_building_sequence += 1
-
 	_buildings.append(building_data)
 	var actor: Variant = BUILDING_ACTOR_SCRIPT.new()
 	actor.call("setup", building_data)
@@ -764,15 +773,14 @@ func _create_building(
 			"set_warehouse_inventory",
 			_set_inventory.call("get_props_in_warehouse")
 		)
-
 	if is_player_placed:
 		_refresh_build_status()
 		buildings_changed.emit()
-		if (
-			is_instance_valid(_character_manager)
-			and _character_manager.has_method("refresh_navigation_routes")
-		):
-			_character_manager.call("refresh_navigation_routes")
+		if is_instance_valid(_character_manager):
+			if _character_manager.has_method("refresh_navigation_routes"):
+				_character_manager.call("refresh_navigation_routes")
+			if _character_manager.has_method("refresh_workplace_assignments"):
+				_character_manager.call("refresh_workplace_assignments")
 	return building_data
 
 
@@ -824,6 +832,28 @@ func _build_ui() -> void:
 	)
 	build_layout.add_child(stage_button)
 
+	_stage_size_label = Label.new()
+	_stage_size_label.text = "РАЗМЕР ПАВИЛЬОНА"
+	_stage_size_label.add_theme_font_size_override("font_size", 10)
+	_stage_size_label.visible = false
+	build_layout.add_child(_stage_size_label)
+	_stage_size_option = OptionButton.new()
+	_stage_size_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for tier in range(1, 4):
+		var size: Vector2 = BUILDING_CATALOG_SCRIPT.get_stage_footprint(tier)
+		_stage_size_option.add_item(
+			"%s · %.0f × %.0f м" % [
+				BUILDING_CATALOG_SCRIPT.get_stage_size_title(tier),
+				size.x,
+				size.y,
+			]
+		)
+		_stage_size_option.set_item_metadata(tier - 1, tier)
+	_stage_size_option.select(1)
+	_stage_size_option.visible = false
+	_stage_size_option.item_selected.connect(_on_stage_size_selected)
+	build_layout.add_child(_stage_size_option)
+
 	var warehouse_button := Button.new()
 	warehouse_button.text = "＋ Склад реквизита"
 	warehouse_button.tooltip_text = "Построить дополнительный склад съёмочного инвентаря"
@@ -863,6 +893,16 @@ func _build_ui() -> void:
 		_begin_placement.bind("staff_housing")
 	)
 	build_layout.add_child(housing_button)
+
+	var star_housing_button := Button.new()
+	star_housing_button.text = "＋ Звёздный домик"
+	star_housing_button.tooltip_text = "Построить отдельное жильё с одной кроватью для популярного актёра"
+	star_housing_button.custom_minimum_size = Vector2(0.0, 42.0)
+	star_housing_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	star_housing_button.pressed.connect(
+		_begin_placement.bind("star_bungalow")
+	)
+	build_layout.add_child(star_housing_button)
 
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -921,38 +961,50 @@ func _refresh_build_status() -> void:
 func _begin_placement(building_type_id: String) -> void:
 	if not BUILDING_CATALOG_SCRIPT.has_building_type(building_type_id):
 		return
-
 	_placing_building_type_id = building_type_id
 	_placement_rotation_degrees = 0.0
+	if building_type_id == "sound_stage" and _stage_size_option.selected >= 0:
+		_placement_stage_size_tier = int(
+			_stage_size_option.get_item_metadata(_stage_size_option.selected)
+		)
+	_stage_size_label.visible = building_type_id == "sound_stage"
+	_stage_size_option.visible = building_type_id == "sound_stage"
 	_building_detail_panel.visible = false
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	if studio_hud != null:
 		studio_hud.call("show_inspector_panel", "building", false)
 	_create_placement_preview()
 	_placement_hint_label.visible = true
-	_placement_hint_label.text = (
-		"Размещение: %s\nЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
-		% BUILDING_CATALOG_SCRIPT.get_title(building_type_id)
-	)
+	_set_placement_message("Выбери точку на территории.")
 	_update_placement_preview(get_viewport().get_mouse_position())
+
+
+func _on_stage_size_selected(selected_index: int) -> void:
+	if selected_index < 0 or selected_index >= _stage_size_option.get_item_count():
+		return
+	_placement_stage_size_tier = int(
+		_stage_size_option.get_item_metadata(selected_index)
+	)
+	if _placing_building_type_id == "sound_stage":
+		_create_placement_preview()
+		_update_placement_preview(get_viewport().get_mouse_position())
+		_set_placement_message("Размер павильона изменён.")
 
 
 func _create_placement_preview() -> void:
 	if is_instance_valid(_preview_mesh):
 		_preview_mesh.queue_free()
-
 	var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
 		_placing_building_type_id,
-		_placement_rotation_degrees
+		_placement_rotation_degrees,
+		_placement_stage_size_tier
 	)
 	var mesh := BoxMesh.new()
 	mesh.size = Vector3(footprint.x, 0.12, footprint.y)
-
 	_preview_mesh = MeshInstance3D.new()
 	_preview_mesh.name = "BuildingPlacementPreview"
 	_preview_mesh.mesh = mesh
 	_preview_mesh.position.y = 0.08
-
 	_preview_material = StandardMaterial3D.new()
 	_preview_material.albedo_color = Color(0.2, 0.85, 0.42, 0.38)
 	_preview_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -965,12 +1017,10 @@ func _create_placement_preview() -> void:
 func _update_placement_preview(screen_position: Vector2) -> void:
 	if not is_instance_valid(_preview_mesh):
 		return
-
 	var ground_position: Vector3 = _get_ground_position(screen_position)
 	if absf(ground_position.x) > 5000.0:
 		_preview_mesh.visible = false
 		return
-
 	var snapped_position := Vector3(
 		roundf(ground_position.x / GRID_SIZE) * GRID_SIZE,
 		0.08,
@@ -978,12 +1028,13 @@ func _update_placement_preview(screen_position: Vector2) -> void:
 	)
 	_preview_mesh.position = snapped_position
 	_preview_mesh.visible = true
-
 	var validation: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
 		_placing_building_type_id,
 		Vector3(snapped_position.x, 0.0, snapped_position.z),
 		_placement_rotation_degrees,
-		_buildings
+		_buildings,
+		PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE,
+		_placement_stage_size_tier
 	)
 	_preview_material.albedo_color = (
 		Color(0.2, 0.85, 0.42, 0.38)
@@ -1029,7 +1080,6 @@ func _try_place_building(screen_position: Vector2) -> void:
 	if absf(ground_position.x) > 5000.0:
 		_set_placement_message("Не удалось определить точку на территории.")
 		return
-
 	var snapped_position := Vector3(
 		roundf(ground_position.x / GRID_SIZE) * GRID_SIZE,
 		0.0,
@@ -1039,21 +1089,24 @@ func _try_place_building(screen_position: Vector2) -> void:
 		_placing_building_type_id,
 		snapped_position,
 		_placement_rotation_degrees,
-		_buildings
+		_buildings,
+		PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE,
+		_placement_stage_size_tier
 	)
 	if not bool(validation.get("valid", false)):
 		_set_placement_message(str(validation.get("reason", "Здесь нельзя строить.")))
 		return
-
 	var display_name: String = "%s %d" % [
 		BUILDING_CATALOG_SCRIPT.get_title(_placing_building_type_id),
-		_next_building_sequence - 1,
+		_next_building_sequence,
 	]
 	var building: Variant = _create_building(
 		_placing_building_type_id,
 		snapped_position,
 		_placement_rotation_degrees,
-		display_name
+		display_name,
+		true,
+		_placement_stage_size_tier
 	)
 	if building != null:
 		_select_building(str(building.id))
@@ -1061,19 +1114,35 @@ func _try_place_building(screen_position: Vector2) -> void:
 
 
 func _set_placement_message(message: String) -> void:
-	if is_instance_valid(_placement_hint_label):
-		_placement_hint_label.text = (
-			"Размещение: %s\n%s\nЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
-			% [
-				BUILDING_CATALOG_SCRIPT.get_title(_placing_building_type_id),
-				message,
-			]
+	if not is_instance_valid(_placement_hint_label):
+		return
+	var title: String = BUILDING_CATALOG_SCRIPT.get_title(
+		_placing_building_type_id
+	)
+	if _placing_building_type_id == "sound_stage":
+		var size: Vector2 = BUILDING_CATALOG_SCRIPT.get_stage_footprint(
+			_placement_stage_size_tier
 		)
+		title += " · %s · %.0f × %.0f м" % [
+			BUILDING_CATALOG_SCRIPT.get_stage_size_title(
+				_placement_stage_size_tier
+			),
+			size.x,
+			size.y,
+		]
+	_placement_hint_label.text = (
+		"Размещение: %s
+%s
+ЛКМ — построить · R — повернуть · ПКМ/Esc — отменить"
+		% [title, message]
+	)
 
 
 func _cancel_placement() -> void:
 	_placing_building_type_id = ""
 	_placement_rotation_degrees = 0.0
+	_stage_size_label.visible = false
+	_stage_size_option.visible = false
 	if is_instance_valid(_preview_mesh):
 		_preview_mesh.queue_free()
 	_preview_mesh = null
@@ -1163,11 +1232,9 @@ func _refresh_building_detail() -> void:
 		if studio_hud != null:
 			studio_hud.call("show_inspector_panel", "building", false)
 		return
-
 	for child in _building_detail_layout.get_children():
 		_building_detail_layout.remove_child(child)
 		child.queue_free()
-
 	_building_detail_panel.visible = true
 	var building_type_id: String = str(building.building_type_id)
 	var is_facility: bool = (
@@ -1176,83 +1243,68 @@ func _refresh_building_detail() -> void:
 	var title := Label.new()
 	title.text = str(building.display_name).to_upper()
 	title.add_theme_font_size_override("font_size", 18)
-	title.add_theme_color_override(
-		"font_color",
-		Color(0.78, 0.94, 0.88, 1.0)
-	)
+	title.add_theme_color_override("font_color", Color(0.78, 0.94, 0.88, 1.0))
 	_building_detail_layout.add_child(title)
-
 	var description := Label.new()
-	description.text = BUILDING_CATALOG_SCRIPT.get_description(
-		building_type_id
-	)
+	description.text = BUILDING_CATALOG_SCRIPT.get_description(building_type_id)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	description.add_theme_font_size_override("font_size", 12)
-	description.add_theme_color_override(
-		"font_color",
-		Color(0.62, 0.77, 0.79, 1.0)
-	)
+	description.add_theme_color_override("font_color", Color(0.62, 0.77, 0.79, 1.0))
 	_building_detail_layout.add_child(description)
-
 	var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
 		building_type_id,
-		float(building.rotation_degrees)
+		float(building.rotation_degrees),
+		int(building.stage_size_tier)
 	)
 	var capacity: int = (
 		BUILDING_CATALOG_SCRIPT.get_facility_capacity(building_type_id)
 		if is_facility
-		else BUILDING_CATALOG_SCRIPT.get_workplace_capacity(building_type_id)
+		else BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(building)
 	)
-	var eligible_staff: Array = (
-		[]
-		if is_facility
-		else _get_eligible_staff(building_type_id)
-	)
+	if BUILDING_CATALOG_SCRIPT.is_sound_stage(building_type_id):
+		var stage_note := Label.new()
+		stage_note.text = "Размер: %s · рабочих мест: %d" % [
+			BUILDING_CATALOG_SCRIPT.get_stage_size_title(
+				int(building.stage_size_tier)
+			),
+			capacity,
+		]
+		stage_note.add_theme_font_size_override("font_size", 11)
+		stage_note.add_theme_color_override("font_color", Color(0.62, 0.82, 0.78, 1.0))
+		_building_detail_layout.add_child(stage_note)
+	var eligible_staff: Array = [] if is_facility else _get_eligible_staff(building_type_id)
 	var assigned_staff: Array = (
-		_character_manager.call(
-			"get_employees_using_facility",
-			str(building.id)
-		)
+		_character_manager.call("get_employees_using_facility", str(building.id))
 		if is_facility
 		else _get_assigned_staff(str(building.id))
 	)
 	var assigned_names: Array[String] = []
 	for employee in assigned_staff:
-		assigned_names.append(
-			"%s · %s" % [
-				employee.get_full_name(),
-				_get_profession_title(str(employee.profession_id)),
-			]
-		)
-
+		assigned_names.append("%s · %s" % [
+			employee.get_full_name(),
+			_get_profession_title(str(employee.profession_id)),
+		])
 	var stats_grid := GridContainer.new()
 	stats_grid.columns = 3
 	stats_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_grid.add_theme_constant_override("h_separation", 6)
 	stats_grid.add_theme_constant_override("v_separation", 6)
 	_building_detail_layout.add_child(stats_grid)
-	stats_grid.add_child(
-		_create_building_stat_card(
-			"МЕСТА" if is_facility else "РАБОЧИЕ МЕСТА",
-			str(capacity),
-			Color(0.50, 0.86, 0.73, 1.0)
-		)
-	)
-	stats_grid.add_child(
-		_create_building_stat_card(
-			"ЗАНЯТО" if is_facility else "НАЗНАЧЕНО",
-			"%d / %d" % [assigned_staff.size(), capacity],
-			Color(0.50, 0.78, 0.90, 1.0)
-		)
-	)
-	stats_grid.add_child(
-		_create_building_stat_card(
-			"УЧАСТОК",
-			"%.0f × %.0f м" % [footprint.x, footprint.y],
-			Color(0.72, 0.87, 0.84, 1.0)
-		)
-	)
-
+	stats_grid.add_child(_create_building_stat_card(
+		"МЕСТА" if is_facility else "РАБОЧИЕ МЕСТА",
+		str(capacity),
+		Color(0.50, 0.86, 0.73, 1.0)
+	))
+	stats_grid.add_child(_create_building_stat_card(
+		"ЗАНЯТО" if is_facility else "НАЗНАЧЕНО",
+		"%d / %d" % [assigned_staff.size(), capacity],
+		Color(0.50, 0.78, 0.90, 1.0)
+	))
+	stats_grid.add_child(_create_building_stat_card(
+		"УЧАСТОК",
+		"%.0f × %.0f м" % [footprint.x, footprint.y],
+		Color(0.72, 0.87, 0.84, 1.0)
+	))
 	var crew_heading := Label.new()
 	crew_heading.text = (
 		"ПЕРСОНАЛ В ЗДАНИИ · %d" % assigned_staff.size()
@@ -1260,66 +1312,53 @@ func _refresh_building_detail() -> void:
 		else "КОМАНДА · %d" % assigned_staff.size()
 	)
 	crew_heading.add_theme_font_size_override("font_size", 11)
-	crew_heading.add_theme_color_override(
-		"font_color",
-		Color(0.50, 0.82, 0.74, 1.0)
-	)
+	crew_heading.add_theme_color_override("font_color", Color(0.50, 0.82, 0.74, 1.0))
 	_building_detail_layout.add_child(crew_heading)
-
 	var staff_summary := Label.new()
 	staff_summary.text = (
 		"\n".join(assigned_names)
 		if not assigned_names.is_empty()
-		else (
-			"Сейчас здесь никого нет."
-			if is_facility
-			else "Пока никто не назначен."
-		)
+		else ("Сейчас здесь никого нет." if is_facility else "Пока никто не назначен.")
 	)
 	staff_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_building_detail_layout.add_child(staff_summary)
-
 	if is_facility:
 		var facility_note := Label.new()
 		facility_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		facility_note.add_theme_font_size_override("font_size", 11)
-		facility_note.add_theme_color_override(
-			"font_color",
-			Color(0.60, 0.80, 0.78, 1.0)
-		)
-		if building_type_id == "cafeteria":
-			facility_note.text = (
-				"Сотрудники приходят сюда в свой обеденный перерыв. "
-				+ "Во время еды энергия восстанавливается быстрее, а стресс снижается."
-			)
-		else:
-			facility_note.text = (
-				"После окончания смены сотрудники занимают свободные спальные места. "
-				+ "Сон ускоряет восстановление энергии и снижает стресс."
-			)
+		facility_note.add_theme_color_override("font_color", Color(0.60, 0.80, 0.78, 1.0))
+		match building_type_id:
+			"cafeteria":
+				facility_note.text = (
+					"Сотрудники приходят сюда в свой обеденный перерыв. "
+					+ "Во время еды энергия восстанавливается быстрее, а стресс снижается."
+				)
+			"star_bungalow":
+				facility_note.text = (
+					"Отдельный домик доступен одному популярному актёру. "
+					+ "Сон здесь восстанавливает энергию и снижает стресс быстрее."
+				)
+			_:
+				facility_note.text = (
+					"После окончания смены сотрудники занимают свободные спальные места. "
+					+ "Сон ускоряет восстановление энергии и снижает стресс."
+				)
 		_building_detail_layout.add_child(facility_note)
 		_apply_inspector_width_constraints(_building_detail_layout)
 		return
-
 	var eligible_summary := Label.new()
-	eligible_summary.text = (
-		"Ещё подходят по профессии: %d" % eligible_staff.size()
-	)
+	eligible_summary.text = "Ещё подходят по профессии: %d" % eligible_staff.size()
 	eligible_summary.add_theme_font_size_override("font_size", 10)
-	eligible_summary.add_theme_color_override(
-		"font_color",
-		Color(0.58, 0.76, 0.79, 1.0)
-	)
+	eligible_summary.add_theme_color_override("font_color", Color(0.58, 0.76, 0.79, 1.0))
 	_building_detail_layout.add_child(eligible_summary)
-
 	if building_type_id == "script_department":
 		_build_script_department_detail(assigned_staff)
 	elif building_type_id == "sound_stage":
 		_build_sound_stage_detail(assigned_staff)
 	elif building_type_id == "editing_suite":
 		_build_film_editing_detail(assigned_staff)
-
 	_apply_inspector_width_constraints(_building_detail_layout)
+
 
 func _apply_inspector_width_constraints(node: Node) -> void:
 	for child in node.get_children():
@@ -1972,8 +2011,14 @@ func _refresh_decor_shop_panel() -> void:
 		var prop_label := Label.new()
 		prop_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		prop_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		prop_label.text = "%s\nКачество сцены: +%d\nЦена: %d усл. ед." % [
+		prop_label.text = "%s\nГабарит: %s · павильон: %s+\nКачество сцены: +%d\nЦена: %d усл. ед." % [
 			str(definition.get("title", prop_id)),
+			SET_CATALOG_SCRIPT.get_size_class_title(
+				str(definition.get("size_class", "medium"))
+			),
+			BUILDING_CATALOG_SCRIPT.get_stage_size_title(
+				int(definition.get("required_stage_tier", 1))
+			).to_lower(),
 			int(definition.get("quality_bonus", 0)),
 			int(definition.get("price", 0)),
 		]
@@ -2446,6 +2491,10 @@ func _on_start_film_production_pressed() -> void:
 		_film_production_status_label.text = "Не найден съёмочный павильон."
 		return
 
+	var stage_size_message: String = _get_stage_size_requirement_message()
+	if not stage_size_message.is_empty():
+		_film_production_status_label.text = stage_size_message
+		return
 	var assigned_staff: Array = _get_assigned_staff(stage_id)
 	var crew_assignments: Dictionary = _get_film_crew_assignments(
 		assigned_staff
@@ -2551,11 +2600,24 @@ func _on_start_film_production_pressed() -> void:
 	_update_film_production_ui()
 
 
+func get_preferred_stage_building_id() -> String:
+	return _get_sound_stage_building_id()
+
+
 func _get_sound_stage_building_id() -> String:
+	var selected_id: String = ""
+	var selected_tier: int = 0
 	for building in _buildings:
-		if str(building.building_type_id) == "sound_stage":
-			return str(building.id)
-	return ""
+		if (
+			str(building.building_type_id) != "sound_stage"
+			or not bool(building.is_operational)
+		):
+			continue
+		var tier: int = int(building.stage_size_tier)
+		if tier > selected_tier:
+			selected_tier = tier
+			selected_id = str(building.id)
+	return selected_id
 
 
 func _dispatch_film_crew_to_stage() -> void:
@@ -4435,10 +4497,15 @@ func _update_film_production_ui() -> void:
 				+ "по общей рабочей смене, с паузами на ночь."
 			)
 		else:
-			_film_production_status_label.text = "НЕ ХВАТАЕТ КОМАНДЫ"
-			_film_production_detail_label.text = (
-				"Назначь режиссёра, оператора и техника, затем распредели "
-				+ "актёров по всем ролям сценария."
+			var stage_size_message: String = _get_stage_size_requirement_message()
+			if not stage_size_message.is_empty():
+				_film_production_status_label.text = "НУЖЕН БОЛЕЕ КРУПНЫЙ ПАВИЛЬОН"
+				_film_production_detail_label.text = stage_size_message
+			else:
+				_film_production_status_label.text = "НЕ ХВАТАЕТ КОМАНДЫ"
+				_film_production_detail_label.text = (
+					"Назначь режиссёра, оператора и техника, затем распредели "
+					+ "актёров по всем ролям сценария."
 			)
 		if _latest_script != null:
 			var set_preview: Dictionary = _get_script_set_dressing_preview(
@@ -4587,6 +4654,41 @@ func _update_film_production_ui() -> void:
 			_film_production_start_button.disabled = not _can_start_film_production()
 
 
+func _get_required_stage_size_tier() -> int:
+	if _latest_script == null:
+		return 1
+	var owned_prop_ids: Array[String] = _set_inventory.call("get_owned_prop_ids")
+	return SET_CATALOG_SCRIPT.get_required_stage_tier(
+		_latest_script.scenes,
+		owned_prop_ids,
+		str(_latest_script.genre_id)
+	)
+
+
+func _get_stage_size_requirement_message() -> String:
+	if _latest_script == null:
+		return ""
+	var stage: Variant = _find_building(_get_sound_stage_building_id())
+	if stage == null:
+		return ""
+	var required_tier: int = _get_required_stage_size_tier()
+	var actual_tier: int = int(stage.stage_size_tier)
+	if actual_tier >= required_tier:
+		return ""
+	var required_size: Vector2 = BUILDING_CATALOG_SCRIPT.get_stage_footprint(
+		required_tier
+	)
+	return (
+		"Для сценария нужен %s павильон (%.0f × %.0f м). "
+		+ "Сейчас доступен %s. Построй павильон нужного размера."
+	) % [
+		BUILDING_CATALOG_SCRIPT.get_stage_size_title(required_tier).to_lower(),
+		required_size.x,
+		required_size.y,
+		BUILDING_CATALOG_SCRIPT.get_stage_size_title(actual_tier).to_lower(),
+	]
+
+
 func _can_start_film_production() -> bool:
 	if _latest_script == null:
 		return false
@@ -4598,19 +4700,17 @@ func _can_start_film_production() -> bool:
 			or str(_active_editing_project.status) != "completed"
 		):
 			return false
-
 	var stage_id: String = _get_sound_stage_building_id()
-	if stage_id.is_empty():
+	if stage_id.is_empty() or not _get_stage_size_requirement_message().is_empty():
 		return false
 	var assigned_staff: Array = _get_assigned_staff(stage_id)
-	var crew_assignments: Dictionary = _get_film_crew_assignments(
-		assigned_staff
-	)
+	var crew_assignments: Dictionary = _get_film_crew_assignments(assigned_staff)
 	return _has_complete_production_assignments(
 		crew_assignments,
 		_film_cast_assignments,
 		assigned_staff
 	)
+
 
 func is_employee_in_active_production(employee_id: String) -> bool:
 	if (

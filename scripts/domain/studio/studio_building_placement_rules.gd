@@ -12,10 +12,15 @@ const ROAD_HALF_WIDTH: float = 2.0
 const ROAD_CLEARANCE: float = 1.0
 
 
-static func get_footprint(building_type_id: String, rotation_degrees: float = 0.0) -> Vector2:
+static func get_footprint(
+	building_type_id: String,
+	rotation_degrees: float = 0.0,
+	stage_size_tier: int = 2
+) -> Vector2:
 	return BUILDING_CATALOG_SCRIPT.get_footprint(
 		building_type_id,
-		rotation_degrees
+		rotation_degrees,
+		stage_size_tier
 	)
 
 
@@ -24,15 +29,18 @@ static func can_place(
 	world_position: Vector3,
 	rotation_degrees: float,
 	existing_buildings: Array,
-	plot_half_size: float = DEFAULT_PLOT_HALF_SIZE
+	plot_half_size: float = DEFAULT_PLOT_HALF_SIZE,
+	stage_size_tier: int = 2
 ) -> Dictionary:
 	if not BUILDING_CATALOG_SCRIPT.has_building_type(building_type_id):
 		return {"valid": false, "reason": "Неизвестный тип здания."}
-
-	var footprint: Vector2 = get_footprint(building_type_id, rotation_degrees)
+	var footprint: Vector2 = get_footprint(
+		building_type_id,
+		rotation_degrees,
+		stage_size_tier
+	)
 	if footprint == Vector2.ZERO:
 		return {"valid": false, "reason": "У здания не задан размер участка."}
-
 	var half_width: float = footprint.x * 0.5
 	var half_depth: float = footprint.y * 0.5
 	if (
@@ -42,7 +50,6 @@ static func can_place(
 		or world_position.z + half_depth > plot_half_size
 	):
 		return {"valid": false, "reason": "Здание выходит за границы территории."}
-
 	var road_clearance_x: float = half_width + ROAD_HALF_WIDTH + ROAD_CLEARANCE
 	var road_clearance_z: float = half_depth + plot_half_size * 0.84
 	if (
@@ -50,7 +57,6 @@ static func can_place(
 		and absf(world_position.z) < road_clearance_z
 	):
 		return {"valid": false, "reason": "Нельзя размещать здание на проезжей части или вплотную к ней."}
-
 	for existing_building in existing_buildings:
 		if existing_building == null:
 			continue
@@ -58,11 +64,11 @@ static func can_place(
 		var other_position: Vector3 = existing_building.position
 		var other_footprint: Vector2 = get_footprint(
 			other_type_id,
-			float(existing_building.rotation_degrees)
+			float(existing_building.rotation_degrees),
+			int(existing_building.stage_size_tier)
 		)
 		if other_footprint == Vector2.ZERO:
 			continue
-
 		var required_x: float = (footprint.x + other_footprint.x) * 0.5
 		var required_z: float = (footprint.y + other_footprint.y) * 0.5
 		if (
@@ -75,5 +81,4 @@ static func can_place(
 				"valid": false,
 				"reason": "Недостаточно места: здание пересекается с другим объектом.",
 			}
-
 	return {"valid": true, "reason": ""}

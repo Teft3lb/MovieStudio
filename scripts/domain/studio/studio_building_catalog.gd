@@ -1,6 +1,14 @@
 extends RefCounted
 class_name StudioBuildingCatalog
 
+const STAGE_FOOTPRINTS: Dictionary = {
+	1: Vector2(10.0, 8.0),
+	2: Vector2(14.0, 12.0),
+	3: Vector2(22.0, 18.0),
+}
+const STAGE_HEIGHTS: Dictionary = {1: 6.4, 2: 7.0, 3: 8.4}
+const STAGE_WORKPLACE_CAPACITIES: Dictionary = {1: 6, 2: 8, 3: 12}
+
 const BUILDINGS: Dictionary = {
 	"cafeteria": {
 		"title": "Столовая",
@@ -19,9 +27,7 @@ const BUILDINGS: Dictionary = {
 		"footprint": Vector2(8.0, 6.0),
 		"building_height": 6.2,
 		"workplace_capacity": 3,
-		"accepted_professions": [
-			"screenwriter", "producer", "casting_director",
-		],
+		"accepted_professions": ["screenwriter", "producer", "casting_director"],
 		"primary_profession": "screenwriter",
 		"accent_color": Color(0.43, 0.48, 0.54),
 	},
@@ -56,12 +62,25 @@ const BUILDINGS: Dictionary = {
 		"primary_profession": "",
 		"accent_color": Color(0.42, 0.56, 0.43),
 	},
+	"star_bungalow": {
+		"title": "Звёздный домик",
+		"description": "Отдельное жильё для популярного актёра: приватная спальня и повышенное восстановление энергии после смены.",
+		"footprint": Vector2(10.0, 8.0),
+		"building_height": 5.8,
+		"workplace_capacity": 0,
+		"facility_capacity": 1,
+		"accepted_professions": [],
+		"primary_profession": "",
+		"accent_color": Color(0.66, 0.53, 0.32),
+	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",
-		"description": "Закрытая площадка для съёмки сцен с актёрами и съёмочной группой.",
+		"description": "Закрытая съёмочная площадка. Размер павильона определяет площадь, число рабочих мест и максимальный масштаб постановки.",
 		"footprint": Vector2(14.0, 12.0),
 		"building_height": 7.0,
 		"workplace_capacity": 8,
+		"facility_capacity": 0,
+		"stage_size_tier": 2,
 		"accepted_professions": [
 			"actor", "extra", "director", "camera_operator",
 			"technician", "production_designer", "producer",
@@ -70,6 +89,7 @@ const BUILDINGS: Dictionary = {
 		"accent_color": Color(0.53, 0.43, 0.33),
 	},
 }
+
 
 static func get_building_type_ids() -> Array[String]:
 	var result: Array[String] = []
@@ -86,8 +106,7 @@ static func has_building_type(building_type_id: String) -> bool:
 static func get_definition(building_type_id: String) -> Dictionary:
 	if not BUILDINGS.has(building_type_id):
 		return {}
-	var definition: Dictionary = BUILDINGS[building_type_id]
-	return definition.duplicate(true)
+	return BUILDINGS[building_type_id].duplicate(true)
 
 
 static func get_title(building_type_id: String) -> String:
@@ -100,16 +119,75 @@ static func get_description(building_type_id: String) -> String:
 	return str(definition.get("description", ""))
 
 
-static func get_footprint(building_type_id: String, rotation_degrees: float = 0.0) -> Vector2:
-	var definition: Dictionary = get_definition(building_type_id)
-	var footprint: Vector2 = definition.get("footprint", Vector2.ZERO)
+static func is_sound_stage(building_type_id: String) -> bool:
+	return building_type_id == "sound_stage"
+
+
+static func get_stage_size_tier(stage_size_tier: int) -> int:
+	return clampi(stage_size_tier, 1, 3)
+
+
+static func get_stage_size_title(stage_size_tier: int) -> String:
+	match get_stage_size_tier(stage_size_tier):
+		1:
+			return "Малый"
+		3:
+			return "Большой"
+		_:
+			return "Средний"
+
+
+static func get_stage_footprint(stage_size_tier: int) -> Vector2:
+	return STAGE_FOOTPRINTS[get_stage_size_tier(stage_size_tier)]
+
+
+static func get_stage_height(stage_size_tier: int) -> float:
+	return float(STAGE_HEIGHTS[get_stage_size_tier(stage_size_tier)])
+
+
+static func get_stage_workplace_capacity(stage_size_tier: int) -> int:
+	return int(STAGE_WORKPLACE_CAPACITIES[get_stage_size_tier(stage_size_tier)])
+
+
+static func get_footprint(
+	building_type_id: String,
+	rotation_degrees: float = 0.0,
+	stage_size_tier: int = 2
+) -> Vector2:
+	var footprint: Vector2
+	if is_sound_stage(building_type_id):
+		footprint = get_stage_footprint(stage_size_tier)
+	else:
+		var definition: Dictionary = get_definition(building_type_id)
+		footprint = definition.get("footprint", Vector2.ZERO)
 	var normalized_rotation: int = posmod(roundi(rotation_degrees / 90.0), 2)
 	return Vector2(footprint.y, footprint.x) if normalized_rotation == 1 else footprint
 
 
+static func get_building_height(
+	building_type_id: String,
+	stage_size_tier: int = 2
+) -> float:
+	if is_sound_stage(building_type_id):
+		return get_stage_height(stage_size_tier)
+	var definition: Dictionary = get_definition(building_type_id)
+	return float(definition.get("building_height", 6.0))
+
+
 static func get_workplace_capacity(building_type_id: String) -> int:
+	if is_sound_stage(building_type_id):
+		return get_stage_workplace_capacity(2)
 	var definition: Dictionary = get_definition(building_type_id)
 	return maxi(int(definition.get("workplace_capacity", 0)), 0)
+
+
+static func get_workplace_capacity_for_building(building: Variant) -> int:
+	if building == null:
+		return 0
+	var building_type_id: String = str(building.building_type_id)
+	if is_sound_stage(building_type_id):
+		return get_stage_workplace_capacity(int(building.stage_size_tier))
+	return get_workplace_capacity(building_type_id)
 
 
 static func get_facility_capacity(building_type_id: String) -> int:

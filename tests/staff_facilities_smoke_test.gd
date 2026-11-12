@@ -62,7 +62,7 @@ class StubFacilityManager extends Node:
 		building_id: String,
 		_slot_index: int
 	) -> Array[Vector3]:
-		if building_id == "BLD-HOUSING":
+		if building_id in ["BLD-HOUSING", "BLD-STAR-HOUSING"]:
 			return [
 				Vector3(3.0, 0.0, -3.0),
 				Vector3(3.0, 0.0, -2.0),
@@ -86,6 +86,7 @@ func _run_tests() -> void:
 		"FACILITY-TEST-01",
 		"actor"
 	)
+	employee.popularity = 0.0
 	employee.shift_start_hour = 8
 	employee.shift_end_hour = 17
 	employee.break_start_hour = 12
@@ -131,6 +132,10 @@ func _run_tests() -> void:
 	housing.id = "BLD-HOUSING"
 	housing.building_type_id = "staff_housing"
 	housing.is_operational = true
+	var star_bungalow: Variant = BUILDING_DATA_SCRIPT.new()
+	star_bungalow.id = "BLD-STAR-HOUSING"
+	star_bungalow.building_type_id = "star_bungalow"
+	star_bungalow.is_operational = true
 
 	var studio_manager := StubFacilityManager.new()
 	root.add_child(studio_manager)
@@ -171,7 +176,7 @@ func _run_tests() -> void:
 		str(actor.call("get_workplace_building_id")).is_empty(),
 		"The roaming employee must be allowed to visit a facility without an active workplace route."
 	)
-	studio_manager.buildings = [cafeteria, housing]
+	studio_manager.buildings = [cafeteria, housing, star_bungalow]
 
 	_expect(
 		bool(character_manager.call(
@@ -387,6 +392,43 @@ func _run_tests() -> void:
 			Vector3(3.0, 0.0, -3.0)
 		),
 		"Unassigned employees must exit staff housing through its entrance and resume free roaming."
+	)
+
+	character_manager.call(
+		"dispatch_employee_to_workplace",
+		employee.id
+	)
+	actor.call("snap_to_workplace")
+	employee.popularity = 90.0
+	var star_needs: Dictionary = employee.needs.duplicate(true)
+	star_needs["energy"] = 0.5
+	star_needs["stress"] = 0.5
+	employee.needs = star_needs
+	character_manager.call("_on_game_minute_advanced", 4, 22, 0)
+	var needs_before_star_sleep: Dictionary = employee.needs.duplicate(true)
+	character_manager.call("_on_game_minute_advanced", 4, 22, 1)
+	var needs_after_star_sleep: Dictionary = employee.needs
+	_expect(
+		bool(actor.call("is_at_facility", "star_bungalow"))
+		and str(employee.current_task) == "Отдыхает в отдельном домике",
+		"Popular actors must use the private bungalow when its single bed is available."
+	)
+	var star_sleep_body: Node3D = actor.get_node(
+		"CharacterVisual/BodyRoot"
+	) as Node3D
+	var star_name_tag: Label3D = actor.get_node("NameTag") as Label3D
+	_expect(
+		absf(star_sleep_body.rotation.x + PI * 0.5) < 0.1
+		and star_sleep_body.position.y > 0.5
+		and not star_name_tag.visible,
+		"Star bungalow arrival must use the same lying sleep pose and hide the floating name tag."
+	)
+	_expect(
+		float(needs_after_star_sleep.get("energy", 0.0))
+			> float(needs_before_star_sleep.get("energy", 0.0))
+		and float(needs_after_star_sleep.get("stress", 1.0))
+			< float(needs_before_star_sleep.get("stress", 1.0)),
+		"Star bungalow sleep must restore energy and reduce stress at the enhanced rate."
 	)
 
 	character_manager.free()

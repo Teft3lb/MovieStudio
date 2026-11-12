@@ -705,7 +705,7 @@ func _face_facility() -> void:
 				global_position + facing_direction.normalized(),
 				Vector3.UP
 			)
-		"staff_housing":
+		"staff_housing", "star_bungalow":
 			rotation.y = 0.0
 
 
@@ -1007,7 +1007,7 @@ func _advance_visual(simulation_delta: float) -> void:
 
 func _update_name_tag_visibility() -> void:
 	if is_instance_valid(_name_tag):
-		_name_tag.visible = not bool(is_at_facility("staff_housing"))
+		_name_tag.visible = not bool(is_at_facility("staff_housing")) and not bool(is_at_facility("star_bungalow"))
 
 
 func _set_walking(value: bool) -> void:

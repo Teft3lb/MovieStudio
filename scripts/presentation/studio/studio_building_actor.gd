@@ -28,6 +28,7 @@ var _active_set_scene_key: String = ""
 var _warehouse_inventory_root: Node3D
 var _warehouse_storage_positions: Array[Vector3] = []
 var _navigation_system: RefCounted
+var _stage_scale: Vector2 = Vector2.ONE
 
 
 func setup(data: Variant) -> void:
@@ -64,43 +65,45 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	var path: Array[Vector3] = []
 	if _workplace_points.is_empty():
 		return path
-
 	var normalized_slot: int = clampi(slot_index, 0, _workplace_points.size() - 1)
+	var building_type_id: String = str(building_data.building_type_id)
 	var slot_offset: float = 0.0
-	if str(building_data.building_type_id) not in ["cafeteria", "staff_housing"]:
+	if building_type_id not in [
+		"cafeteria", "staff_housing", "star_bungalow", "sound_stage"
+	]:
 		slot_offset = (
 			float(normalized_slot) - float(_workplace_points.size() - 1) * 0.5
 		) * 0.22
+	var workplace_point: Vector3 = _workplace_points[normalized_slot]
 	var outside: Vector3 = _entrance_outside + Vector3(slot_offset, 0.0, 0.0)
 	var inside: Vector3 = _entrance_inside + Vector3(slot_offset, 0.0, 0.0)
 	var corridor: Vector3 = Vector3(
-		_workplace_points[normalized_slot].x,
+		workplace_point.x,
 		0.0,
 		_entrance_inside.z - 1.0
 	)
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		corridor,
-		_workplace_points[normalized_slot],
+		workplace_point,
 		_get_interior_navigation_obstacles(normalized_slot),
 		0.5,
 		_get_interior_navigation_bounds()
 	)
 	if indoor_path.is_empty():
 		return path
-
-	path.append(to_global(outside))
-	path.append(to_global(inside))
-	path.append(to_global(corridor))
+	path.append(_interior_root.to_global(outside))
+	path.append(_interior_root.to_global(inside))
+	path.append(_interior_root.to_global(corridor))
 	for point_index in range(1, indoor_path.size()):
-		var world_point: Vector3 = to_global(indoor_path[point_index])
+		var world_point: Vector3 = _interior_root.to_global(indoor_path[point_index])
 		if path.back().distance_to(world_point) > 0.2:
 			path.append(world_point)
 	return path
 
 
 func get_exit_path_from(start_world_position: Vector3) -> Array[Vector3]:
-	var local_start: Vector3 = to_local(start_world_position)
+	var local_start: Vector3 = _interior_root.to_local(start_world_position)
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
@@ -111,21 +114,26 @@ func get_exit_path_from(start_world_position: Vector3) -> Array[Vector3]:
 	)
 	if indoor_path.is_empty():
 		return []
-
 	var result: Array[Vector3] = []
 	for point in indoor_path:
-		result.append(to_global(point))
-	var outside_position: Vector3 = to_global(_entrance_outside)
+		result.append(_interior_root.to_global(point))
+	var outside_position: Vector3 = _interior_root.to_global(_entrance_outside)
 	if result.back().distance_to(outside_position) > 0.2:
 		result.append(outside_position)
 	return result
 
 
 func _get_interior_navigation_bounds() -> Rect2:
-	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		str(building_data.building_type_id)
+	var building_type_id: String = str(building_data.building_type_id)
+	var footprint: Vector2 = (
+		Vector2(14.0, 12.0)
+		if BUILDING_CATALOG_SCRIPT.is_sound_stage(building_type_id)
+		else BUILDING_CATALOG_SCRIPT.get_footprint(
+			building_type_id,
+			0.0,
+			int(building_data.stage_size_tier)
+		)
 	)
-	var footprint: Vector2 = definition.get("footprint", Vector2(12.0, 10.0))
 	var margin: float = 0.65
 	return Rect2(
 		Vector2(
@@ -171,16 +179,32 @@ func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 							"clearance": 0.18,
 						})
 					bed_slot_index += 1
+		"star_bungalow":
+			obstacles.append({
+				"center": Vector2(0.0, -1.3),
+				"half_extents": Vector2(1.12, 1.25),
+				"clearance": 0.18,
+			})
+			obstacles.append({
+				"center": Vector2(-3.2, -1.3),
+				"half_extents": Vector2(0.58, 0.62),
+				"clearance": 0.18,
+			})
+			obstacles.append({
+				"center": Vector2(2.65, -1.3),
+				"half_extents": Vector2(0.48, 0.48),
+				"clearance": 0.18,
+			})
+			obstacles.append({
+				"center": Vector2(2.65, 1.0),
+				"half_extents": Vector2(0.62, 0.62),
+				"clearance": 0.18,
+			})
 		"prop_warehouse":
 			for side in [-1.0, 1.0]:
 				obstacles.append({
 					"center": Vector2(side * 3.75, -0.25),
 					"half_extents": Vector2(0.5, 3.0),
-					"clearance": 0.18,
-				})
-				obstacles.append({
-					"center": Vector2(side * 4.2, -0.25),
-					"half_extents": Vector2(0.11, 3.0),
 					"clearance": 0.18,
 				})
 		"sound_stage":
@@ -231,13 +255,14 @@ func get_scene_path(
 	target_world_position: Vector3
 ) -> Array[Vector3]:
 	var result: Array[Vector3] = []
-	if str(building_data.building_type_id) != "sound_stage":
+	if not BUILDING_CATALOG_SCRIPT.is_sound_stage(
+		str(building_data.building_type_id)
+	):
 		result.append(start_world_position)
 		result.append(target_world_position)
 		return result
-
-	var local_start: Vector3 = to_local(start_world_position)
-	var local_target: Vector3 = to_local(target_world_position)
+	var local_start: Vector3 = _interior_root.to_local(start_world_position)
+	var local_target: Vector3 = _interior_root.to_local(target_world_position)
 	var local_start_2d: Vector2 = Vector2(local_start.x, local_start.z)
 	var local_target_2d: Vector2 = Vector2(local_target.x, local_target.z)
 	var obstacles: Array[Dictionary] = [
@@ -285,17 +310,16 @@ func get_scene_path(
 				"half_extents": prop_half_extents,
 				"clearance": prop_clearance,
 			})
-
 	var local_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
 		local_target,
 		obstacles,
 		0.5,
-		Rect2(Vector2(-6.4, -5.4), Vector2(12.8, 10.8))
+		_get_interior_navigation_bounds()
 	)
 	for local_point in local_path:
-		result.append(to_global(local_point))
+		result.append(_interior_root.to_global(local_point))
 	return result
 
 
@@ -320,7 +344,7 @@ func get_set_dressing_prop_count() -> int:
 func get_set_dressing_mark(prop_index: int) -> Vector3:
 	var positions: Array[Vector3] = _get_set_dressing_positions()
 	var index: int = clampi(prop_index, 0, positions.size() - 1)
-	return to_global(positions[index])
+	return _interior_root.to_global(positions[index])
 
 
 func _get_set_dressing_positions() -> Array[Vector3]:
@@ -569,11 +593,7 @@ func get_scene_mark(
 		Vector3(2.2, 0.0, -1.65),
 		Vector3(3.4, 0.0, -1.65),
 	]
-	var normalized_index: int = clampi(
-		slot_index,
-		0,
-		scene_marks.size() - 1
-	)
+	var normalized_index: int = clampi(slot_index, 0, scene_marks.size() - 1)
 	var mark: Vector3 = scene_marks[normalized_index]
 	if posmod(scene_index, 2) == 1:
 		mark.x = -mark.x
@@ -586,7 +606,7 @@ func get_scene_mark(
 			mark.z += 0.52 if normalized_index % 2 == 0 else -0.18
 		"review":
 			mark.z += 0.12
-	return to_global(mark)
+	return _interior_root.to_global(mark)
 
 
 func get_scene_hold_mark(slot_index: int) -> Vector3:
@@ -599,16 +619,17 @@ func get_scene_hold_mark(slot_index: int) -> Vector3:
 		Vector3(2.2, 0.0, 4.7),
 		Vector3(3.5, 0.0, 4.5),
 		Vector3(4.8, 0.0, 4.3),
+		Vector3(-3.2, 0.0, 5.0),
+		Vector3(-1.0, 0.0, 5.2),
+		Vector3(1.0, 0.0, 5.2),
+		Vector3(3.2, 0.0, 5.0),
 	]
 	var normalized_index: int = posmod(slot_index, hold_marks.size())
-	var row_index: int = floori(float(slot_index) / float(hold_marks.size()))
-	var mark: Vector3 = hold_marks[normalized_index]
-	mark.z += float(row_index) * 0.55
-	return to_global(mark)
+	return _interior_root.to_global(hold_marks[normalized_index])
 
 
 func get_scene_focus_point() -> Vector3:
-	return to_global(Vector3(0.0, 1.45, -4.35))
+	return _interior_root.to_global(Vector3(0.0, 1.45, -4.35))
 
 
 func set_production_scene(
@@ -638,16 +659,25 @@ func set_camera_target(target_position: Vector3, active: bool) -> void:
 
 
 func _build_visual() -> void:
+	var building_type_id: String = str(building_data.building_type_id)
+	var stage_size_tier: int = int(building_data.stage_size_tier)
 	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		str(building_data.building_type_id)
+		building_type_id
 	)
-	var footprint: Vector2 = definition.get("footprint", Vector2(8.0, 6.0))
-	var height: float = float(definition.get("building_height", 6.0))
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+		building_type_id,
+		0.0,
+		stage_size_tier
+	)
+	var height: float = BUILDING_CATALOG_SCRIPT.get_building_height(
+		building_type_id,
+		stage_size_tier
+	)
 	_create_interior_root()
-
-	match str(building_data.building_type_id):
-		"sound_stage":
-			_build_sound_stage(footprint, height, definition)
+	if BUILDING_CATALOG_SCRIPT.is_sound_stage(building_type_id):
+		_build_sound_stage(footprint, height, definition)
+		return
+	match building_type_id:
 		"editing_suite":
 			_build_editing_suite(footprint, height, definition)
 		"prop_warehouse":
@@ -656,6 +686,8 @@ func _build_visual() -> void:
 			_build_cafeteria(footprint, height, definition)
 		"staff_housing":
 			_build_staff_housing(footprint, height, definition)
+		"star_bungalow":
+			_build_star_bungalow(footprint, height, definition)
 		_:
 			_build_script_department(footprint, height, definition)
 
@@ -681,21 +713,17 @@ func _build_sound_stage(
 		"accent_color",
 		Color(0.53, 0.43, 0.33)
 	)
-
-	_create_floor(
-		footprint,
-		Color(0.19, 0.20, 0.21),
-		"StageFloor"
-	)
+	_stage_scale = Vector2(width / 14.0, depth / 12.0)
+	_interior_root.scale = Vector3(_stage_scale.x, 1.0, _stage_scale.y)
+	_create_floor(Vector2(14.0, 12.0), Color(0.19, 0.20, 0.21), "StageFloor")
 	_create_perimeter_walls(
-		width,
-		depth,
+		14.0,
+		12.0,
 		wall_height,
 		wall_color,
 		4.6,
 		4.0
 	)
-
 	_roof_assembly = Node3D.new()
 	_roof_assembly.name = "RoofAssembly"
 	add_child(_roof_assembly)
@@ -713,7 +741,6 @@ func _build_sound_stage(
 		trim_color,
 		Vector3(width * 0.26, height + 0.35, -depth * 0.18)
 	)
-
 	_create_box(
 		self,
 		"RollDoorRaisedPanel",
@@ -735,22 +762,23 @@ func _build_sound_stage(
 		Vector3(0.0, 5.0, depth * 0.5 + 0.34),
 		20
 	)
+	_build_sound_stage_interior(14.0, 12.0)
 
-	_build_sound_stage_interior(width, depth)
 
-
-func _build_sound_stage_interior(width: float, depth: float) -> void:
+func _build_sound_stage_interior(_width: float, _depth: float) -> void:
 	var set_color: Color = Color(0.26, 0.29, 0.31)
 	var equipment_color: Color = Color(0.11, 0.13, 0.15)
 	var metal_color: Color = Color(0.34, 0.36, 0.38)
 	var tape_color: Color = Color(0.88, 0.69, 0.24)
-
+	_set_dressing_root = Node3D.new()
+	_set_dressing_root.name = "SetDressing"
+	_interior_root.add_child(_set_dressing_root)
 	_create_wall_panel(
 		_interior_root,
 		"MainSetBackdrop",
 		Vector3(8.2, 4.0, 0.24),
 		set_color,
-		Vector3(0.0, 2.0, -depth * 0.5 + 1.0)
+		Vector3(0.0, 2.0, -5.0)
 	)
 	_create_box(
 		_interior_root,
@@ -773,11 +801,6 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Color(0.34, 0.32, 0.29),
 		Vector3(3.9, 1.6, -2.3)
 	)
-
-	_set_dressing_root = Node3D.new()
-	_set_dressing_root.name = "SetDressing"
-	_interior_root.add_child(_set_dressing_root)
-
 	for mark_x in [-4.5, -1.5, 1.5, 4.5]:
 		_create_box(
 			_interior_root,
@@ -786,7 +809,6 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 			tape_color,
 			Vector3(mark_x, 0.055, 0.0)
 		)
-
 	_camera_rigs.clear()
 	_camera_rigs.append(
 		_create_camera_rig(
@@ -802,37 +824,30 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 			equipment_color
 		)
 	)
-	_create_light_stand(
-		Vector3(-5.6, 0.0, -4.1),
-		metal_color
-	)
-	_create_light_stand(
-		Vector3(5.6, 0.0, -4.1),
-		metal_color
-	)
+	_create_light_stand(Vector3(-5.6, 0.0, -4.1), metal_color)
+	_create_light_stand(Vector3(5.6, 0.0, -4.1), metal_color)
 	_create_box(
 		_interior_root,
 		"TechnicalEquipmentRack",
 		Vector3(1.3, 1.8, 0.65),
 		equipment_color,
-		Vector3(width * 0.5 - 1.0, 0.9, depth * 0.5 - 1.0)
+		Vector3(6.0, 0.9, 5.0)
 	)
 	_create_box(
 		_interior_root,
 		"DirectorMonitorDesk",
 		Vector3(1.8, 0.9, 0.65),
 		Color(0.23, 0.20, 0.18),
-		Vector3(-width * 0.5 + 1.1, 0.48, depth * 0.5 - 1.0)
+		Vector3(-5.9, 0.48, 5.0)
 	)
 	_create_box(
 		_interior_root,
 		"DirectorMonitor",
 		Vector3(0.85, 0.48, 0.08),
 		Color(0.10, 0.25, 0.30),
-		Vector3(-width * 0.5 + 1.1, 1.18, depth * 0.5 - 1.0)
+		Vector3(-5.9, 1.18, 5.0)
 	)
 	_create_film_slate()
-
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
 		Vector3(1.8, 0.0, -1.6),
@@ -842,6 +857,10 @@ func _build_sound_stage_interior(width: float, depth: float) -> void:
 		Vector3(4.9, 0.0, 4.7),
 		Vector3(-4.2, 0.0, 1.8),
 		Vector3(4.2, 0.0, 1.8),
+		Vector3(-2.2, 0.0, 4.5),
+		Vector3(0.0, 0.0, 4.5),
+		Vector3(2.2, 0.0, 4.5),
+		Vector3(0.0, 0.0, 2.2),
 	]
 
 
@@ -1402,6 +1421,81 @@ func _build_staff_housing(
 	_workplace_points = sleeping_positions
 
 
+func _build_star_bungalow(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	var wall_color: Color = Color(0.63, 0.55, 0.43)
+	var roof_color: Color = Color(0.20, 0.23, 0.27)
+	var trim_color: Color = Color(0.28, 0.22, 0.17)
+	var accent_color: Color = definition.get(
+		"accent_color",
+		Color(0.66, 0.53, 0.32)
+	)
+	_create_floor(footprint, Color(0.48, 0.39, 0.29), "StarBungalowFloor")
+	_create_perimeter_walls(width, depth, wall_height, wall_color, 2.4, 2.6)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"StarBungalowRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		roof_color,
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		self,
+		"StarBungalowBaseTrim",
+		Vector3(width + 0.12, 0.28, depth + 0.12),
+		trim_color,
+		Vector3(0.0, 0.14, 0.0)
+	)
+	_create_box(
+		self,
+		"StarBungalowSign",
+		Vector3(4.8, 0.62, 0.16),
+		accent_color,
+		Vector3(0.0, 3.0, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		self,
+		"StarBungalowSignText",
+		"ЗВЁЗДНЫЙ ДОМ",
+		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
+		18
+	)
+	_create_box(
+		_wall_groups["front"],
+		"StarBungalowWindowLeft",
+		Vector3(1.7, 1.15, 0.12),
+		Color(0.20, 0.34, 0.37),
+		Vector3(-3.3, 3.2, depth * 0.5 + 0.22)
+	)
+	_create_box(
+		_wall_groups["front"],
+		"StarBungalowWindowRight",
+		Vector3(1.7, 1.15, 0.12),
+		Color(0.20, 0.34, 0.37),
+		Vector3(3.3, 3.2, depth * 0.5 + 0.22)
+	)
+	var bed_frame_color: Color = Color(0.30, 0.22, 0.16)
+	var mattress_color: Color = Color(0.77, 0.72, 0.63)
+	var bed_position := Vector3(0.0, 0.0, -1.3)
+	_create_box(_interior_root, "StarBedFrame", Vector3(2.05, 0.22, 2.35), bed_frame_color, bed_position + Vector3(0.0, 0.20, 0.0))
+	_create_box(_interior_root, "StarBedMattress", Vector3(1.92, 0.20, 2.20), mattress_color, bed_position + Vector3(0.0, 0.41, 0.0))
+	_create_box(_interior_root, "StarBedPillow", Vector3(0.95, 0.15, 0.48), Color(0.91, 0.88, 0.80), bed_position + Vector3(0.0, 0.56, -0.72))
+	_create_box(_interior_root, "StarBedHeadboard", Vector3(2.05, 0.92, 0.14), bed_frame_color, bed_position + Vector3(0.0, 0.58, -1.12))
+	_create_box(_interior_root, "StarWardrobe", Vector3(1.15, 2.15, 0.82), Color(0.28, 0.23, 0.20), Vector3(-3.35, 1.08, -1.25))
+	_create_box(_interior_root, "StarNightstand", Vector3(0.78, 0.72, 0.68), Color(0.35, 0.25, 0.18), Vector3(2.65, 0.36, -1.3))
+	_create_cylinder(_interior_root, "StarBedsideLamp", 0.12, 0.42, Color(0.86, 0.72, 0.48), Vector3(2.65, 0.91, -1.3))
+	_create_box(_interior_root, "StarLoungeChair", Vector3(1.05, 0.78, 0.92), Color(0.34, 0.25, 0.25), Vector3(2.65, 0.42, 1.05))
+	_workplace_points = [Vector3(0.0, 0.0, 0.45)]
+
 func _build_script_department(
 	footprint: Vector2,
 	height: float,
@@ -1588,7 +1682,7 @@ func _create_perimeter_walls(
 func _create_wall_group(group_id: String) -> Node3D:
 	var group := Node3D.new()
 	group.name = "%sWallGroup" % group_id.capitalize()
-	add_child(group)
+	_interior_root.add_child(group)
 	_wall_groups[group_id] = group
 	return group
 
@@ -1659,37 +1753,10 @@ func _create_camera_rig(
 	rig.name = "CameraRig_%d" % _camera_rigs.size()
 	rig.position = local_position
 	_interior_root.add_child(rig)
-	_create_cylinder(
-		rig,
-		"CameraTripodBase",
-		0.38,
-		0.10,
-		metal_color,
-		Vector3(0.0, 0.10, 0.0)
-	)
-	_create_cylinder(
-		rig,
-		"CameraTripodColumn",
-		0.075,
-		1.25,
-		metal_color,
-		Vector3(0.0, 0.72, 0.0)
-	)
-	_create_box(
-		rig,
-		"CinemaCameraBody",
-		Vector3(0.68, 0.48, 0.82),
-		equipment_color,
-		Vector3(0.0, 1.45, -0.18)
-	)
-	_create_cylinder(
-		rig,
-		"CameraLens",
-		0.19,
-		0.42,
-		Color(0.08, 0.10, 0.12),
-		Vector3(0.0, 1.45, -0.78)
-	)
+	_create_cylinder(rig, "CameraTripodBase", 0.38, 0.10, metal_color, Vector3(0.0, 0.10, 0.0))
+	_create_cylinder(rig, "CameraTripodColumn", 0.075, 1.25, metal_color, Vector3(0.0, 0.72, 0.0))
+	_create_box(rig, "CinemaCameraBody", Vector3(0.68, 0.48, 0.82), equipment_color, Vector3(0.0, 1.45, -0.18))
+	_create_cylinder(rig, "CameraLens", 0.19, 0.42, Color(0.08, 0.10, 0.12), Vector3(0.0, 1.45, -0.78))
 	return rig
 
 
@@ -1745,17 +1812,20 @@ func _create_wall_collision(
 
 
 func _create_hitbox() -> void:
-	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		str(building_data.building_type_id)
+	var building_type_id: String = str(building_data.building_type_id)
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+		building_type_id,
+		0.0,
+		int(building_data.stage_size_tier)
 	)
-	var footprint: Vector2 = definition.get("footprint", Vector2(8.0, 6.0))
-	var height: float = float(definition.get("building_height", 6.0))
-
+	var height: float = BUILDING_CATALOG_SCRIPT.get_building_height(
+		building_type_id,
+		int(building_data.stage_size_tier)
+	)
 	var body := StaticBody3D.new()
 	body.name = "BuildingHitbox"
 	body.collision_layer = 4
 	body.collision_mask = 0
-
 	var collision := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(footprint.x, height, footprint.y)
@@ -1766,50 +1836,25 @@ func _create_hitbox() -> void:
 
 
 func _create_selection_marker() -> void:
-	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		str(building_data.building_type_id)
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+		str(building_data.building_type_id),
+		0.0,
+		int(building_data.stage_size_tier)
 	)
-	var footprint: Vector2 = definition.get("footprint", Vector2(8.0, 6.0))
 	var marker := Node3D.new()
 	marker.name = "SelectionMarker"
 	marker.position.y = 0.035
 	marker.visible = false
 	add_child(marker)
 	_selection_marker = marker
-
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color(1.0, 0.78, 0.22)
 	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-
 	var thickness: float = 0.10
-	_create_marker_strip(
-		marker,
-		"Front",
-		Vector3(footprint.x, thickness, thickness),
-		Vector3(0.0, 0.0, footprint.y * 0.5),
-		material
-	)
-	_create_marker_strip(
-		marker,
-		"Back",
-		Vector3(footprint.x, thickness, thickness),
-		Vector3(0.0, 0.0, -footprint.y * 0.5),
-		material
-	)
-	_create_marker_strip(
-		marker,
-		"Left",
-		Vector3(thickness, thickness, footprint.y),
-		Vector3(-footprint.x * 0.5, 0.0, 0.0),
-		material
-	)
-	_create_marker_strip(
-		marker,
-		"Right",
-		Vector3(thickness, thickness, footprint.y),
-		Vector3(footprint.x * 0.5, 0.0, 0.0),
-		material
-	)
+	_create_marker_strip(marker, "Front", Vector3(footprint.x, thickness, thickness), Vector3(0.0, 0.0, footprint.y * 0.5), material)
+	_create_marker_strip(marker, "Back", Vector3(footprint.x, thickness, thickness), Vector3(0.0, 0.0, -footprint.y * 0.5), material)
+	_create_marker_strip(marker, "Left", Vector3(thickness, thickness, footprint.y), Vector3(-footprint.x * 0.5, 0.0, 0.0), material)
+	_create_marker_strip(marker, "Right", Vector3(thickness, thickness, footprint.y), Vector3(footprint.x * 0.5, 0.0, 0.0), material)
 
 
 func _create_marker_strip(
@@ -1830,10 +1875,10 @@ func _create_marker_strip(
 
 
 func _create_name_tag() -> void:
-	var definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-		str(building_data.building_type_id)
+	var height: float = BUILDING_CATALOG_SCRIPT.get_building_height(
+		str(building_data.building_type_id),
+		int(building_data.stage_size_tier)
 	)
-	var height: float = float(definition.get("building_height", 6.0))
 	_create_label(
 		self,
 		"BuildingName",

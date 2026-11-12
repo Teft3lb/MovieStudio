@@ -7,6 +7,8 @@ signal facility_usage_changed
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
 )
+
+const STAR_HOUSING_POPULARITY_THRESHOLD: float = 70.0
 const CHARACTER_GENERATOR_SCRIPT = preload(
 	"res://scripts/domain/characters/character_generator.gd"
 )
@@ -752,30 +754,34 @@ func release_employee_from_workplace_manually(employee_id: String) -> void:
 	clear_employee_task(employee_id)
 
 
+func refresh_workplace_assignments() -> void:
+	_refresh_workplace_assignments()
+
+
 func _refresh_workplace_assignments() -> void:
 	if (
 		_workplace_system == null
 		or not is_instance_valid(_studio_building_manager)
 	):
 		return
-
 	var buildings: Array = _studio_building_manager.call("get_buildings")
+	var preferred_stage_building_id: String = ""
+	if _studio_building_manager.has_method("get_preferred_stage_building_id"):
+		preferred_stage_building_id = str(
+			_studio_building_manager.call("get_preferred_stage_building_id")
+		)
 	_workplace_assignments = _workplace_system.call(
 		"build_assignments",
 		employees,
-		buildings
+		buildings,
+		preferred_stage_building_id
 	)
-
 	for employee in employees:
 		var employee_id: String = str(employee.id)
 		var actor: Variant = _employee_actors.get(employee_id)
 		if actor == null or not is_instance_valid(actor):
 			continue
-
-		var assignment: Dictionary = _workplace_assignments.get(
-			employee_id,
-			{}
-		)
+		var assignment: Dictionary = _workplace_assignments.get(employee_id, {})
 		if _is_active_production_participant(employee_id):
 			_manual_workplace_dispatches.erase(employee_id)
 			continue
@@ -787,9 +793,7 @@ func _refresh_workplace_assignments() -> void:
 			):
 				_manual_workplace_dispatches.erase(employee_id)
 			else:
-				var manual_building_id: String = str(
-					assignment.get("building_id", "")
-				)
+				var manual_building_id: String = str(assignment.get("building_id", ""))
 				var current_manual_building_id: String = str(
 					actor.call("get_workplace_building_id")
 				)
@@ -812,11 +816,8 @@ func _refresh_workplace_assignments() -> void:
 		):
 			actor.call("leave_workplace")
 			continue
-
 		var building_id: String = str(assignment.get("building_id", ""))
-		var current_building_id: String = str(
-			actor.call("get_workplace_building_id")
-		)
+		var current_building_id: String = str(actor.call("get_workplace_building_id"))
 		if not _should_auto_dispatch_to_workplace(employee_id, assignment):
 			if (
 				not current_building_id.is_empty()
@@ -853,11 +854,11 @@ func _refresh_workplace_assignments() -> void:
 				str(employee.profession_id),
 				workplace_exit_route
 			)
-
 	_refresh_roaming_routes()
 	if is_instance_valid(_roster_header):
 		_refresh_roster()
 		_refresh_detail_panel()
+
 
 func _refresh_roaming_routes() -> void:
 	if (
@@ -1460,12 +1461,18 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			and is_instance_valid(actor)
 			and bool(actor.call("is_at_facility", "staff_housing"))
 		)
+		var at_star_bungalow: bool = (
+			actor != null
+			and is_instance_valid(actor)
+			and bool(actor.call("is_at_facility", "star_bungalow"))
+		)
 		_needs_system.call(
 			"advance_minute",
 			employee,
 			hour,
 			at_cafeteria,
-			at_staff_housing
+			at_staff_housing,
+			at_star_bungalow
 		)
 
 		if actor == null or not is_instance_valid(actor):
@@ -1541,7 +1548,22 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 			"break":
 				target_facility_type = "cafeteria"
 			"off_duty":
-				target_facility_type = "staff_housing"
+				if bool(actor.call("is_in_facility")):
+					target_facility_type = str(
+						actor.call("get_facility_type_id")
+					)
+				elif (
+					str(employee.profession_id) == "actor"
+					and float(employee.popularity)
+						>= STAR_HOUSING_POPULARITY_THRESHOLD
+					and not _get_facility_assignment(
+						employee_id,
+						"star_bungalow"
+					).is_empty()
+				):
+					target_facility_type = "star_bungalow"
+				else:
+					target_facility_type = "staff_housing"
 
 		if not target_facility_type.is_empty():
 			if _route_employee_to_facility(
@@ -1560,12 +1582,18 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 						if is_at_facility
 						else "Идёт в столовую"
 					)
+				elif target_facility_type == "star_bungalow":
+					employee.current_task = (
+						"Отдыхает в отдельном домике"
+						if is_at_facility
+						else "Идёт в отдельный домик"
+					)
 				else:
 					employee.current_task = (
 						"Отдыхает в домике"
-					if is_at_facility
-					else "Идёт в домик персонала"
-				)
+						if is_at_facility
+						else "Идёт в домик персонала"
+					)
 				continue
 
 		if bool(actor.call("is_in_facility")):
