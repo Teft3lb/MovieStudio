@@ -116,7 +116,7 @@ func _begin_set_logistics(
 	stage_id: String,
 	scene_key: String
 ) -> void:
-	var warehouse_id: String = str(_manager.call("_get_prop_warehouse_building_id"))
+	var warehouse_id: String = str(_manager.call("get_prop_warehouse_building_id"))
 	if warehouse_id.is_empty():
 		_set_logistics_phase = phase
 		_set_logistics_scene_key = scene_key
@@ -268,7 +268,7 @@ func _start_route_for_set_logistics_task(
 func _process_set_logistics_tasks(stage_id: String) -> void:
 	if _set_logistics_blocked:
 		return
-	var warehouse_id: String = str(_manager.call("_get_prop_warehouse_building_id"))
+	var warehouse_id: String = str(_manager.call("get_prop_warehouse_building_id"))
 	for worker_id in _set_logistics_worker_ids:
 		if not _set_logistics_worker_tasks.has(worker_id):
 			continue
@@ -335,7 +335,7 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 					)):
 						_set_logistics_blocked = true
 						return
-					_manager.call("_refresh_warehouse_inventory_visuals")
+					_manager.call("refresh_warehouse_inventory_visuals")
 					actor.call("set_carrying_prop", true)
 					task["last_location"] = "warehouse"
 					_start_route_from_warehouse_to_stage(
@@ -426,7 +426,7 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 					)):
 						_set_logistics_blocked = true
 						return
-					_manager.call("_refresh_warehouse_inventory_visuals")
+					_manager.call("refresh_warehouse_inventory_visuals")
 					actor.call("set_carrying_prop", false)
 					task["last_location"] = "warehouse"
 					_assign_next_set_logistics_task(
@@ -680,7 +680,7 @@ func _build_route_stage_to_warehouse(
 		"build_path",
 		stage_workplace_path[0],
 		warehouse_path[0],
-		_manager.call("_get_building_navigation_obstacles"),
+		_manager.call("get_building_navigation_obstacles"),
 		0.75,
 		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
 	)
@@ -714,7 +714,7 @@ func _build_route_warehouse_to_stage(
 		"build_path",
 		warehouse_path[0],
 		stage_workplace_path[0],
-		_manager.call("_get_building_navigation_obstacles"),
+		_manager.call("get_building_navigation_obstacles"),
 		0.75,
 		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
 	)

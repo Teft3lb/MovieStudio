@@ -660,6 +660,10 @@ func _get_building_navigation_obstacles() -> Array[Dictionary]:
 	return result
 
 
+func get_building_navigation_obstacles() -> Array[Dictionary]:
+	return _get_building_navigation_obstacles()
+
+
 func get_workplace_facing_direction(
 	building_id: String,
 	slot_index: int
@@ -5072,6 +5076,10 @@ func _refresh_warehouse_inventory_visuals() -> void:
 	)
 
 
+func refresh_warehouse_inventory_visuals() -> void:
+	_refresh_warehouse_inventory_visuals()
+
+
 
 func _get_scene_setup_refresh_key() -> String:
 	if _active_film_project == null:
@@ -5102,6 +5110,10 @@ func _get_prop_warehouse_building_id() -> String:
 		if str(building.building_type_id) == "prop_warehouse":
 			return str(building.id)
 	return ""
+
+
+func get_prop_warehouse_building_id() -> String:
+	return _get_prop_warehouse_building_id()
 
 
 
