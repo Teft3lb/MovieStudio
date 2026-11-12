@@ -33,6 +33,7 @@ func _initialize() -> void:
 func _run_tests() -> void:
 	_test_script_department_interior()
 	_test_sound_stage_interior()
+	_test_tv_studio_interior()
 	_test_small_sound_stage_geometry()
 	_test_fitness_center_interior()
 	_test_studio_lounge_interior()
@@ -67,6 +68,55 @@ func _create_building(
 	actor.call("setup", data)
 	root.add_child(actor)
 	return actor
+
+
+func _test_tv_studio_interior() -> void:
+	var actor: Node3D = _create_building("tv_studio", 0.0)
+	_expect(
+		actor.get_node_or_null("Interior/TVStudioFloor") != null
+		and actor.get_node_or_null("Interior/TVStudioStagePlatform") != null
+		and actor.get_node_or_null("Interior/TVStudioLEDWall") != null
+		and actor.get_node_or_null("Interior/TVStudioHostDesk") != null,
+		"TV Studio must have a dedicated broadcast stage, LED backdrop and host desk."
+	)
+	_expect(
+		actor.get_node_or_null("Interior/TVStudioCameraRig_0/TVStudioCameraBody") != null
+		and actor.get_node_or_null("Interior/TVStudioAudienceSeat_0") != null
+		and actor.get_node_or_null("Interior/TVStudioControlDesk") != null
+		and actor.get_node_or_null("RoofAssembly/TVStudioRoofDeck") != null,
+		"TV Studio must contain multi-camera equipment, audience seating, a control booth and its own flat-roof architecture."
+	)
+
+	var all_routes_valid: bool = true
+	for slot_index in range(10):
+		var route: Array[Vector3] = actor.call(
+			"get_workplace_path",
+			slot_index
+		)
+		if route.size() < 4:
+			all_routes_valid = false
+			continue
+		var local_workplace: Vector3 = actor.to_local(route.back())
+		if (
+			absf(local_workplace.x) >= 9.4
+			or absf(local_workplace.z) >= 7.4
+		):
+			all_routes_valid = false
+		var exit_route: Array[Vector3] = actor.call(
+			"get_exit_path_from",
+			route.back(),
+			slot_index
+		)
+		if (
+			exit_route.size() < 2
+			or exit_route.front().distance_to(route.back()) > 0.1
+			or exit_route.back().distance_to(route.front()) > 0.1
+		):
+			all_routes_valid = false
+	_expect(
+		all_routes_valid,
+		"All ten TV Studio workstations must have navigable entry and exit routes around cameras, the host desk, audience rows and control booth."
+	)
 
 
 func _test_script_department_interior() -> void:

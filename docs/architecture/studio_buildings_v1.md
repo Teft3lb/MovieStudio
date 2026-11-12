@@ -92,6 +92,12 @@ The building panel:
 The standard eight-person recruitment market guarantees one film editor. The Editing Suite has three cutaway editing consoles, monitors, a reference screen and an audio rack.
 
 
+## Television Studio
+
+The TV Studio is a separate 20 × 16 m broadcast pavilion, not a rescaled or recolored Sound Stage. Its dedicated architecture includes a flat industrial roof, control-room glazing, a multi-camera recording stage, segmented LED backdrop, host desk, guest seating, two audience rows, camera rigs, overhead lighting truss and a director's control console.
+
+The building has ten authored workplace marks for a host, two guests, director, two camera operators, technician, producer, screenwriter and production designer. Its accepted-profession list is exposed to the building inspector, but the TV Studio does not automatically take permanent workplace assignments away from the Film Sound Stage. Television participants are intended to be called to the pavilion for scheduled TV sessions.
+
 ## Simulation boundaries
 
 The current implementation does **not** yet:
@@ -115,7 +121,7 @@ Run from the project root using Godot 4.7.2:
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 ~~~
 
-The interior test covers room props in all three building types
+The interior test covers room props, workplace navigation and exit routes for the TV Studio as well as the existing building types.
 
 
 ## Размеры съёмочных павильонов
@@ -153,7 +159,11 @@ Building inspector cards show the selected stage's architecture profile and expl
 
 ## Current building catalog and stage architecture
 
-The initial catalog table above describes the original Buildings v1 set. The current catalog also includes cafeteria, staff housing, star bungalow, fitness center and studio lounge. Sound stages now have three distinct architectural models, not one model scaled to different footprints:
+The initial catalog table above describes the original Buildings v1 set. The current catalog also includes cafeteria, staff housing, star bungalow, fitness center, studio lounge and a dedicated TV Studio. Sound stages now have three distinct architectural models, not one model scaled to different footprints:
+
+| Type ID | Display name | Footprint | Workplaces | Notes |
+|---|---|---:|---:|---|
+| `tv_studio` | Телевизионная студия | 20 × 16 m | 10 | Separate multi-camera broadcast pavilion for series and talk shows |
 
 | Stage model | Footprint | Crew slots | Architecture |
 |---|---:|---:|---|

@@ -95,6 +95,21 @@ const BUILDINGS: Dictionary = {
 		"primary_profession": "",
 		"accent_color": Color(0.42, 0.54, 0.48),
 	},
+	"tv_studio": {
+		"title": "Телевизионная студия",
+		"description": "Отдельный телевизионный павильон с многокамерной площадкой, местами для аудитории, ведущего, гостей и аппаратной режиссёра. Используется для сериалов и регулярных ток-шоу.",
+		"footprint": Vector2(20.0, 16.0),
+		"building_height": 8.8,
+		"workplace_capacity": 10,
+		"facility_capacity": 0,
+		"accepted_professions": [
+			"actor", "extra", "director", "camera_operator",
+			"technician", "producer", "production_designer",
+			"screenwriter",
+		],
+		"primary_profession": "director",
+		"accent_color": Color(0.12, 0.48, 0.62),
+	},
 	"sound_stage": {
 		"title": "Съёмочный павильон",
 		"description": "Закрытая съёмочная площадка. Размер павильона определяет площадь, число рабочих мест и максимальный масштаб постановки.",

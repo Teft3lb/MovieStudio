@@ -894,6 +894,16 @@ func _build_ui() -> void:
 	_stage_size_option.item_selected.connect(_on_stage_size_selected)
 	build_layout.add_child(_stage_size_option)
 
+	var tv_studio_button := Button.new()
+	tv_studio_button.text = "＋ Телевизионная студия"
+	tv_studio_button.tooltip_text = "Построить отдельный павильон для сериалов и ток-шоу"
+	tv_studio_button.custom_minimum_size = Vector2(0.0, 42.0)
+	tv_studio_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv_studio_button.pressed.connect(
+		_begin_placement.bind("tv_studio")
+	)
+	build_layout.add_child(tv_studio_button)
+
 	var warehouse_button := Button.new()
 	warehouse_button.text = "＋ Склад реквизита"
 	warehouse_button.tooltip_text = "Построить дополнительный склад съёмочного инвентаря"
@@ -1436,6 +1446,8 @@ func _refresh_building_detail() -> void:
 		_build_script_department_detail(assigned_staff)
 	elif building_type_id == "sound_stage":
 		_build_sound_stage_detail(assigned_staff)
+	elif building_type_id == "tv_studio":
+		_build_tv_studio_detail(eligible_staff)
 	elif building_type_id == "editing_suite":
 		_build_film_editing_detail(assigned_staff)
 	_apply_inspector_width_constraints(_building_detail_layout)
@@ -1869,6 +1881,48 @@ func _format_stars(star_count: int) -> String:
 	for index in range(5):
 		result += "★" if index < star_count else "☆"
 	return result
+
+
+func _build_tv_studio_detail(eligible_staff: Array) -> void:
+	var heading := Label.new()
+	heading.text = "ТЕЛЕВИЗИОННОЕ ПРОИЗВОДСТВО"
+	heading.add_theme_font_size_override("font_size", 14)
+	heading.add_theme_color_override(
+		"font_color",
+		Color(0.40, 0.78, 0.91, 1.0)
+	)
+	_building_detail_layout.add_child(heading)
+
+	var description := Label.new()
+	description.text = (
+		"Павильон предназначен для многокамерной записи сериалов и ток-шоу. "
+		+ "Ведущие, актёры и съёмочная группа вызываются сюда по телевизионному "
+		+ "расписанию и не занимают постоянные рабочие места в здании."
+	)
+	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_building_detail_layout.add_child(description)
+
+	var eligible_label := Label.new()
+	eligible_label.text = (
+		"Потенциальный пул специалистов: %d сотрудников"
+		% eligible_staff.size()
+	)
+	eligible_label.add_theme_font_size_override("font_size", 11)
+	eligible_label.add_theme_color_override(
+		"font_color",
+		Color(0.60, 0.82, 0.87, 1.0)
+	)
+	_building_detail_layout.add_child(eligible_label)
+
+	var workflow_label := Label.new()
+	workflow_label.text = (
+		"Съёмочный цикл: подготовка площадки → репетиция → запись → "
+		+ "постпродакшен → эфир. Конфликты занятости с кинопроизводством "
+		+ "проверяются перед началом телевизионного эпизода."
+	)
+	workflow_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	workflow_label.add_theme_font_size_override("font_size", 11)
+	_building_detail_layout.add_child(workflow_label)
 
 
 func _build_sound_stage_detail(assigned_staff: Array) -> void:
