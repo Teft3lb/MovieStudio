@@ -137,6 +137,14 @@ func generate(
 		data.popularity = rng.randf_range(0.0, 9.0)
 		data.physical_fitness = rng.randf_range(35.0, 70.0)
 
+	match data.profession_id:
+		"actor":
+			data.recognition = data.popularity * 0.75
+		"extra":
+			data.recognition = data.popularity * 0.35
+		_:
+			data.recognition = 0.0
+
 	var primary_skill_value: float = float(skills.get(primary_skill_id, 50.0))
 	var base_salary: float = float(
 		PROFESSION_CATALOG_SCRIPT.get_base_salary(data.profession_id)

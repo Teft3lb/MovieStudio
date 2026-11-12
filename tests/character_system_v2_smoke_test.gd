@@ -45,6 +45,7 @@ func _run_tests() -> void:
 	_test_needs_and_schedule(employee)
 	_test_facility_recovery(employee)
 	_test_skill_progress_bars(employee)
+	_test_recognition_serialization(employee)
 	_test_selection_marker(employee)
 
 	_finish_test("CharacterSystemV2SmokeTest")
@@ -222,6 +223,28 @@ func _test_skill_progress_bars(employee: Variant) -> void:
 			"Refreshing an employee profile must update existing skill bars without rebuilding the UI every game minute."
 		)
 	manager.free()
+
+
+func _test_recognition_serialization(employee: Variant) -> void:
+	var serialized: Dictionary = employee.to_dict()
+	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(serialized)
+	_expect(
+		is_equal_approx(
+			float(restored.recognition),
+			float(employee.recognition)
+		),
+		"Public recognition must survive CharacterData serialization."
+	)
+	var legacy_payload: Dictionary = serialized.duplicate(true)
+	legacy_payload.erase("recognition")
+	legacy_payload["schema_version"] = 8
+	legacy_payload["popularity"] = 42.0
+	var migrated: Variant = CHARACTER_DATA_SCRIPT.from_dict(legacy_payload)
+	_expect(
+		is_equal_approx(float(migrated.recognition), 42.0)
+		and int(migrated.to_dict().get("schema_version", 0)) == 9,
+		"Schema 8 saves must migrate recognition from the existing popularity score."
+	)
 
 
 func _test_selection_marker(employee: Variant) -> void:

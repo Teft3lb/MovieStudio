@@ -97,20 +97,14 @@ Biological aging is intentionally faster than the operational clock: one biologi
 
 The initial roster remains six employees. Film roles, optional crew positions and background performers are assigned from existing employees; the simulation does not automatically hire or spawn staff. Only player-driven hiring may increase the employee count.
 
-## Character schema version 8 additions
+## Character schema version 9 additions
 
-CharacterData now persists two additional fields:
-- physical_fitness: persistent 0–100 physical condition, generated with profession- and age-aware variation and improved by Fitness Center training.
-- relationships: dictionary keyed by employee ID with reciprocal relationship scores from −100 to +100.
+Schema 9 adds one persistent field to the existing profile:
+- recognition: 0–100 public awareness, distinct from popularity and increased by television appearances. Physical fitness and reciprocal relationship scores remain part of the schema 8 profile.
 
 CharacterManager advances relationship scores only when two employees have arrived at the same Studio Lounge. Sociability, ambition and discipline influence compatibility; incompatible pairs can develop negative scores. The employee inspector displays the strongest current relationships.
 
-Older saves remain compatible: missing physical_fitness defaults to 50, and missing relationships defaults to an empty dictionary.
-
-## Schema version 8 additions
-
-CharacterData adds persistent physical_fitness and reciprocal employee relationship scores. Older saves remain compatible: missing physical_fitness defaults to 50 and missing relationships defaults to an empty dictionary. CharacterManager advances relationship scores when employees share a Studio Lounge; personality compatibility can produce either positive friendship or negative conflict scores.
-
+Older saves remain compatible: missing physical_fitness defaults to 50, missing relationships defaults to an empty dictionary, and schema 8 recognition initializes from the saved popularity score.
 
 ## Employee skill profile presentation
 

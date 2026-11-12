@@ -1,8 +1,8 @@
 # Employee Management v1
 
 **Status:** first functional employee-market and contract prototype.  
-**Branch:** `feature/employee-management-v1`.  
-**Base:** `feature/character-system-v2`.
+**Branch:** `main`.  
+**Base:** `main`.
 
 ## Scope
 
@@ -59,6 +59,14 @@ Operations:
 - retain dismissed and expired employees in the former-employee archive;
 - refresh the candidate market on its seven-day cycle.
 
+### CelebritySystem integration
+
+CharacterData schema 9 separates public recognition from popularity. TV broadcasts update both values for regular cast, hosts and guest actors. EmployeeManagementSystem exposes:
+- `get_media_contract_offer_profile(employee_id)`: marketability tier, score, salary multiplier and suggested daily salary;
+- `get_media_contract_offer_salary(employee_id, contract_type)`: applies the existing 30-day / 90-day contract premium to that suggested salary. The salary baseline is recomputed from profession base pay and primary-skill value, so an accepted salary change cannot compound the next market valuation.
+
+These methods calculate a market-facing offer recommendation without mutating the employee's current contract. Actual negotiation, counteroffers and acceptance remain part of the future contract-renewal UI.
+
 ## Presentation integration
 
 The existing CharacterManager remains the scene coordinator and keeps responsibility for spawning and removing CharacterActor nodes.
@@ -109,6 +117,7 @@ The Employee Management test covers:
 10. dismissal, contract termination and former-employee archive;
 11. seven-day market refresh;
 12. fixed-term contract expiry after the final active day.
+13. media contract offer profiles derived from actor popularity, recognition and screen skills.
 
 The dedicated profession skill profile test is:
 

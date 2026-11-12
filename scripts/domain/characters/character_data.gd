@@ -1,7 +1,7 @@
 extends RefCounted
 class_name CharacterData
 
-const SCHEMA_VERSION: int = 8
+const SCHEMA_VERSION: int = 9
 const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
@@ -16,6 +16,7 @@ var age_days: int = 0
 
 var experience: float = 0.0
 var popularity: float = 0.0
+var recognition: float = 0.0
 var physical_fitness: float = 50.0
 var relationships: Dictionary = {}
 var daily_salary: int = 0
@@ -111,6 +112,7 @@ func get_ui_summary() -> Dictionary:
 		"age": age,
 		"experience": experience,
 		"popularity": popularity,
+		"recognition": recognition,
 		"physical_fitness": physical_fitness,
 		"current_task": current_task,
 		"work_state_title": get_work_state_title(),
@@ -135,6 +137,7 @@ func to_dict() -> Dictionary:
 		"age_days": age_days,
 		"experience": experience,
 		"popularity": popularity,
+		"recognition": recognition,
 		"physical_fitness": physical_fitness,
 		"relationships": relationships.duplicate(true),
 		"daily_salary": daily_salary,
@@ -185,6 +188,11 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 		result.age_days = clampi(source_age_days, 0, 72)
 	result.experience = clampf(float(payload.get("experience", 0.0)), 0.0, 100.0)
 	result.popularity = clampf(float(payload.get("popularity", 0.0)), 0.0, 100.0)
+	result.recognition = clampf(
+		float(payload.get("recognition", result.popularity)),
+		0.0,
+		100.0
+	)
 	result.physical_fitness = clampf(
 		float(payload.get("physical_fitness", 50.0)),
 		0.0,

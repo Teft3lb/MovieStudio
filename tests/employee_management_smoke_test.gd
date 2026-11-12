@@ -52,6 +52,7 @@ func _run_tests() -> void:
 
 	_test_profession_catalog(generator, rng)
 	_test_contract_serialization(management)
+	_test_media_contract_offers(management)
 	_test_hiring(management)
 	_test_dismissal(management)
 	_test_market_refresh(management)
@@ -236,6 +237,49 @@ func _test_contract_serialization(management: Variant) -> void:
 	_expect(
 		restored.type_id == "permanent" and restored.end_day == 0,
 		"Starting employees must have indefinite contracts."
+	)
+
+
+func _test_media_contract_offers(management: Variant) -> void:
+	var actor: Variant = management.employees[0]
+	var actor_id: String = str(actor.id)
+	var profile: Dictionary = management.call(
+		"get_media_contract_offer_profile",
+		actor_id
+	)
+	var fixed_term_salary: int = int(
+		management.call(
+			"get_media_contract_offer_salary",
+			actor_id,
+			"fixed_30_days"
+		)
+	)
+	_expect(
+		bool(profile.get("eligible", false))
+		and float(profile.get("marketability_score", 0.0)) >= 0.0
+		and float(profile.get("salary_multiplier", 0.0)) >= 0.85
+		and int(profile.get("suggested_daily_salary", 0)) >= int(actor.daily_salary),
+		"Actor popularity, recognition and screen skills must produce a market-facing contract offer profile."
+	)
+	_expect(
+		fixed_term_salary >= int(profile.get("suggested_daily_salary", 0)),
+		"Fixed-term media offers must apply the existing contract premium to the actor's market value."
+	)
+	var non_actor: Variant = null
+	for employee in management.employees:
+		if str(employee.profession_id) == "director":
+			non_actor = employee
+			break
+	if non_actor == null:
+		_expect(false, "Employee Management test roster must include a director.")
+		return
+	var non_actor_profile: Dictionary = management.call(
+		"get_media_contract_offer_profile",
+		str(non_actor.id)
+	)
+	_expect(
+		not bool(non_actor_profile.get("eligible", true)),
+		"Media contract offers must remain limited to actors and extras."
 	)
 
 

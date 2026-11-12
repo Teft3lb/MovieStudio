@@ -7,6 +7,9 @@ const EMPLOYEE_CONTRACT_SCRIPT = preload(
 const EMPLOYEE_MARKET_SCRIPT = preload(
 	"res://scripts/domain/staff/employee_market_system.gd"
 )
+const CELEBRITY_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/celebrity_system.gd"
+)
 
 const DEFAULT_MARKET_SIZE: int = 8
 const MARKET_REFRESH_INTERVAL_DAYS: int = 7
@@ -17,6 +20,7 @@ var former_employees: Array = []
 var contracts: Dictionary = {}
 
 var _market_system: RefCounted
+var _celebrity_system: RefCounted
 var _next_contract_number: int = 1
 var _last_market_refresh_day: int = 1
 
@@ -36,6 +40,7 @@ func initialize(
 
 	_market_system = EMPLOYEE_MARKET_SCRIPT.new()
 	_market_system.call("setup", world_seed)
+	_celebrity_system = CELEBRITY_SYSTEM_SCRIPT.new()
 	market_candidates.append_array(
 		_market_system.call(
 			"generate_candidates",
@@ -176,6 +181,38 @@ func get_offer_salary(candidate_id: String, contract_type: String) -> int:
 	return maxi(roundi(float(candidate.daily_salary) * multiplier), 1)
 
 
+func get_media_contract_offer_profile(employee_id: String) -> Dictionary:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return {}
+	if _celebrity_system == null:
+		_celebrity_system = CELEBRITY_SYSTEM_SCRIPT.new()
+	var profile: Dictionary = _celebrity_system.call(
+		"get_contract_offer_profile",
+		employee
+	)
+	return profile
+
+
+func get_media_contract_offer_salary(
+	employee_id: String,
+	contract_type: String
+) -> int:
+	if not EMPLOYEE_CONTRACT_SCRIPT.CONTRACT_TYPES.has(contract_type):
+		return 0
+	var profile: Dictionary = get_media_contract_offer_profile(employee_id)
+	if not bool(profile.get("eligible", false)):
+		return 0
+	var base_offer: int = int(profile.get("suggested_daily_salary", 0))
+	var contract_multiplier: float = 1.0
+	match contract_type:
+		"fixed_30_days":
+			contract_multiplier = 1.15
+		"fixed_90_days":
+			contract_multiplier = 1.08
+	return maxi(roundi(float(base_offer) * contract_multiplier), 1)
+
+
 func get_contract(employee_id: String) -> Variant:
 	return contracts.get(employee_id)
 
@@ -212,6 +249,13 @@ func _find_employee_index(employee_id: String) -> int:
 		if str(employees[index].id) == employee_id:
 			return index
 	return -1
+
+
+func _find_employee(employee_id: String) -> Variant:
+	var employee_index: int = _find_employee_index(employee_id)
+	if employee_index < 0:
+		return null
+	return employees[employee_index]
 
 
 func _find_candidate_index(candidate_id: String) -> int:

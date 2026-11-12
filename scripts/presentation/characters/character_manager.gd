@@ -2356,10 +2356,11 @@ func _refresh_detail_panel() -> void:
 			else ""
 		)
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
+				employee.recognition,
 				market_physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
@@ -2395,10 +2396,11 @@ func _refresh_detail_panel() -> void:
 			else ""
 		)
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
+				employee.recognition,
 				employee_physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
