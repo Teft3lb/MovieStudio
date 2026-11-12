@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 1,922 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
+| `studio_building_actor.gd` | 1,246 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -164,6 +164,22 @@ Owns the separate Script Department and Editing Suite architectures:
 
 The builder receives the shared visual factory and delegates only the common perimeter-wall shell and wall-group lookup to the actor. It returns the roof and workplace points without owning building identity, navigation or office workflow state. A focused smoke test covers both office variants, their distinct node hierarchies, equipment counts and workplace entry/exit routes.
 
+### StudioFacilityVisualBuilder
+
+Extracted from `StudioBuildingActor` into:
+
+`scripts/presentation/studio/studio_facility_visual_builder.gd`
+
+Owns six non-office building compositions:
+- Prop Warehouse, including racks, shelves, storage marks and its inventory display root;
+- Fitness Center, including cardio stations, mirrors and roof skylight;
+- Studio Lounge, including coffee area, sofas, plants and six social places;
+- Cafeteria, including serving counter, kitchen pass, twelve seats and their facing positions;
+- Staff Housing, including eight bed layouts and sleeping marks;
+- Star Bungalow, including its private bedroom and single sleeping mark.
+
+The builder receives the shared visual factory and uses the actor only for the common perimeter-wall shell and wall-group access. It returns roof/workplace metadata plus the warehouse inventory root and storage positions. The actor remains responsible for warehouse inventory updates, set-prop visuals, navigation, sleeping/facility simulation and building identity. A focused smoke test covers all six layouts, storage updates, seating/bed alignment and workplace routes.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -235,8 +251,8 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Extract remaining staff/social facility and housing geometry into focused builders using the shared visual factory.
+2. Separate navigation metadata and production/facility markers from StudioBuildingActor, then split the large interior smoke test by feature boundary.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 
-The building-manager UI extractions and the first building-visual extraction are complete. TV Studio and office geometry are now isolated. Continue extracting staff/social facility and housing builders before separating navigation and production-marker presentation from StudioBuildingActor.
+The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated. The next actor boundary is navigation metadata and production/facility marker presentation; then split the large interior smoke test by feature boundary.
