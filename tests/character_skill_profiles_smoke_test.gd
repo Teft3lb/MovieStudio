@@ -92,6 +92,15 @@ func _test_profession_profile(
 		"Generated skill count must match the profession profile."
 	)
 	_expect(
+		candidate.skill_caps.size() == expected_skill_ids.size(),
+		"Every generated employee must have an individual potential ceiling for each professional skill."
+	)
+	_expect(
+		float(candidate.growth_points_remaining) > 0.0
+		and float(candidate.growth_points_remaining) <= float(candidate.growth_points_total),
+		"Every candidate must have a finite, persisted career development reserve."
+	)
+	_expect(
 		candidate.skills.has(candidate.get_primary_skill_id()),
 		"Every generated character must have its primary profession skill."
 	)
@@ -110,8 +119,9 @@ func _test_profession_profile(
 		)
 		_expect(
 			float(candidate.skills[skill_id]) >= 0.0
-			and float(candidate.skills[skill_id]) <= 100.0,
-			"Generated skill values must stay within 0–100."
+			and float(candidate.skills[skill_id]) <= float(candidate.skill_caps[skill_id])
+			and float(candidate.skill_caps[skill_id]) < 100.0,
+			"Generated skill values must stay below their personal potential ceiling, which must remain below 100."
 		)
 
 	var specialization_skill_id: String = (
@@ -132,8 +142,13 @@ func _test_profession_profile(
 		"Profession-specific skills must survive CharacterData serialization."
 	)
 	_expect(
-		restored.specialization_id == candidate.specialization_id,
-		"Profession specialization must survive CharacterData serialization."
+		restored.specialization_id == candidate.specialization_id
+		and restored.skill_caps == candidate.skill_caps
+		and is_equal_approx(
+			float(restored.growth_points_remaining),
+			float(candidate.growth_points_remaining)
+		),
+		"Profession specialization, skill potential and growth reserve must survive serialization."
 	)
 	_expect(
 		restored.age_days == candidate.age_days
@@ -211,11 +226,15 @@ func _test_serialization_filter(generator: Variant, rng: RandomNumberGenerator) 
 	injected_skills["culinary"] = 99.0
 	injected_skills["security"] = 88.0
 	payload["skills"] = injected_skills
+	var injected_caps: Dictionary = payload.get("skill_caps", {}).duplicate(true)
+	injected_caps["culinary"] = 99.0
+	payload["skill_caps"] = injected_caps
 
 	var restored: Variant = CHARACTER_DATA_SCRIPT.from_dict(payload)
 	_expect(
-		not restored.skills.has("culinary") and not restored.skills.has("security"),
-		"CharacterData must discard skills outside the character's profession profile."
+		not restored.skills.has("culinary") and not restored.skills.has("security")
+		and not restored.skill_caps.has("culinary"),
+		"CharacterData must discard skills and potential ceilings outside the character's profession profile."
 	)
 	_expect(
 		restored.skills.size() == actor.skills.size(),

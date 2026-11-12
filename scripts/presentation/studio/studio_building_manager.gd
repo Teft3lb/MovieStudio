@@ -2714,6 +2714,10 @@ func _advance_film_production(hour: int = -1) -> void:
 	var phase_for_skill_progression: String = str(
 		_active_film_project.current_phase
 	)
+	var phase_duration_for_skill_progression: int = maxi(
+		int(_active_film_project.phase_duration_minutes),
+		1
+	)
 	var snapshot: Dictionary = _build_film_performance_snapshot()
 	var result: Dictionary = _film_production_system.call(
 		"advance_minute",
@@ -2724,7 +2728,10 @@ func _advance_film_production(hour: int = -1) -> void:
 		snapshot
 	)
 	if bool(result.get("advanced", false)):
-		_award_film_skill_progression(phase_for_skill_progression)
+		_award_film_skill_progression(
+			phase_for_skill_progression,
+			phase_duration_for_skill_progression
+		)
 	if not bool(result.get("advanced", false)):
 		if _set_logistics_blocked:
 			_active_film_project.pause_reason = "Логистика реквизита остановлена: проверь склад и маршруты техников."
@@ -3525,9 +3532,13 @@ func _award_employee_skill_experience(
 	)
 
 
-func _award_film_skill_progression(phase: String) -> void:
+func _award_film_skill_progression(
+	phase: String,
+	phase_duration_minutes: int
+) -> void:
 	if _active_film_project == null:
 		return
+	var normalized_duration: int = maxi(phase_duration_minutes, 1)
 	var performers: Array = _film_production_system.call(
 		"get_scene_performer_ids",
 		_active_film_script,
@@ -3536,19 +3547,25 @@ func _award_film_skill_progression(phase: String) -> void:
 	if phase == "rehearsal" or phase == "shooting":
 		for employee_id_value in performers:
 			var employee_id: String = str(employee_id_value)
-			_award_employee_skill_experience(
+			_award_phase_skill_experience(
 				employee_id,
 				"acting",
-				0.65 if phase == "rehearsal" else 0.35
+				2.0 if phase == "rehearsal" else 1.2,
+				normalized_duration
 			)
-			_award_employee_skill_experience(
+			_award_phase_skill_experience(
 				employee_id,
 				"movement",
-				0.12 if phase == "rehearsal" else 0.05
+				0.35 if phase == "rehearsal" else 0.15,
+				normalized_duration
 			)
 			if phase == "rehearsal":
-				_award_employee_skill_experience(employee_id, "improvisation", 0.10)
-				_award_employee_skill_experience(employee_id, "diction", 0.08)
+				_award_phase_skill_experience(
+					employee_id, "improvisation", 0.35, normalized_duration
+				)
+				_award_phase_skill_experience(
+					employee_id, "diction", 0.30, normalized_duration
+				)
 
 	var crew: Dictionary = _active_film_project.crew_assignments
 	for role_id in FILM_CREW_ROLE_CONFIG:
@@ -3559,53 +3576,115 @@ func _award_film_skill_progression(phase: String) -> void:
 		match crew_role_id:
 			"director":
 				if phase == "rehearsal":
-					_award_employee_skill_experience(employee_id, "actor_direction", 0.55)
-					_award_employee_skill_experience(employee_id, "directing", 0.20)
+					_award_phase_skill_experience(
+						employee_id, "actor_direction", 1.0, normalized_duration
+					)
+					_award_phase_skill_experience(
+						employee_id, "directing", 0.5, normalized_duration
+					)
 				elif phase == "shooting" or phase == "review":
-					_award_employee_skill_experience(employee_id, "directing", 0.30)
+					_award_phase_skill_experience(
+						employee_id, "directing", 0.5, normalized_duration
+					)
 			"camera_operator":
 				if phase == "rehearsal":
-					_award_employee_skill_experience(employee_id, "composition", 0.10)
+					_award_phase_skill_experience(
+						employee_id, "composition", 0.25, normalized_duration
+					)
 				elif phase == "shooting":
-					_award_employee_skill_experience(employee_id, "camera_work", 0.40)
-					_award_employee_skill_experience(employee_id, "composition", 0.18)
+					_award_phase_skill_experience(
+						employee_id, "camera_work", 1.0, normalized_duration
+					)
+					_award_phase_skill_experience(
+						employee_id, "composition", 0.4, normalized_duration
+					)
 				elif phase == "review":
-					_award_employee_skill_experience(employee_id, "camera_work", 0.12)
+					_award_phase_skill_experience(
+						employee_id, "camera_work", 0.25, normalized_duration
+					)
 			"technician", "technician_assistant_1", "technician_assistant_2":
 				if phase == "set_dressing":
-					_award_employee_skill_experience(employee_id, "technical", 0.42)
-					_award_employee_skill_experience(employee_id, "prop_design", 0.24)
+					_award_phase_skill_experience(
+						employee_id, "technical", 0.75, normalized_duration
+					)
+					_award_phase_skill_experience(
+						employee_id, "prop_design", 0.35, normalized_duration
+					)
 				elif phase == "shooting":
-					_award_employee_skill_experience(employee_id, "technical", 0.16)
+					_award_phase_skill_experience(
+						employee_id, "technical", 0.3, normalized_duration
+					)
+				elif phase == "set_strike":
+					_award_phase_skill_experience(
+						employee_id, "technical", 0.4, normalized_duration
+					)
 			"lighting_technician":
 				if phase == "set_dressing":
-					_award_employee_skill_experience(employee_id, "lighting", 0.12)
+					_award_phase_skill_experience(
+						employee_id, "lighting", 0.3, normalized_duration
+					)
 				elif phase == "shooting":
-					_award_employee_skill_experience(employee_id, "lighting", 0.42)
+					_award_phase_skill_experience(
+						employee_id, "lighting", 0.75, normalized_duration
+					)
 			"sound_technician":
 				if phase == "shooting":
-					_award_employee_skill_experience(employee_id, "sound", 0.42)
+					_award_phase_skill_experience(
+						employee_id, "sound", 0.75, normalized_duration
+					)
 			"equipment_technician":
 				if phase == "set_dressing":
-					_award_employee_skill_experience(employee_id, "equipment", 0.30)
+					_award_phase_skill_experience(
+						employee_id, "equipment", 0.5, normalized_duration
+					)
 				elif phase == "shooting":
-					_award_employee_skill_experience(employee_id, "equipment", 0.18)
+					_award_phase_skill_experience(
+						employee_id, "equipment", 0.25, normalized_duration
+					)
 			"production_designer":
 				if phase == "set_dressing":
-					_award_employee_skill_experience(employee_id, "set_design", 0.50)
+					_award_phase_skill_experience(
+						employee_id, "set_design", 0.9, normalized_duration
+					)
 				elif phase == "shooting":
-					_award_employee_skill_experience(employee_id, "set_design", 0.10)
+					_award_phase_skill_experience(
+						employee_id, "set_design", 0.2, normalized_duration
+					)
 			"costume_designer":
 				if phase == "rehearsal" or phase == "shooting":
-					_award_employee_skill_experience(employee_id, "costume_design", 0.24)
+					_award_phase_skill_experience(
+						employee_id, "costume_design", 0.35, normalized_duration
+					)
 			"makeup_artist":
 				if phase == "rehearsal" or phase == "shooting":
-					_award_employee_skill_experience(employee_id, "makeup", 0.24)
+					_award_phase_skill_experience(
+						employee_id, "makeup", 0.35, normalized_duration
+					)
 			"producer":
 				if phase == "review":
-					_award_employee_skill_experience(employee_id, "management", 0.20)
+					_award_phase_skill_experience(
+						employee_id, "management", 0.4, normalized_duration
+					)
 				else:
-					_award_employee_skill_experience(employee_id, "management", 0.08)
+					_award_phase_skill_experience(
+						employee_id, "management", 0.15, normalized_duration
+					)
+
+
+func _award_phase_skill_experience(
+	employee_id: String,
+	skill_id: String,
+	phase_total_experience: float,
+	phase_duration_minutes: int
+) -> void:
+	if phase_total_experience <= 0.0:
+		return
+	_award_employee_skill_experience(
+		employee_id,
+		skill_id,
+		phase_total_experience / float(maxi(phase_duration_minutes, 1))
+	)
+
 
 func _apply_film_crew_actions() -> void:
 	if _active_film_project == null:

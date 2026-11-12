@@ -43,7 +43,7 @@ func generate(
 			rng.randi_range(0, specialization_ids.size() - 1)
 		]
 	data.age = rng.randi_range(20, 35) if starter_staff else rng.randi_range(20, 64)
-	data.age_days = rng.randi_range(0, 364)
+	data.age_days = rng.randi_range(0, 72)
 	data.experience = rng.randf_range(0.0, 5.0) if starter_staff else rng.randf_range(0.0, 48.0)
 
 	var primary_skill_id: String = PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(
@@ -83,8 +83,45 @@ func generate(
 
 	data.skills = skills
 	data.skill_xp = {}
+	data.skill_caps = {}
 	for skill_id in profession_skill_ids:
 		data.skill_xp[skill_id] = 0.0
+		var skill_cap: int = 50
+		if starter_staff:
+			if skill_id == primary_skill_id:
+				skill_cap = rng.randi_range(78, 90)
+			elif skill_id == specialization_skill_id:
+				skill_cap = rng.randi_range(74, 88)
+			elif skill_id == "reliability":
+				skill_cap = rng.randi_range(62, 78)
+			else:
+				skill_cap = rng.randi_range(46, 72)
+		else:
+			if skill_id == primary_skill_id:
+				skill_cap = rng.randi_range(84, 96)
+			elif skill_id == specialization_skill_id:
+				skill_cap = rng.randi_range(80, 94)
+			elif skill_id == "reliability":
+				skill_cap = rng.randi_range(68, 88)
+			else:
+				skill_cap = rng.randi_range(54, 82)
+		data.skill_caps[skill_id] = minf(
+			96.0,
+			maxf(float(skills.get(skill_id, 0.0)) + 3.0, float(skill_cap))
+		)
+
+	if starter_staff:
+		data.growth_points_total = float(rng.randi_range(65, 75))
+	else:
+		data.growth_points_total = clampf(
+			56.0
+			- data.experience * 0.65
+			- maxf(float(data.age - 35), 0.0) * 0.4
+			+ rng.randf_range(-3.0, 3.0),
+			12.0,
+			58.0
+		)
+	data.growth_points_remaining = data.growth_points_total
 
 	if data.profession_id == "actor":
 		data.popularity = rng.randf_range(0.0, 26.0)

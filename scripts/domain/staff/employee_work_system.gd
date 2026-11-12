@@ -8,8 +8,8 @@ const PROFESSION_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/staff/profession_catalog.gd"
 )
 
-const PRIMARY_SKILL_XP_PER_MINUTE: float = 0.012
-const RELIABILITY_SKILL_XP_PER_MINUTE: float = 0.002
+const PRIMARY_SKILL_XP_PER_MINUTE: float = 0.0008
+const RELIABILITY_SKILL_XP_PER_MINUTE: float = 0.0002
 const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_skill_progression_system.gd"
 )

@@ -2005,11 +2005,13 @@ func _refresh_detail_panel() -> void:
 
 	if is_market_candidate:
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОжидание: %d усл. ед. / день\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
 				employee.daily_salary,
+				employee.growth_points_remaining,
+				employee.growth_points_total,
 				employee.career_goal,
 			]
 		)
@@ -2036,11 +2038,13 @@ func _refresh_detail_panel() -> void:
 		_workplace_dispatch_button.visible = false
 	else:
 		_detail_stats_label.text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОплата: %d усл. ед. / день\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
 				employee.daily_salary,
+				employee.growth_points_remaining,
+				employee.growth_points_total,
 				employee.career_goal,
 			]
 		)
@@ -2111,10 +2115,19 @@ func _refresh_detail_panel() -> void:
 	)
 	for skill_id in profession_skill_ids:
 		var skill_value: int = roundi(float(skills.get(skill_id, 0.0)))
-		if skill_value >= 100:
-			skill_lines.append("%s: 100 / 100 · максимум" % (
-				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
-			))
+		var skill_cap: int = roundi(float(employee.skill_caps.get(skill_id, 100.0)))
+		if skill_value >= skill_cap:
+			skill_lines.append("%s: %d / %d · потенциал достигнут" % [
+				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
+				skill_value,
+				skill_cap,
+			])
+		elif float(employee.growth_points_remaining) < 1.0:
+			skill_lines.append("%s: %d / %d · резерв развития исчерпан" % [
+				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
+				skill_value,
+				skill_cap,
+			])
 		else:
 			var progress_percent: int = mini(
 				roundi(float(
@@ -2126,9 +2139,10 @@ func _refresh_detail_panel() -> void:
 				)),
 				99
 			)
-			skill_lines.append("%s: %d / 100 · опыт до следующего пункта: %d%%" % [
+			skill_lines.append("%s: %d / %d · опыт до следующего пункта: %d%%" % [
 				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
 				skill_value,
+				skill_cap,
 				progress_percent,
 			])
 	_detail_skills_label.text = "\n".join(skill_lines)
