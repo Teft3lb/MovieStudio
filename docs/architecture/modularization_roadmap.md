@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 2,512 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
+| `studio_building_actor.gd` | 2,486 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -131,7 +131,7 @@ Owns the complete type-specific visual assembly for the small, medium and large 
 - stage-specific camera and lighting placement;
 - stage-specific workplace points and set-dressing roots.
 
-The builder uses the actor's shared wall-shell and primitive-construction adapters, then returns its roof, camera rigs, set-dressing root and workplace points as a build-state dictionary. The actor remains the owner of navigation, cutaway state, production labels, scene interaction and public workplace APIs. No scaling-based substitution is introduced: each stage tier keeps its own geometry and node hierarchy. A focused smoke test covers all three tiers, their independent geometry, camera counts and workplace entry/exit routes.
+The builder receives the shared visual factory explicitly and constructs meshes, labels, camera rigs, lighting and set dressing directly through it. It uses the actor only for the shared perimeter-wall shell and wall-group access, then returns its roof, camera rigs, slate labels, set-dressing root and workplace points as a build-state dictionary. The actor remains the owner of navigation, cutaway state, production labels, scene interaction and public workplace APIs. No scaling-based substitution is introduced: each stage tier keeps its own geometry and node hierarchy. A focused smoke test covers all three tiers, their independent geometry, camera counts and workplace entry/exit routes.
 
 ## Target module boundaries
 

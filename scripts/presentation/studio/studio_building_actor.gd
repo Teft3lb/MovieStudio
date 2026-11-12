@@ -904,6 +904,7 @@ func _build_sound_stage(
 		"build",
 		self,
 		_interior_root,
+		_visual_factory,
 		footprint,
 		height,
 		definition,
@@ -2270,6 +2271,8 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 func _apply_sound_stage_visual_state(visual_state: Dictionary) -> void:
 	_roof_assembly = visual_state.get("roof_assembly") as Node3D
 	_set_dressing_root = visual_state.get("set_dressing_root") as Node3D
+	_production_slate_label = visual_state.get("production_slate_label") as Label3D
+	_production_phase_label = visual_state.get("production_phase_label") as Label3D
 	_camera_rigs.clear()
 	var camera_rigs: Array = visual_state.get("camera_rigs", [])
 	for camera_rig in camera_rigs:
@@ -2324,35 +2327,6 @@ func _create_floor(
 	node_name: String
 ) -> void:
 	_visual_factory.call("create_floor", _interior_root, footprint, color, node_name)
-
-func _create_film_slate() -> void:
-	var labels: Dictionary = _visual_factory.call("create_film_slate", _interior_root)
-	_production_slate_label = labels.get("scene_label") as Label3D
-	_production_phase_label = labels.get("phase_label") as Label3D
-
-func _create_camera_rig(
-	local_position: Vector3,
-	metal_color: Color,
-	equipment_color: Color,
-	rig_index: int = -1
-) -> Node3D:
-	var resolved_rig_index: int = (
-		_camera_rigs.size() if rig_index < 0 else rig_index
-	)
-	return _visual_factory.call(
-		"create_camera_rig",
-		_interior_root,
-		resolved_rig_index,
-		local_position,
-		metal_color,
-		equipment_color
-	) as Node3D
-
-func _create_light_stand(
-	local_position: Vector3,
-	metal_color: Color
-) -> void:
-	_visual_factory.call("create_light_stand", _interior_root, local_position, metal_color)
 
 func _create_wall_panel(
 	parent: Node3D,
