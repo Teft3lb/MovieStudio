@@ -12,6 +12,15 @@ const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 const CHARACTER_ACTOR_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_actor.gd"
 )
+const CHARACTER_MANAGER_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_manager.gd"
+)
+const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/character_skill_progression_system.gd"
+)
+const PROFESSION_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/staff/profession_catalog.gd"
+)
 const GAME_CLOCK_SCRIPT = preload("res://scripts/core/game_clock.gd")
 
 
@@ -35,6 +44,7 @@ func _run_tests() -> void:
 	_test_serialization(employee)
 	_test_needs_and_schedule(employee)
 	_test_facility_recovery(employee)
+	_test_skill_progress_bars(employee)
 	_test_selection_marker(employee)
 
 	_finish_test("CharacterSystemV2SmokeTest")
@@ -158,6 +168,60 @@ func _test_facility_recovery(employee: Variant) -> void:
 		float(housing_night.needs.stress) < float(regular_night.needs.stress),
 		"Sleeping in staff housing must reduce more stress than ordinary off-duty time."
 	)
+
+
+func _test_skill_progress_bars(employee: Variant) -> void:
+	var manager: Node = CHARACTER_MANAGER_SCRIPT.new()
+	var container := VBoxContainer.new()
+	manager.add_child(container)
+	manager.set("_detail_skills_container", container)
+	manager.set(
+		"_skill_progression_system",
+		SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
+	)
+	manager.call("_refresh_skill_progress_bars", employee, employee.skills)
+	var skill_ids: Array[String] = PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+		employee.profession_id,
+		employee.specialization_id
+	)
+	_expect(
+		container.get_child_count() == skill_ids.size(),
+		"Employee skills must be displayed as one progress bar per profession skill."
+	)
+	if not skill_ids.is_empty():
+		var first_row: VBoxContainer = container.get_child(0) as VBoxContainer
+		var title_label: Label = first_row.get_child(0) as Label
+		var progress_bar: ProgressBar = first_row.get_child(1) as ProgressBar
+		var skill_id: String = skill_ids[0]
+		var skill_cap: float = float(employee.skill_caps.get(skill_id, 100.0))
+		var skill_value: float = float(employee.skills.get(skill_id, 0.0))
+		_expect(
+			title_label.text == PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
+			and is_equal_approx(progress_bar.max_value, skill_cap)
+			and is_equal_approx(progress_bar.value, minf(skill_value, skill_cap))
+			and not progress_bar.show_percentage,
+			"Skill bars must show current mastery against the employee's individual growth cap without tiny numeric text."
+		)
+		var original_bar: ProgressBar = progress_bar
+		var changed_skills: Dictionary = employee.skills.duplicate(true)
+		var changed_value: float = (
+			minf(skill_value + 1.0, skill_cap)
+			if skill_value < skill_cap
+			else maxf(skill_value - 1.0, 0.0)
+		)
+		changed_skills[skill_id] = changed_value
+		manager.call("_refresh_skill_progress_bars", employee, changed_skills)
+		var updated_row: VBoxContainer = container.get_child(0) as VBoxContainer
+		var updated_bar: ProgressBar = updated_row.get_child(1) as ProgressBar
+		_expect(
+			updated_bar == original_bar
+			and is_equal_approx(
+				updated_bar.value,
+				changed_value
+			),
+			"Refreshing an employee profile must update existing skill bars without rebuilding the UI every game minute."
+		)
+	manager.free()
 
 
 func _test_selection_marker(employee: Variant) -> void:

@@ -110,3 +110,8 @@ Older saves remain compatible: missing physical_fitness defaults to 50, and miss
 ## Schema version 8 additions
 
 CharacterData adds persistent physical_fitness and reciprocal employee relationship scores. Older saves remain compatible: missing physical_fitness defaults to 50 and missing relationships defaults to an empty dictionary. CharacterManager advances relationship scores when employees share a Studio Lounge; personality compatibility can produce either positive friendship or negative conflict scores.
+
+
+## Employee skill profile presentation
+
+The employee inspector displays each profession skill as a compact progress bar scaled to that employee's individual skill cap. This makes current mastery and remaining personal potential readable without small numeric fractions. Exact skill/cap values, the remaining experience to the next point, and exhausted/achieved potential states remain available in the control tooltip. Skill rows are reused while the selected employee's profession remains unchanged, avoiding per-minute UI reconstruction.

@@ -102,13 +102,16 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	return path
 
 
-func get_exit_path_from(start_world_position: Vector3) -> Array[Vector3]:
+func get_exit_path_from(
+	start_world_position: Vector3,
+	slot_index: int = -1
+) -> Array[Vector3]:
 	var local_start: Vector3 = _interior_root.to_local(start_world_position)
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
 		_entrance_inside,
-		_get_interior_navigation_obstacles(-1),
+		_get_interior_navigation_obstacles(slot_index),
 		0.5,
 		_get_interior_navigation_bounds()
 	)
@@ -293,6 +296,11 @@ func get_workplace_facing_direction(slot_index: int) -> Vector3:
 		"fitness_center":
 			var equipment_position: Vector3 = _workplace_points[normalized_slot]
 			target_position = equipment_position + Vector3(0.0, 0.0, -1.4)
+		"staff_housing", "star_bungalow":
+			target_position = (
+				_workplace_points[normalized_slot]
+				+ Vector3(0.0, 0.0, -1.0)
+			)
 		_:
 			return Vector3.ZERO
 	var local_direction: Vector3 = (

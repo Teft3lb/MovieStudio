@@ -714,7 +714,13 @@ func _face_facility() -> void:
 				Vector3.UP
 			)
 		"staff_housing", "star_bungalow":
-			rotation.y = 0.0
+			var housing_facing_direction: Vector3 = _facility_facing_direction
+			if housing_facing_direction.length_squared() <= 0.001:
+				housing_facing_direction = Vector3.FORWARD
+			look_at(
+				global_position + housing_facing_direction.normalized(),
+				Vector3.UP
+			)
 
 
 func is_in_facility() -> bool:

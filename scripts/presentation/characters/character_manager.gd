@@ -90,7 +90,8 @@ var _detail_biography_label: Label
 var _detail_stats_label: Label
 var _detail_task_label: Label
 var _detail_schedule_label: Label
-var _detail_skills_label: Label
+var _detail_skills_container: VBoxContainer
+var _skill_progress_rows: Dictionary = {}
 var _detail_personality_label: Label
 
 var _energy_label: Label
@@ -428,6 +429,8 @@ func _route_employee_to_facility(
 			"cafeteria",
 			"fitness_center",
 			"studio_lounge",
+			"staff_housing",
+			"star_bungalow",
 		]
 		and _studio_building_manager.has_method(
 			"get_workplace_facing_direction"
@@ -547,14 +550,23 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		var facility_slot_index: int = int(
 			actor.call("get_facility_slot_index")
 		)
-		var exit_route: Array[Vector3] = _studio_building_manager.call(
-			"get_workplace_path",
-			facility_building_id,
-			facility_slot_index
-		)
+		var exit_route: Array[Vector3] = []
+		if _studio_building_manager.has_method("get_exit_path_from"):
+			exit_route = _studio_building_manager.call(
+				"get_exit_path_from",
+				facility_building_id,
+				actor.global_position,
+				facility_slot_index
+			)
 		if exit_route.is_empty():
-			return false
-		exit_route.reverse()
+			exit_route = _studio_building_manager.call(
+				"get_workplace_path",
+				facility_building_id,
+				facility_slot_index
+			)
+			if exit_route.is_empty():
+				return false
+			exit_route.reverse()
 		if exit_route.front().distance_to(actor.global_position) > 0.2:
 			exit_route.insert(0, actor.global_position)
 		if not bool(actor.call("leave_facility", exit_route)):
@@ -1373,9 +1385,10 @@ func _build_detail_panel() -> void:
 	)
 	layout.add_child(skills_heading)
 
-	_detail_skills_label = Label.new()
-	_detail_skills_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_skills_label)
+	_detail_skills_container = VBoxContainer.new()
+	_detail_skills_container.name = "SkillProgressList"
+	_detail_skills_container.add_theme_constant_override("separation", 5)
+	layout.add_child(_detail_skills_container)
 
 	layout.add_child(HSeparator.new())
 
@@ -1427,14 +1440,23 @@ func _release_employee_to_free_roam(actor: Variant) -> void:
 		var facility_slot_index: int = int(
 			actor.call("get_facility_slot_index")
 		)
-		var exit_route: Array[Vector3] = _studio_building_manager.call(
-			"get_workplace_path",
-			facility_building_id,
-			facility_slot_index
-		)
+		var exit_route: Array[Vector3] = []
+		if _studio_building_manager.has_method("get_exit_path_from"):
+			exit_route = _studio_building_manager.call(
+				"get_exit_path_from",
+				facility_building_id,
+				actor.global_position,
+				facility_slot_index
+			)
 		if exit_route.is_empty():
-			return
-		exit_route.reverse()
+			exit_route = _studio_building_manager.call(
+				"get_workplace_path",
+				facility_building_id,
+				facility_slot_index
+			)
+			if exit_route.is_empty():
+				return
+			exit_route.reverse()
 		if exit_route.front().distance_to(actor.global_position) > 0.2:
 			exit_route.insert(0, actor.global_position)
 		if not bool(actor.call("leave_facility", exit_route, true)):
@@ -2296,7 +2318,7 @@ func _refresh_detail_panel() -> void:
 		_detail_task_label.text = ""
 		_detail_schedule_label.text = ""
 		_detail_contract_label.text = ""
-		_detail_skills_label.text = ""
+		_clear_skill_progress_bars()
 		_detail_personality_label.text = ""
 		_energy_label.text = "Энергия"
 		_morale_label.text = "Настроение"
@@ -2442,46 +2464,8 @@ func _refresh_detail_panel() -> void:
 	_morale_bar.value = morale
 	_stress_bar.value = stress
 
-	var skill_lines: Array[String] = []
-	var profession_skill_ids: Array[String] = (
-		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
-			employee.profession_id,
-			employee.specialization_id
-		)
-	)
-	for skill_id in profession_skill_ids:
-		var skill_value: int = roundi(float(skills.get(skill_id, 0.0)))
-		var skill_cap: int = roundi(float(employee.skill_caps.get(skill_id, 100.0)))
-		if skill_value >= skill_cap:
-			skill_lines.append("%s: %d / %d · потенциал достигнут" % [
-				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
-				skill_value,
-				skill_cap,
-			])
-		elif float(employee.growth_points_remaining) < 1.0:
-			skill_lines.append("%s: %d / %d · резерв развития исчерпан" % [
-				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
-				skill_value,
-				skill_cap,
-			])
-		else:
-			var progress_percent: int = mini(
-				roundi(float(
-					_skill_progression_system.call(
-						"get_progress_percent",
-						employee,
-						skill_id
-					)
-				)),
-				99
-			)
-			skill_lines.append("%s: %d / %d · опыт до следующего пункта: %d%%" % [
-				PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
-				skill_value,
-				skill_cap,
-				progress_percent,
-			])
-	_detail_skills_label.text = "\n".join(skill_lines)
+	_refresh_skill_progress_bars(employee, skills)
+
 
 	_detail_personality_label.text = (
 		"Амбиции: %d%%\nОбщительность: %d%%\nДисциплина: %d%%\nКреативность: %d%%\n%s"
@@ -2493,6 +2477,101 @@ func _refresh_detail_panel() -> void:
 			_get_relationship_summary(employee),
 		]
 	)
+
+
+func _clear_skill_progress_bars() -> void:
+	if not is_instance_valid(_detail_skills_container):
+		return
+	for child in _detail_skills_container.get_children():
+		_detail_skills_container.remove_child(child)
+		child.queue_free()
+	_skill_progress_rows.clear()
+
+
+func _refresh_skill_progress_bars(
+	employee: Variant,
+	skills: Dictionary
+) -> void:
+	if not is_instance_valid(_detail_skills_container):
+		return
+	var profession_skill_ids: Array[String] = (
+		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
+			employee.profession_id,
+			employee.specialization_id
+		)
+	)
+	var rebuild_rows: bool = (
+		_skill_progress_rows.size() != profession_skill_ids.size()
+	)
+	for skill_id in profession_skill_ids:
+		if not _skill_progress_rows.has(skill_id):
+			rebuild_rows = true
+			break
+	if rebuild_rows:
+		_clear_skill_progress_bars()
+		for skill_id in profession_skill_ids:
+			var row := VBoxContainer.new()
+			row.add_theme_constant_override("separation", 2)
+			var title_label := Label.new()
+			title_label.text = PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
+			title_label.add_theme_font_size_override("font_size", 12)
+			row.add_child(title_label)
+			var progress_bar: ProgressBar = _create_progress_bar(
+				row,
+				Color(0.48, 0.82, 0.72, 1.0)
+			)
+			progress_bar.custom_minimum_size = Vector2(0.0, 8.0)
+			_detail_skills_container.add_child(row)
+			_skill_progress_rows[skill_id] = {
+				"label": title_label,
+				"bar": progress_bar,
+			}
+	for skill_id in profession_skill_ids:
+		var skill_value: float = clampf(
+			float(skills.get(skill_id, 0.0)),
+			0.0,
+			100.0
+		)
+		var skill_cap: float = clampf(
+			float(employee.skill_caps.get(skill_id, 100.0)),
+			1.0,
+			100.0
+		)
+		var row_controls: Dictionary = _skill_progress_rows.get(
+			skill_id,
+			{}
+		)
+		var title_label: Label = row_controls.get("label") as Label
+		var progress_bar: ProgressBar = row_controls.get("bar") as ProgressBar
+		if not is_instance_valid(title_label) or not is_instance_valid(progress_bar):
+			continue
+		progress_bar.max_value = skill_cap
+		progress_bar.value = minf(skill_value, skill_cap)
+		var status_text: String
+		if skill_value >= skill_cap:
+			status_text = "потенциал достигнут"
+		elif float(employee.growth_points_remaining) < 1.0:
+			status_text = "резерв развития исчерпан"
+		else:
+			var progress_percent: int = mini(
+				roundi(float(
+					_skill_progression_system.call(
+						"get_progress_percent",
+						employee,
+						skill_id
+					)
+				)),
+				99
+			)
+			status_text = "опыт до следующего пункта: %d%%" % progress_percent
+		var tooltip_text: String = "%s · %.0f / %.0f · %s" % [
+			PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
+			skill_value,
+			skill_cap,
+			status_text,
+		]
+		title_label.tooltip_text = tooltip_text
+		progress_bar.tooltip_text = tooltip_text
 
 
 func _refresh_workplace_dispatch_button(employee_id: String) -> void:

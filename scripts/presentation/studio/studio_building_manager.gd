@@ -293,6 +293,25 @@ func get_workplace_path(
 	return path
 
 
+func get_exit_path_from(
+	building_id: String,
+	start_world_position: Vector3,
+	slot_index: int = -1
+) -> Array[Vector3]:
+	var actor: Variant = _building_actors.get(building_id)
+	if (
+		actor == null
+		or not is_instance_valid(actor)
+		or not actor.has_method("get_exit_path_from")
+	):
+		return []
+	return actor.call(
+		"get_exit_path_from",
+		start_world_position,
+		slot_index
+	)
+
+
 func get_roaming_route(
 	start_position: Vector3,
 	base_route: Array[Vector3]
@@ -489,29 +508,38 @@ func get_workplace_path_from(
 			and is_instance_valid(source_actor)
 		):
 			var local_start: Vector3 = source_actor.to_local(start_position)
-			var source_definition: Dictionary = BUILDING_CATALOG_SCRIPT.get_definition(
-				str(source_actor.building_data.building_type_id)
+			var source_type_id: String = str(
+				source_actor.building_data.building_type_id
 			)
-			var source_footprint: Vector2 = source_definition.get(
-				"footprint",
-				Vector2.ZERO
+			var source_footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+				source_type_id,
+				0.0,
+				int(source_actor.building_data.stage_size_tier)
 			)
 			var is_inside_source: bool = (
 				absf(local_start.x) <= source_footprint.x * 0.5 + 0.7
 				and absf(local_start.z) <= source_footprint.y * 0.5 + 0.7
 			)
 			if is_inside_source:
-				source_exit_path.append(start_position)
-				if start_position.distance_to(source_path.back()) > 0.2:
-					source_exit_path.append(source_path.back())
-				for index in range(source_path.size() - 2, -1, -1):
-					var exit_point: Vector3 = source_path[index]
-					if (
-						source_exit_path.is_empty()
-						or source_exit_path.back().distance_to(exit_point) > 0.2
-					):
-						source_exit_path.append(exit_point)
-				path_start = source_path[0]
+				if source_actor.has_method("get_exit_path_from"):
+					source_exit_path = source_actor.call(
+						"get_exit_path_from",
+						start_position,
+						source_slot_index
+					)
+				if source_exit_path.is_empty():
+					source_exit_path.append(start_position)
+					if start_position.distance_to(source_path.back()) > 0.2:
+						source_exit_path.append(source_path.back())
+					for index in range(source_path.size() - 2, -1, -1):
+						var exit_point: Vector3 = source_path[index]
+						if (
+							source_exit_path.is_empty()
+							or source_exit_path.back().distance_to(exit_point) > 0.2
+						):
+							source_exit_path.append(exit_point)
+				if not source_exit_path.is_empty():
+					path_start = source_exit_path.back()
 
 	var travel_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
