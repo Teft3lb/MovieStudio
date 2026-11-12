@@ -12,11 +12,11 @@ The refactoring must reduce coupling without changing gameplay behavior. This is
 
 ## Current hotspots
 
-Approximate source line counts at the start of this refactoring pass:
+Current approximate source line counts after the first two extractions:
 
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
-| `studio_building_manager.gd` | 5,752 | Building placement, inspectors, script writing, film production, editing, set logistics, inventory |
+| `studio_building_manager.gd` | 4,750 | Building placement, inspectors, script writing, film production, inventory and production composition |
 | `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
@@ -40,7 +40,25 @@ Owns:
 
 Dependencies are supplied during setup: the building manager adapter, CharacterManager, navigation system and set inventory. The building manager keeps thin compatibility methods and state accessors so existing production flow and smoke tests do not need a simultaneous rewrite.
 
-The manager drops from 5,752 to approximately 5,178 lines in this extraction. The gameplay state machine itself is moved, not redesigned.
+The first extraction reduced the manager from 5,752 to 5,178 lines. The gameplay state machine itself was moved, not redesigned.
+
+### FilmEditingController
+
+Extracted from `StudioBuildingManager` into:
+
+`scripts/presentation/studio/film_editing_controller.gd`
+
+Owns:
+- the active editing-project reference and editor selection;
+- editing-project creation and sequence IDs;
+- editor availability checks and replacement;
+- draft cancellation and timeline ordering controls;
+- editing phase advancement through the existing Domain `FilmEditingSystem`;
+- Editing Suite inspector UI and its transient control references.
+
+The controller receives the building manager, CharacterManager, FilmEditingSystem and GameClock explicitly during setup. The manager keeps compatibility properties for the active editing project and selected editor, plus thin entry points for minute advancement and inspector construction. The production-to-editing handoff and completed-film archive remain in the manager.
+
+A focused controller smoke test covers project creation, timeline reordering, editor availability pauses, the full editing pipeline and completion notification. The manager drops from 5,178 to 4,750 lines in this extraction. FilmEditingSystem and FilmEditingProject remain unchanged in Domain.
 
 ## Target module boundaries
 
@@ -53,8 +71,8 @@ Keep the manager as a composition root and public façade. Extract in small step
 | `StudioBuildingPlacementController` | Build mode, preview, rotation, placement input and placement validation |
 | `StudioBuildingInspectorController` | Building detail panel lifecycle and inspector selection |
 | `FilmProductionController` | Crew/cast assignment, production phase orchestration, scene performance coordination and production status |
-| `FilmEditingController` | Editor assignment, editing draft, timeline operations and editing progression |
-| `StudioSetLogisticsController` | Technician/prop logistics; extracted in this pass |
+| `FilmEditingController` | Editor assignment, editing draft, timeline operations and editing progression; extracted in this pass |
+| `StudioSetLogisticsController` | Technician/prop logistics; extracted in the previous pass |
 
 Do not move all UI and simulation code into one replacement manager. Each controller should own its own state and expose a narrow API.
 
@@ -109,12 +127,11 @@ Keep a small top-level runner that invokes the focused suites.
 
 ## Recommended order
 
-1. Finish and validate the set-logistics extraction.
-2. Extract Film Editing from StudioBuildingManager; its state and UI are already grouped in a contiguous section.
-3. Extract Film Production orchestration, keeping the domain FilmProductionSystem unchanged.
-4. Separate building placement/inspector UI from the manager.
-5. Split StudioBuildingActor procedural geometry into visual builders.
-6. Split CharacterManager presentation from employee simulation coordination.
-7. Split the interior smoke test into focused suites.
+1. Run Godot 4.7.2 parse and smoke tests for the set-logistics and film-editing extractions.
+2. Extract Film Production orchestration, keeping the Domain FilmProductionSystem unchanged.
+3. Separate building placement/inspector UI from the manager.
+4. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
+5. Split CharacterManager presentation from employee simulation coordination.
+6. Split the interior smoke test into focused suites.
 
 The order intentionally starts with the most cohesive manager-owned subsystem. Geometry and employee UI are larger extractions and should follow only after the manager's state boundaries become clearer.

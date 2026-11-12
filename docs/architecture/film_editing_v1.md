@@ -14,12 +14,23 @@ This slice ends with an edited film ready for release. Distribution, marketing, 
 
 - FilmEditingSystem owns editing project validation, timeline operations, phase transitions and final quality calculation.
 - FilmEditingProject owns the serializable editing state, source scene results and editable timeline order.
-- StudioBuildingManager coordinates the production-to-editing handoff, editor assignment, Editing Suite UI and GameClock updates.
+- FilmEditingController owns editor selection, draft creation, replacement, timeline controls, Editing Suite UI, editor availability checks and GameClock-driven editing progression.
+- StudioBuildingManager remains the composition root: it supplies the controller's dependencies, hands off completed production projects, exposes compatibility accessors for the active editing project/editor, and updates production status when editing completes.
 - EmployeeWorkSystem assigns film editors to the Editing Suite.
 - CharacterVisual provides a procedural editing workstation pose.
 - StudioBuildingActor creates the Editing Suite interior and three workstation routes.
 
 FilmEditingSystem copies the completed production scene results into its project. It does not mutate the source FilmProductionProject.
+
+## Presentation controller boundary
+
+`FilmEditingController` is located at `scripts/presentation/studio/film_editing_controller.gd`.
+
+It owns the active editing-project reference, selected editor, next editing sequence, Editing Suite inspector controls and the per-minute editing coordinator. It depends on the existing Domain `FilmEditingSystem` for project creation, timeline validation, phase transitions and quality calculation. It queries the CharacterManager for employee records and workplace presence, and requests inspector/production refreshes through the StudioBuildingManager adapter.
+
+The manager retains compatibility accessors for the active editing project and selected editor, so the production handoff, completed-film archive and existing employee-activity queries do not need to know the controller's internal state layout.
+
+The controller does not change FilmEditingProject serialization or FilmEditingSystem rules. Its integration smoke test is `tests/film_editing_controller_smoke_test.gd`.
 
 ## Entry conditions
 
@@ -70,6 +81,7 @@ Run with Godot 4.7.2 from the project root:
 
 ~~~powershell
 & $godot --headless --path . --script res://tests/film_editing_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/film_editing_controller_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/employee_market_critical_roles_test.gd
@@ -78,7 +90,7 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/employee_work_system_smoke_test.gd
 ~~~
 
-The editing domain test covers production completion validation, timeline reordering, invalid indices, serialization recovery, pause behaviour, all editing phases, elapsed-time estimates and final quality.
+The editing domain test covers production completion validation, timeline reordering, invalid indices, serialization recovery, pause behaviour, all editing phases, elapsed-time estimates and final quality. The controller integration test covers editor selection, draft creation, timeline controls, editor availability, progression and completion notification.
 
 ## Manual verification
 
