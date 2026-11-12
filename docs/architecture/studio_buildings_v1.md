@@ -35,6 +35,7 @@ The building models are assembled from reusable Godot primitive meshes. No exter
 ### Presentation
 
 - \`StudioBuildingActor\` creates the exterior, cutaway walls, roof assembly, interior props, workplace routes, building hitbox, name label and selection marker.
+- \`StudioBuildingVisualFactory\` creates reusable primitive meshes, floor/wall panels, collision bodies, world-space labels, film slates, camera rigs and light stands. The actor delegates these low-level construction helpers while retaining building identity, navigation and gameplay state.
 - \`StudioBuildingManager\` owns placed building instances, building creation, selection and subsystem composition.
 - \`StudioBuildingPlacementController\` owns the construction palette, placement mode, preview, grid snapping, rotation and placement validation. It emits a placement request; the manager remains responsible for creating the building actor and notifying dependent systems.
 - \`StudioBuildingInspectorController\` owns the selected building ID, context-inspector lifecycle, shared building/facility summaries and building-specific UI. It emits script-generation requests; the manager retains script-writing state and Domain system orchestration. Sound-stage and editing-suite detail sections remain delegated to their specialized controllers.

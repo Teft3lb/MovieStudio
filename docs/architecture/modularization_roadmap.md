@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 3,147 | Building node lifecycle, navigation, scene marks, set props, all procedural building geometry |
+| `studio_building_actor.gd` | 3,044 | Building node lifecycle, navigation, scene marks, building-specific geometry and set props |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -105,6 +105,20 @@ Owns:
 
 The manager remains the owner of building data and 3D actor highlighting. It supplies narrow read/build adapters for employee eligibility, assigned staff, profession titles and the existing Film Production / Film Editing detail controllers. Script-writing state, project progression, ID allocation and Domain system calls remain in the manager. The inspector only collects user input and renders the supplied state. A focused smoke test covers selection, HUD lifecycle, script-generation request payloads and delegation to the specialized production/editing controllers.
 
+### StudioBuildingVisualFactory
+
+Extracted from `StudioBuildingActor` into:
+
+`scripts/presentation/studio/studio_building_visual_factory.gd`
+
+Owns reusable primitive construction and materials:
+- box, cylinder and sphere mesh creation;
+- floor surfaces, wall panels and their collision bodies;
+- world-space labels and the film slate;
+- camera rigs and light stands.
+
+The actor keeps its existing helper method signatures as thin adapters. This preserves all building-specific geometry code and public scene-node names while creating a shared visual-construction boundary for the upcoming type-specific builders. The factory returns the film-slate labels and camera rigs to the actor; navigation, workplace marks, cutaway state and building identity remain in `StudioBuildingActor`. A focused smoke test verifies generated mesh types, dimensions, collision hierarchy, labels and camera equipment.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -126,9 +140,9 @@ Do not move all UI and simulation code into one replacement manager. Each contro
 
 ### 2. StudioBuildingActor
 
-Keep the actor responsible for the placed building's scene identity, selection, cutaway state and public workplace/scene navigation API.
+Keep the actor responsible for the placed building's scene identity, selection, cutaway state and public workplace/scene navigation API. Shared primitive construction has been extracted into `StudioBuildingVisualFactory`.
 
-Extract procedural visuals into builders:
+Continue extracting procedural visuals into type-specific builders:
 - shared primitive/material construction;
 - sound-stage tier builders (small, medium and large remain distinct authored architectures);
 - TV Studio builder;
@@ -176,7 +190,7 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Split StudioBuildingActor's temporary procedural geometry from the stable building interaction and navigation layer.
+2. Extract the sound-stage, TV Studio, office and facility geometry into focused builders using the shared visual factory.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 

@@ -7,6 +7,9 @@ const BUILDING_CATALOG_SCRIPT = preload(
 const NAVIGATION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_navigation_system.gd"
 )
+const VISUAL_FACTORY_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_visual_factory.gd"
+)
 
 const CUTAWAY_DISTANCE: float = 36.0
 const WALL_THICKNESS: float = 0.28
@@ -28,11 +31,13 @@ var _active_set_scene_key: String = ""
 var _warehouse_inventory_root: Node3D
 var _warehouse_storage_positions: Array[Vector3] = []
 var _navigation_system: RefCounted
+var _visual_factory: RefCounted
 
 
 func setup(data: Variant) -> void:
 	building_data = data
 	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
+	_visual_factory = VISUAL_FACTORY_SCRIPT.new()
 	name = "Building_%s" % str(data.id).replace("-", "_")
 	position = data.position
 	rotation_degrees.y = float(data.rotation_degrees)
@@ -2839,56 +2844,13 @@ func _create_floor(
 	color: Color,
 	node_name: String
 ) -> void:
-	var mesh := PlaneMesh.new()
-	mesh.size = Vector2(
-		maxf(footprint.x - 0.4, 1.0),
-		maxf(footprint.y - 0.4, 1.0)
-	)
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.position.y = 0.02
-	instance.material_override = _make_material(color)
-	_interior_root.add_child(instance)
+	_visual_factory.call("create_floor", _interior_root, footprint, color, node_name)
 
 
 func _create_film_slate() -> void:
-	_create_box(
-		_interior_root,
-		"FilmSlateBody",
-		Vector3(2.0, 1.05, 0.16),
-		Color(0.075, 0.085, 0.095),
-		Vector3(0.0, 1.15, 2.55)
-	)
-	_create_box(
-		_interior_root,
-		"FilmSlateClapper",
-		Vector3(2.08, 0.14, 0.2),
-		Color(0.72, 0.70, 0.62),
-		Vector3(0.0, 1.75, 2.55)
-	)
-
-	_production_slate_label = Label3D.new()
-	_production_slate_label.name = "ProductionSceneSlate"
-	_production_slate_label.position = Vector3(0.0, 1.28, 2.43)
-	_production_slate_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_production_slate_label.font_size = 15
-	_production_slate_label.outline_size = 5
-	_production_slate_label.modulate = Color(0.97, 0.95, 0.88)
-	_production_slate_label.no_depth_test = true
-	_production_slate_label.text = "СЪЁМКИ НЕ ИДУТ"
-	_interior_root.add_child(_production_slate_label)
-
-	_production_phase_label = Label3D.new()
-	_production_phase_label.name = "ProductionPhaseSlate"
-	_production_phase_label.position = Vector3(0.0, 0.91, 2.43)
-	_production_phase_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	_production_phase_label.font_size = 11
-	_production_phase_label.outline_size = 4
-	_production_phase_label.modulate = Color(0.82, 0.86, 0.88)
-	_production_phase_label.no_depth_test = true
-	_production_phase_label.text = "ПАВИЛЬОН ГОТОВ"
-	_interior_root.add_child(_production_phase_label)
+	var labels: Dictionary = _visual_factory.call("create_film_slate", _interior_root)
+	_production_slate_label = labels.get("scene_label") as Label3D
+	_production_phase_label = labels.get("phase_label") as Label3D
 
 
 func _create_camera_rig(
@@ -2896,36 +2858,21 @@ func _create_camera_rig(
 	metal_color: Color,
 	equipment_color: Color
 ) -> Node3D:
-	var rig := Node3D.new()
-	rig.name = "CameraRig_%d" % _camera_rigs.size()
-	rig.position = local_position
-	_interior_root.add_child(rig)
-	_create_cylinder(rig, "CameraTripodBase", 0.38, 0.10, metal_color, Vector3(0.0, 0.10, 0.0))
-	_create_cylinder(rig, "CameraTripodColumn", 0.075, 1.25, metal_color, Vector3(0.0, 0.72, 0.0))
-	_create_box(rig, "CinemaCameraBody", Vector3(0.68, 0.48, 0.82), equipment_color, Vector3(0.0, 1.45, -0.18))
-	_create_cylinder(rig, "CameraLens", 0.19, 0.42, Color(0.08, 0.10, 0.12), Vector3(0.0, 1.45, -0.78))
-	return rig
+	return _visual_factory.call(
+		"create_camera_rig",
+		_interior_root,
+		_camera_rigs.size(),
+		local_position,
+		metal_color,
+		equipment_color
+	)
 
 
 func _create_light_stand(
 	local_position: Vector3,
 	metal_color: Color
 ) -> void:
-	_create_cylinder(
-		_interior_root,
-		"LightStand",
-		0.055,
-		2.5,
-		metal_color,
-		local_position + Vector3(0.0, 1.25, 0.0)
-	)
-	_create_box(
-		_interior_root,
-		"StudioLight",
-		Vector3(1.05, 0.65, 0.28),
-		Color(0.73, 0.68, 0.53),
-		local_position + Vector3(0.0, 2.55, -0.10)
-	)
+	_visual_factory.call("create_light_stand", _interior_root, local_position, metal_color)
 
 
 func _create_wall_panel(
@@ -2935,27 +2882,8 @@ func _create_wall_panel(
 	color: Color,
 	local_position: Vector3
 ) -> void:
-	_create_box(parent, node_name, size, color, local_position)
-	_create_wall_collision(parent, node_name, size, local_position)
+	_visual_factory.call("create_wall_panel", parent, node_name, size, color, local_position)
 
-
-func _create_wall_collision(
-	parent: Node3D,
-	node_name: String,
-	size: Vector3,
-	local_position: Vector3
-) -> void:
-	var body := StaticBody3D.new()
-	body.name = "%sCollision" % node_name
-	body.position = local_position
-	body.collision_layer = 8
-	body.collision_mask = 0
-	var collision := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = size
-	collision.shape = shape
-	body.add_child(collision)
-	parent.add_child(body)
 
 
 func _create_hitbox() -> void:
@@ -3042,16 +2970,7 @@ func _create_label(
 	local_position: Vector3,
 	font_size: int
 ) -> void:
-	var label := Label3D.new()
-	label.name = node_name
-	label.text = label_text
-	label.position = local_position
-	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	label.font_size = font_size
-	label.outline_size = 6
-	label.modulate = Color(0.97, 0.95, 0.88)
-	label.no_depth_test = true
-	parent.add_child(label)
+	_visual_factory.call("create_label", parent, node_name, label_text, local_position, font_size)
 
 
 func _create_box(
@@ -3061,15 +2980,7 @@ func _create_box(
 	color: Color,
 	local_position: Vector3
 ) -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.position = local_position
-	instance.material_override = _make_material(color)
-	parent.add_child(instance)
-	return instance
+	return _visual_factory.call("create_box", parent, node_name, size, color, local_position)
 
 
 func _create_cylinder(
@@ -3080,17 +2991,15 @@ func _create_cylinder(
 	color: Color,
 	local_position: Vector3
 ) -> MeshInstance3D:
-	var mesh := CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.position = local_position
-	instance.material_override = _make_material(color)
-	parent.add_child(instance)
-	return instance
+	return _visual_factory.call(
+		"create_cylinder",
+		parent,
+		node_name,
+		radius,
+		height,
+		color,
+		local_position
+	)
 
 
 func _create_sphere(
@@ -3100,23 +3009,11 @@ func _create_sphere(
 	color: Color,
 	local_position: Vector3
 ) -> MeshInstance3D:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.position = local_position
-	instance.material_override = _make_material(color)
-	parent.add_child(instance)
-	return instance
+	return _visual_factory.call("create_sphere", parent, node_name, radius, color, local_position)
 
 
 func _make_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 0.82
-	return material
+	return _visual_factory.call("make_material", color)
 
 
 func _update_cutaway() -> void:
