@@ -614,6 +614,7 @@ func assign_facility_route(
 		_face_facility()
 		if is_instance_valid(_visual):
 			_visual.call("set_performance_action", _facility_action_id)
+			_advance_visual(0.0)
 	return true
 
 
@@ -629,6 +630,7 @@ func snap_to_facility() -> void:
 	_face_facility()
 	if is_instance_valid(_visual):
 		_visual.call("set_performance_action", _facility_action_id)
+	_advance_visual(0.0)
 	_update_name_tag_visibility()
 
 
@@ -810,7 +812,7 @@ func assign_workplace(building_id: String, destination: Vector3) -> void:
 	assign_workplace_route(building_id, route, "")
 
 
-func leave_workplace() -> void:
+func leave_workplace(exit_route: Array[Vector3] = []) -> void:
 	_clear_facility_route()
 	_cancel_scene_performance()
 	if _is_leaving_workplace:
@@ -819,26 +821,31 @@ func leave_workplace() -> void:
 		_finish_leaving_workplace()
 		return
 
-	var exit_path: Array[Vector3] = []
-	var is_at_destination: bool = _is_at_workplace
-	if (
-		not _workplace_exit_path.is_empty()
-		and global_position.distance_to(_workplace_exit_path.back()) <= 0.25
-	):
-		is_at_destination = true
-
-	if is_at_destination and not _workplace_exit_path.is_empty():
-		for index in range(_workplace_exit_path.size() - 2, -1, -1):
-			exit_path.append(_workplace_exit_path[index])
+	var resolved_exit_path: Array[Vector3] = []
+	if not exit_route.is_empty():
+		resolved_exit_path = exit_route.duplicate()
+		if resolved_exit_path.front().distance_to(global_position) > 0.2:
+			resolved_exit_path.insert(0, global_position)
 	else:
-		for index in range(_workplace_path_index - 1, -1, -1):
-			exit_path.append(_workplace_path[index])
+		var is_at_destination: bool = _is_at_workplace
+		if (
+			not _workplace_exit_path.is_empty()
+			and global_position.distance_to(_workplace_exit_path.back()) <= 0.25
+		):
+			is_at_destination = true
 
-	if exit_path.is_empty():
+		if is_at_destination and not _workplace_exit_path.is_empty():
+			for index in range(_workplace_exit_path.size() - 2, -1, -1):
+				resolved_exit_path.append(_workplace_exit_path[index])
+		else:
+			for index in range(_workplace_path_index - 1, -1, -1):
+				resolved_exit_path.append(_workplace_path[index])
+
+	if resolved_exit_path.is_empty():
 		_finish_leaving_workplace()
 		return
 
-	_workplace_path = exit_path
+	_workplace_path = resolved_exit_path
 	_workplace_path_index = 0
 	_is_at_workplace = false
 	_is_leaving_workplace = true

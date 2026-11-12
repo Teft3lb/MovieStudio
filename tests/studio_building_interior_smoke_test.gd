@@ -42,6 +42,7 @@ func _run_tests() -> void:
 	_test_editing_suite_interior()
 	_test_staff_housing_beds()
 	_test_rotated_housing_sleep_alignment()
+	_test_large_stage_exit_from_live_scene_position()
 	_test_star_bungalow_interior()
 	_test_large_sound_stage_geometry()
 	_test_large_stage_exit_route()
@@ -599,14 +600,26 @@ func _test_staff_housing_beds() -> void:
 		last_bed_path.back(),
 		7
 	)
+	var inferred_first_exit: Array[Vector3] = actor.call(
+		"get_exit_path_from",
+		first_bed_path.back()
+	)
+	var inferred_last_exit: Array[Vector3] = actor.call(
+		"get_exit_path_from",
+		last_bed_path.back()
+	)
 	_expect(
 		first_exit.size() >= 2
 		and last_exit.size() >= 2
+		and inferred_first_exit.size() >= 2
+		and inferred_last_exit.size() >= 2
 		and first_exit.front().distance_to(first_bed_path.back()) < 0.1
 		and last_exit.front().distance_to(last_bed_path.back()) < 0.1
 		and first_exit.back().distance_to(first_bed_path.front()) < 0.1
-		and last_exit.back().distance_to(last_bed_path.front()) < 0.1,
-		"Employees must receive slot-aware exit routes from their occupied beds to the housing entrance."
+		and last_exit.back().distance_to(last_bed_path.front()) < 0.1
+		and inferred_first_exit.front().distance_to(first_bed_path.back()) < 0.1
+		and inferred_last_exit.front().distance_to(last_bed_path.back()) < 0.1,
+		"Employees must receive valid exit routes from occupied beds, including when the caller omits the bed slot."
 	)
 
 
@@ -738,19 +751,6 @@ func _test_employee_enters_and_leaves_workplace() -> void:
 
 func _test_rotated_housing_sleep_alignment() -> void:
 	var housing_actor: Node3D = _create_building("staff_housing", 90.0)
-	var route: Array[Vector3] = housing_actor.call("get_workplace_path", 0)
-	var facing_direction: Vector3 = housing_actor.call(
-		"get_workplace_facing_direction",
-		0
-	)
-	var expected_direction: Vector3 = (
-		housing_actor.global_basis * Vector3.FORWARD
-	).normalized()
-	_expect(
-		facing_direction.length_squared() > 0.9
-		and facing_direction.dot(expected_direction) > 0.99,
-		"Staff housing bed orientation must follow the building rotation."
-	)
 	var generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 773311
@@ -762,29 +762,63 @@ func _test_rotated_housing_sleep_alignment() -> void:
 	)
 	var clock: Node = GAME_CLOCK_SCRIPT.new()
 	root.add_child(clock)
-	var character_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
-	root.add_child(character_actor)
-	var empty_route: Array[Vector3] = []
-	character_actor.call("setup", employee, empty_route, clock, 1.0)
-	character_actor.call(
-		"assign_facility_route",
-		"BLD-ROTATED-HOUSING",
-		"staff_housing",
-		0,
-		route,
-		"sleeping",
-		facing_direction
-	)
-	character_actor.call("snap_to_facility")
-	var character_forward: Vector3 = (
-		-character_actor.global_basis.z
-	).normalized()
+	var all_beds_aligned: bool = true
+	for slot_index in range(8):
+		var route: Array[Vector3] = housing_actor.call(
+			"get_workplace_path",
+			slot_index
+		)
+		var facing_direction: Vector3 = housing_actor.call(
+			"get_workplace_facing_direction",
+			slot_index
+		)
+		var expected_direction: Vector3 = (
+			housing_actor.global_basis * Vector3.FORWARD
+		).normalized()
+		if (
+			facing_direction.length_squared() <= 0.9
+			or facing_direction.dot(expected_direction) <= 0.99
+		):
+			all_beds_aligned = false
+			continue
+		var character_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+		root.add_child(character_actor)
+		var empty_route: Array[Vector3] = []
+		character_actor.call("setup", employee, empty_route, clock, 1.0)
+		character_actor.call(
+			"assign_facility_route",
+			"BLD-ROTATED-HOUSING",
+			"staff_housing",
+			slot_index,
+			route,
+			"sleeping",
+			facing_direction
+		)
+		character_actor.call("snap_to_facility")
+		var character_forward: Vector3 = (
+			-character_actor.global_basis.z
+		).normalized()
+		var visual: Node3D = character_actor.get_node(
+			"CharacterVisual"
+		) as Node3D
+		var body_root: Node3D = visual.get_node("BodyRoot") as Node3D
+		var body_axis: Vector3 = (
+			body_root.global_basis * Vector3.UP
+		).normalized()
+		if (
+			character_forward.dot(facing_direction) <= 0.99
+			or body_axis.dot(facing_direction) <= 0.99
+			or not is_equal_approx(body_root.rotation.x, -PI * 0.5)
+		):
+			all_beds_aligned = false
+		character_actor.free()
 	_expect(
-		character_forward.dot(facing_direction) > 0.99,
-		"Sleeping characters must align their body axis with the bed even when the housing building is rotated."
+		all_beds_aligned,
+		"Every staff housing bed must align the actor's sleeping body axis with the mattress, including when the building is rotated."
 	)
-	character_actor.free()
 	clock.free()
+
+
 
 
 func _test_star_bungalow_interior() -> void:
@@ -926,6 +960,26 @@ func _test_large_stage_exit_route() -> void:
 		0
 	)
 	var outer_routes_valid: bool = not target_path.is_empty()
+	for source_slot_index in range(12):
+		var source_workplace_path: Array[Vector3] = source_actor.call(
+			"get_workplace_path",
+			source_slot_index
+		)
+		if source_workplace_path.is_empty():
+			outer_routes_valid = false
+			continue
+		var direct_exit_path: Array[Vector3] = source_actor.call(
+			"get_exit_path_from",
+			source_workplace_path.back(),
+			source_slot_index
+		)
+		outer_routes_valid = (
+			outer_routes_valid
+			and source_workplace_path.size() >= 2
+			and direct_exit_path.size() >= 2
+			and direct_exit_path.front().distance_to(source_workplace_path.back()) < 0.1
+			and direct_exit_path.back().distance_to(source_workplace_path.front()) < 0.1
+		)
 	for source_slot_index in [3, 4]:
 		var source_path: Array[Vector3] = source_actor.call(
 			"get_workplace_path",
@@ -958,6 +1012,62 @@ func _test_large_stage_exit_route() -> void:
 		"Employees on both outer crew marks of a large 22-by-18-metre stage must exit through its real entrance before crossing the studio yard."
 	)
 	manager.free()
+
+
+func _test_large_stage_exit_from_live_scene_position() -> void:
+	var stage_actor: Node3D = _create_building("sound_stage", 0.0, 3)
+	var workplace_path: Array[Vector3] = stage_actor.call(
+		"get_workplace_path",
+		0
+	)
+	var scene_position: Vector3 = stage_actor.call(
+		"get_scene_mark",
+		0,
+		"shooting",
+		0
+	)
+	var dynamic_exit: Array[Vector3] = stage_actor.call(
+		"get_exit_path_from",
+		scene_position,
+		0
+	)
+	var clock: Node = GAME_CLOCK_SCRIPT.new()
+	root.add_child(clock)
+	var employee_generator: RefCounted = CHARACTER_GENERATOR_SCRIPT.new()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 773312
+	var employee: Variant = employee_generator.call(
+		"generate",
+		rng,
+		"EMP-LIVE-EXIT",
+		"actor"
+	)
+	var character_actor: Node3D = CHARACTER_ACTOR_SCRIPT.new()
+	root.add_child(character_actor)
+	var empty_route: Array[Vector3] = []
+	character_actor.call("setup", employee, empty_route, clock, 1.0)
+	character_actor.call(
+		"assign_workplace_route",
+		"BLD-LARGE-STAGE",
+		workplace_path,
+		"actor",
+		workplace_path
+	)
+	character_actor.global_position = scene_position
+	character_actor.call("leave_workplace", dynamic_exit)
+	var active_exit: Array[Vector3] = character_actor.get(
+		"_workplace_path"
+	)
+	_expect(
+		dynamic_exit.size() >= 2
+		and active_exit.size() >= 2
+		and active_exit.front().distance_to(scene_position) < 0.1
+		and active_exit.back().distance_to(workplace_path.front()) < 0.1
+		and bool(character_actor.call("is_leaving_workplace")),
+		"An employee leaving a large sound stage from a live scene mark must follow a freshly calculated route from the current position to the real entrance."
+	)
+	character_actor.free()
+	clock.free()
 
 
 func _test_profession_work_animation() -> void:

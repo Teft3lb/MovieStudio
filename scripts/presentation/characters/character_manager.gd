@@ -678,7 +678,7 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 			actor.call("snap_outside_workplace")
 		else:
 			if not bool(actor.call("is_leaving_workplace")):
-				actor.call("leave_workplace")
+				_leave_actor_from_workplace(actor)
 			return false
 
 	var route: Array[Vector3] = _studio_building_manager.call(
@@ -775,7 +775,7 @@ func release_employee_from_workplace_manually(employee_id: String) -> void:
 			== str(assignment.get("building_id", ""))
 		and not bool(actor.call("is_leaving_workplace"))
 	):
-		actor.call("leave_workplace")
+		_leave_actor_from_workplace(actor)
 	clear_employee_task(employee_id)
 
 
@@ -839,7 +839,7 @@ func _refresh_workplace_assignments() -> void:
 			str(employee.work_state),
 			assignment.is_empty()
 		):
-			actor.call("leave_workplace")
+			_leave_actor_from_workplace(actor)
 			continue
 		var building_id: String = str(assignment.get("building_id", ""))
 		var current_building_id: String = str(actor.call("get_workplace_building_id"))
@@ -848,12 +848,12 @@ func _refresh_workplace_assignments() -> void:
 				not current_building_id.is_empty()
 				and not bool(actor.call("is_leaving_workplace"))
 			):
-				actor.call("leave_workplace")
+				_leave_actor_from_workplace(actor)
 			continue
 		if current_building_id != building_id:
 			if not current_building_id.is_empty():
 				if not bool(actor.call("is_leaving_workplace")):
-					actor.call("leave_workplace")
+					_leave_actor_from_workplace(actor)
 				continue
 			if bool(actor.call("is_leaving_workplace")):
 				continue
@@ -1415,6 +1415,10 @@ func _create_progress_bar(
 	progress.max_value = 100.0
 	progress.show_percentage = false
 	progress.custom_minimum_size = Vector2(0.0, 10.0)
+	var background_style := StyleBoxFlat.new()
+	background_style.bg_color = Color(0.12, 0.15, 0.17, 1.0)
+	background_style.set_corner_radius_all(5)
+	progress.add_theme_stylebox_override("background", background_style)
 	var fill_style := StyleBoxFlat.new()
 	fill_style.bg_color = fill_color
 	fill_style.set_corner_radius_all(5)
@@ -1425,6 +1429,37 @@ func _create_progress_bar(
 
 func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
+
+
+func _leave_actor_from_workplace(actor: Variant) -> void:
+	if actor == null or not is_instance_valid(actor):
+		return
+	var building_id: String = str(actor.call("get_workplace_building_id"))
+	if building_id.is_empty():
+		actor.call("leave_workplace")
+		return
+
+	var employee_id: String = str(actor.call("get_character_id"))
+	var assignment: Dictionary = _workplace_assignments.get(employee_id, {})
+	var slot_index: int = -1
+	if str(assignment.get("building_id", "")) == building_id:
+		slot_index = int(assignment.get("slot_index", -1))
+
+	var exit_route: Array[Vector3] = []
+	if (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_method("get_exit_path_from")
+	):
+		exit_route = _studio_building_manager.call(
+			"get_exit_path_from",
+			building_id,
+			actor.global_position,
+			slot_index
+		)
+	if exit_route.is_empty():
+		actor.call("leave_workplace")
+	else:
+		actor.call("leave_workplace", exit_route)
 
 
 func _release_employee_to_free_roam(actor: Variant) -> void:
@@ -1474,7 +1509,7 @@ func _release_employee_to_free_roam(actor: Variant) -> void:
 		or bool(actor.call("is_leaving_workplace"))
 	):
 		return
-	actor.call("leave_workplace")
+	_leave_actor_from_workplace(actor)
 	if (
 		is_instance_valid(_game_clock)
 		and bool(_game_clock.is_manual_fast_forward)
@@ -1937,7 +1972,7 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 			str(employee.work_state),
 			assignment.is_empty()
 		):
-			actor.call("leave_workplace")
+			_leave_actor_from_workplace(actor)
 			continue
 
 		var building_id: String = str(assignment.get("building_id", ""))
@@ -1949,7 +1984,7 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 				not current_building_id.is_empty()
 				and not bool(actor.call("is_leaving_workplace"))
 			):
-				actor.call("leave_workplace")
+				_leave_actor_from_workplace(actor)
 			if str(employee.work_state) == "working":
 				employee.current_task = (
 					"Ожидает вызова на съёмки"
@@ -1963,7 +1998,7 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 		):
 			if not current_building_id.is_empty():
 				if not bool(actor.call("is_leaving_workplace")):
-					actor.call("leave_workplace")
+					_leave_actor_from_workplace(actor)
 				continue
 			if bool(actor.call("is_leaving_workplace")):
 				continue
@@ -2522,7 +2557,7 @@ func _refresh_skill_progress_bars(
 				row,
 				Color(0.48, 0.82, 0.72, 1.0)
 			)
-			progress_bar.custom_minimum_size = Vector2(0.0, 8.0)
+			progress_bar.custom_minimum_size = Vector2(0.0, 10.0)
 			_detail_skills_container.add_child(row)
 			_skill_progress_rows[skill_id] = {
 				"label": title_label,

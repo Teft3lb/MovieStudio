@@ -140,6 +140,12 @@ The interior test covers room props, workplace navigation and exit routes for th
 
 Звёздный домик — отдельное жилое помещение с одной кроватью. В него направляется популярный актёр с популярностью от 70 пунктов, если свободное место доступно; остальные сотрудники продолжают пользоваться общим домиком персонала. Сон в звёздном домике восстанавливает энергию и снижает стресс быстрее, чем обычное жильё.
 
+## Departure routing and navigation
+
+When an employee leaves a workplace after a rehearsal or shooting take, CharacterManager requests a fresh exit path from the employee's current world position. It does not assume that the employee is still standing at the assigned workstation; scene marks can be several metres away from the cached commute endpoint. CharacterActor follows this live exit route to the actual building entrance.
+
+Large-stage set-wall navigation clearance is aligned with the employee capsule size so smoothed A* routes do not send characters too close to collision walls. Staff-housing exit requests without an explicit bed slot resolve the nearest occupied bed before constructing the route, preventing the current bed from being treated as an impassable obstacle.
+
 ## Follow-up: distinct sound-stage architecture
 
 Sound-stage tiers are separate architectural compositions, not scaled copies of one building:

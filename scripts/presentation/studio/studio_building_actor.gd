@@ -102,16 +102,43 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	return path
 
 
+func _resolve_exit_navigation_slot(
+	local_start: Vector3,
+	requested_slot_index: int
+) -> int:
+	if requested_slot_index >= 0 or _workplace_points.is_empty():
+		return requested_slot_index
+	var building_type_id: String = str(building_data.building_type_id)
+	if building_type_id not in ["staff_housing", "star_bungalow"]:
+		return requested_slot_index
+	var nearest_slot_index: int = 0
+	var nearest_distance_squared: float = INF
+	for slot_index in range(_workplace_points.size()):
+		var point: Vector3 = _workplace_points[slot_index]
+		var distance_squared: float = Vector2(
+			local_start.x - point.x,
+			local_start.z - point.z
+		).length_squared()
+		if distance_squared < nearest_distance_squared:
+			nearest_distance_squared = distance_squared
+			nearest_slot_index = slot_index
+	return nearest_slot_index
+
+
 func get_exit_path_from(
 	start_world_position: Vector3,
 	slot_index: int = -1
 ) -> Array[Vector3]:
 	var local_start: Vector3 = _interior_root.to_local(start_world_position)
+	var resolved_slot_index: int = _resolve_exit_navigation_slot(
+		local_start,
+		slot_index
+	)
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
 		_entrance_inside,
-		_get_interior_navigation_obstacles(slot_index),
+		_get_interior_navigation_obstacles(resolved_slot_index),
 		0.5,
 		_get_interior_navigation_bounds()
 	)
@@ -231,12 +258,12 @@ func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 				obstacles.append({
 					"center": Vector2(side * side_x, side_z),
 					"half_extents": Vector2(0.14, side_depth),
-					"clearance": 0.22,
+					"clearance": 0.48,
 				})
 			obstacles.append({
 				"center": Vector2(0.0, backdrop_z),
 				"half_extents": Vector2(backdrop_x, 0.12),
-				"clearance": 0.22,
+				"clearance": 0.48,
 			})
 		"tv_studio":
 			obstacles.append({

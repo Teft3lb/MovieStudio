@@ -200,8 +200,9 @@ func _test_skill_progress_bars(employee: Variant) -> void:
 			title_label.text == PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
 			and is_equal_approx(progress_bar.max_value, skill_cap)
 			and is_equal_approx(progress_bar.value, minf(skill_value, skill_cap))
-			and not progress_bar.show_percentage,
-			"Skill bars must show current mastery against the employee's individual growth cap without tiny numeric text."
+			and not progress_bar.show_percentage
+			and progress_bar.custom_minimum_size.y >= 10.0,
+			"Skill bars must show current mastery against the employee's individual growth cap without tiny numeric text and match the energy/stress bar height."
 		)
 		var original_bar: ProgressBar = progress_bar
 		var changed_skills: Dictionary = employee.skills.duplicate(true)

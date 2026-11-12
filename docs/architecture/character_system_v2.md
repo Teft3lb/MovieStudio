@@ -22,7 +22,7 @@ The selection hitbox is separate from the visual meshes. This keeps picking reli
 
 ## Employee profile
 
-CharacterData originally introduced schema version 2. The current schema version 8 stores birthday progress, per-skill experience, physical fitness and pairwise employee relationships. The profile includes:
+CharacterData originally introduced schema version 2. The current schema version 9 stores birthday progress, per-skill experience, physical fitness and pairwise employee relationships. The profile includes:
 - short generated biography;
 - career ambition;
 - shift and break hours;
@@ -106,6 +106,10 @@ CharacterManager advances relationship scores only when two employees have arriv
 
 Older saves remain compatible: missing physical_fitness defaults to 50, missing relationships defaults to an empty dictionary, and schema 8 recognition initializes from the saved popularity score.
 
+## Sleeping pose and bed alignment
+
+Staff-housing and star-bungalow arrivals apply the sleeping pose immediately, including instant placement during manual fast-forward. The character's body axis is aligned with the bed's longitudinal axis using the building's world transform, so rotated housing buildings keep sleepers aligned with their mattresses.
+
 ## Employee skill profile presentation
 
-The employee inspector displays each profession skill as a compact progress bar scaled to that employee's individual skill cap. This makes current mastery and remaining personal potential readable without small numeric fractions. Exact skill/cap values, the remaining experience to the next point, and exhausted/achieved potential states remain available in the control tooltip. Skill rows are reused while the selected employee's profession remains unchanged, avoiding per-minute UI reconstruction.
+The employee inspector displays each profession skill as a progress bar matching the energy and stress indicators in height and track contrast, scaled to that employee's individual skill cap. This makes current mastery and remaining personal potential readable without small numeric fractions. Exact skill/cap values, the remaining experience to the next point, and exhausted/achieved potential states remain available in the control tooltip. Skill rows are reused while the selected employee's profession remains unchanged, avoiding per-minute UI reconstruction.
