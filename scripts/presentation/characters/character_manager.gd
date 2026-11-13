@@ -595,7 +595,8 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 				building_id,
 				return_route,
 				profession_id,
-				workplace_exit_route
+				workplace_exit_route,
+				slot_index
 			)
 		else:
 			actor.call("return_to_workplace", return_route)
@@ -647,7 +648,8 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 				building_id,
 				return_route,
 				profession_id,
-				workplace_exit_route
+				workplace_exit_route,
+				slot_index
 			)
 		if manual_fast_forward:
 			actor.call("snap_to_workplace")
@@ -682,7 +684,8 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 		building_id,
 		route,
 		profession_id,
-		workplace_exit_route
+		workplace_exit_route,
+		slot_index
 	)
 	if manual_fast_forward:
 		actor.call("snap_to_workplace")
@@ -957,7 +960,8 @@ func _refresh_workplace_assignments() -> void:
 				building_id,
 				route,
 				str(employee.profession_id),
-				workplace_exit_route
+				workplace_exit_route,
+				int(assignment.get("slot_index", 0))
 			)
 	_refresh_roaming_routes()
 	if _employee_roster_view != null:
@@ -1751,7 +1755,8 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 				building_id,
 				route,
 				str(employee.profession_id),
-				workplace_exit_route
+				workplace_exit_route,
+				int(assignment.get("slot_index", 0))
 			)
 
 		var is_at_workplace: bool = bool(

@@ -30,6 +30,8 @@ var _workplace_commute_path: Array[Vector3] = []
 var _workplace_exit_path: Array[Vector3] = []
 var _workplace_path_index: int = 0
 var _workplace_work_style: String = ""
+var _workplace_slot_index: int = -1
+var _blocked_movement_seconds: float = 0.0
 var _production_action_id: String = ""
 var _has_workplace_destination: bool = false
 var _is_at_workplace: bool = false
@@ -153,9 +155,11 @@ func _process_facility_movement(simulation_delta: float) -> void:
 			if _try_move_to_position(next_position):
 				look_at(global_position + direction, Vector3.UP)
 			else:
+				_recover_blocked_route(simulation_delta, "facility")
 				_set_walking(false)
 				_advance_visual(simulation_delta)
 				return
+	_blocked_movement_seconds = 0.0
 		_set_walking(true)
 		_advance_visual(simulation_delta)
 		return
@@ -176,6 +180,7 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 	if direction.length_squared() <= 0.25:
 		if _workplace_path_index < _workplace_path.size() - 1:
 			_workplace_path_index += 1
+			_recover_blocked_route(simulation_delta, "workplace")
 			_set_walking(false)
 			_advance_visual(simulation_delta)
 			return
@@ -196,6 +201,7 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
+	_blocked_movement_seconds = 0.0
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
@@ -443,9 +449,11 @@ func _process_scene_performance(simulation_delta: float) -> void:
 			if _try_move_to_position(next_position):
 				look_at(global_position + direction, Vector3.UP)
 			else:
+				_recover_blocked_route(simulation_delta, "scene")
 				_set_walking(false)
 				_advance_visual(simulation_delta)
 				return
+	_blocked_movement_seconds = 0.0
 		_set_walking(true)
 		_advance_visual(simulation_delta)
 		return
@@ -541,6 +549,8 @@ func _face_workplace() -> void:
 
 func _finish_leaving_workplace() -> void:
 	_workplace_building_id = ""
+	_workplace_slot_index = -1
+	_blocked_movement_seconds = 0.0
 	_workplace_path.clear()
 	_workplace_commute_path.clear()
 	_workplace_exit_path.clear()
@@ -774,7 +784,8 @@ func assign_workplace_route(
 	building_id: String,
 	route: Array[Vector3],
 	work_style: String,
-	exit_route: Array[Vector3] = []
+	exit_route: Array[Vector3] = [],
+	slot_index: int = -1
 ) -> void:
 	_clear_facility_route()
 	if route.is_empty():
@@ -796,6 +807,8 @@ func assign_workplace_route(
 		return
 
 	_workplace_building_id = building_id
+	_workplace_slot_index = slot_index
+	_blocked_movement_seconds = 0.0
 	_workplace_commute_path = route.duplicate()
 	_workplace_exit_path = resolved_exit_route
 	_workplace_path = route.duplicate()
@@ -856,6 +869,8 @@ func clear_workplace() -> void:
 	_clear_facility_route()
 	_cancel_scene_performance()
 	_workplace_building_id = ""
+	_workplace_slot_index = -1
+	_blocked_movement_seconds = 0.0
 	_workplace_path.clear()
 	_workplace_commute_path.clear()
 	_workplace_exit_path.clear()
@@ -961,6 +976,65 @@ func _copy_vector3_path(source_path: Array) -> Array[Vector3]:
 		if point_value is Vector3:
 			result.append(point_value)
 	return result
+
+
+func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void:
+	_blocked_movement_seconds += simulation_delta
+	if _blocked_movement_seconds < 1.2:
+		return
+	_blocked_movement_seconds = 0.0
+	var navigation_manager: Node = get_node_or_null("../StudioBuildingManager")
+	if navigation_manager == null:
+		return
+	var route: Array[Vector3] = []
+	if route_kind == "scene":
+		if (
+			not _workplace_building_id.is_empty()
+			and navigation_manager.has_method("get_scene_path")
+		):
+			route = navigation_manager.call(
+				"get_scene_path",
+				_workplace_building_id,
+				global_position,
+				_scene_target_position
+			)
+	elif navigation_manager.has_method("get_employee_recovery_path"):
+		var building_id: String = (
+			_facility_building_id
+			if route_kind == "facility"
+			else _workplace_building_id
+		)
+		var slot_index: int = (
+			_facility_slot_index
+			if route_kind == "facility"
+			else _workplace_slot_index
+		)
+		if building_id.is_empty() or slot_index < 0:
+			return
+		var leaving: bool = (
+			_facility_is_leaving
+			if route_kind == "facility"
+			else _is_leaving_workplace
+		)
+		route = navigation_manager.call(
+			"get_employee_recovery_path",
+			building_id,
+			slot_index,
+			global_position,
+			leaving
+		)
+	if route.size() < 2:
+		return
+	match route_kind:
+		"scene":
+			_scene_path = route
+			_scene_path_index = 0
+		"facility":
+			_facility_route = route
+			_facility_route_index = 0
+		_:
+			_workplace_path = route
+			_workplace_path_index = 0
 
 
 func _try_move_to_position(target_position: Vector3) -> bool:
