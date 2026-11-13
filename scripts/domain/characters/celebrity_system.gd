@@ -15,7 +15,7 @@ func apply_tv_appearance(
 ) -> Dictionary:
 	if employee == null:
 		return {}
-	if str(employee.profession_id) not in ["actor", "extra", "director"]
+	if str(employee.profession_id) not in ["actor", "extra", "director"]:
 		return {
 			"applied": false,
 			"reason": "Персонаж не относится к актёрскому составу.",
