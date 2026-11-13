@@ -876,6 +876,83 @@ func get_scene_mark(
 	)
 
 
+func _find_navigation_building_at(world_position: Vector3) -> String:
+	for building in _buildings:
+		var building_id: String = str(building.id)
+		var actor: Node3D = get_building_actor_by_id(building_id)
+		if not is_instance_valid(actor):
+			continue
+		var point: Vector3 = actor.to_local(world_position)
+		var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+			str(building.building_type_id), 0.0, int(building.stage_size_tier)
+		)
+		if (
+			absf(point.x) < footprint.x * 0.5 - 0.1
+			and absf(point.z) < footprint.y * 0.5 - 0.1
+		):
+			return building_id
+	return ""
+
+
+func get_scene_recovery_path(
+	_workplace_building_id: String,
+	start_position: Vector3,
+	target_position: Vector3
+) -> Array[Vector3]:
+	# Scene and prop logistics routes may cross multiple buildings. An indoor
+	# AStar alone cannot recover a worker travelling between stage and warehouse.
+	var source_id: String = _find_navigation_building_at(start_position)
+	var target_id: String = _find_navigation_building_at(target_position)
+	if not source_id.is_empty() and source_id == target_id:
+		return get_scene_path(source_id, start_position, target_position)
+	var result: Array[Vector3] = [start_position]
+	var outdoor_start: Vector3 = start_position
+	if not source_id.is_empty():
+		var exit_path: Array[Vector3] = get_exit_path_from(
+			source_id, start_position
+		)
+		if exit_path.is_empty():
+			return []
+		for point in exit_path:
+			if result.back().distance_to(point) > 0.05:
+				result.append(point)
+		outdoor_start = result.back()
+	var outdoor_target: Vector3 = target_position
+	var entrance_path: Array[Vector3] = []
+	if not target_id.is_empty():
+		entrance_path = get_workplace_path(target_id, 0)
+		if entrance_path.size() < 2:
+			return []
+		outdoor_target = entrance_path.front()
+	var outdoor_path: Array[Vector3] = _navigation_system.call(
+		"build_path",
+		outdoor_start,
+		outdoor_target,
+		_get_building_navigation_obstacles(),
+		0.75,
+		_get_outdoor_navigation_bounds(outdoor_start, outdoor_target)
+	)
+	if outdoor_path.is_empty():
+		return []
+	for point in outdoor_path:
+		if result.back().distance_to(point) > 0.05:
+			result.append(point)
+	if not target_id.is_empty():
+		# Cross only at the actual doorway, then follow the indoor route.
+		var inside_entrance: Vector3 = entrance_path[1]
+		if result.back().distance_to(inside_entrance) > 0.05:
+			result.append(inside_entrance)
+		var indoor_path: Array[Vector3] = get_scene_path(
+			target_id, inside_entrance, target_position
+		)
+		if indoor_path.is_empty():
+			return []
+		for point in indoor_path:
+			if result.back().distance_to(point) > 0.05:
+				result.append(point)
+	return result
+
+
 func get_scene_path(
 	building_id: String,
 	start_position: Vector3,
