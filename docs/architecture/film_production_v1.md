@@ -123,6 +123,10 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/studio_navigation_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_set_inventory_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_session_smoke_test.gd
+& $godot --headless --path . --script res://tests/film_production_recast_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_cross_building_recovery_smoke_test.gd
+& $godot --headless --path . --script res://tests/studio_employee_reassignment_smoke_test.gd
+& $godot --headless --path . --script res://tests/staff_facilities_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_overnight_recovery_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
@@ -179,12 +183,21 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 - Navigation uses grid-based obstacle avoidance for the current studio scale; it is not a full NavMesh or dynamic crowd-avoidance system.
 - Film projects and completed results are serializable domain objects but are not yet connected to campaign save/load.
 - Only one film production project is active at a time.
-- Cafeteria and staff housing are optional facilities. Production participants remain assigned during the shift and lunch; after the shared shift ends, they are released for free time and staff-housing recovery once active prop logistics are safe. They are recalled for the next production shift.
+- Cafeteria and staff housing are optional facilities. The production pauses when any assigned cast or crew member reaches their scheduled lunch break; workers are released to the cafeteria once outstanding prop logistics are safe, and return to their workstations before shooting resumes. After the shared shift ends, they are released for free time and staff-housing recovery once active prop logistics are safe. They are recalled for the next production shift.
 
 
 ## Working hours and overnight pause
 
-Every production phase advances only during the shared shift window of the assigned cast and crew. The effective window is the intersection of their individual shifts, and its duration is stored on the project so the estimate is expressed in working days rather than assuming a fixed nine-hour day. When the window closes, phase clocks stop. Set Dressing and Set Strike may finish outstanding prop delivery, installation, removal and warehouse-return tasks after the phase clock stops, but they do not consume production phase minutes outside the shift. Once logistics are safe, the team is released to normal free-time and staff-housing behavior; active performers return to their marks on the next shift. The camera is idled while production is paused. A morning work call may interrupt an employee still walking to staff housing and replan the journey directly back to their assigned workstation. During manual fast-forward, no physics frames are generated between minute events; logistics workers therefore finish each scripted travel leg at its destination mark before its task state advances, matching the existing fast-forward behavior of scene performers. Normal-time navigation still uses physical movement. The dedicated overnight-recovery smoke test covers both behaviors; full live-scene movement and collision recovery still require visual verification.
+Every production phase advances only during the shared shift window of the assigned cast and crew, excluding lunch breaks. The effective window is the intersection of their individual shifts, and its duration is stored on the project so the estimate is expressed in working days rather than assuming a fixed nine-hour day. When the window closes, phase clocks stop. Set Dressing and Set Strike may finish outstanding prop delivery, installation, removal and warehouse-return tasks after the phase clock stops, but they do not consume production phase minutes outside the shift. Once logistics are safe, the team is released to normal free-time and staff-housing behavior; active performers return to their marks on the next shift. The camera is idled while production is paused. A morning work call may interrupt an employee still walking to staff housing and replan the journey directly back to their assigned workstation. During manual fast-forward, no physics frames are generated between minute events; logistics workers therefore finish each scripted travel leg at its destination mark before its task state advances, matching the existing fast-forward behavior of scene performers. Normal-time navigation still uses physical movement. The dedicated overnight-recovery smoke test covers both behaviors; full live-scene movement and collision recovery still require visual verification.
+
+
+## Staff reassignment, in-production substitutions and navigation recovery
+
+Workplace reassignments are available directly in the building inspector regardless of whether a screenplay exists. Transfers respect profession, operational capacity and any active film/editing assignment. The employee profile retains its existing reassignment control.
+
+Crew, cast and background selectors stay editable during an active shoot. Proposed substitutions remain staged until the next scene enters Preparation at zero elapsed minutes. The controller validates all required roles, distinct staff and qualifications before atomically replacing the project assignments, updating the technician list and shared shift, and clearing outdated character tasks. Current live takes and unfinished prop-transport tasks are not interrupted. Changes proposed after the final scene's Preparation cannot be applied to that film.
+
+CharacterActor locates StudioBuildingManager using the actual parent hierarchy (actor → CharacterManager → scene root). Collision recovery recalculates roaming, workplace, facility and scene routes; scene recovery spanning the stage and prop warehouse exits via actual doorways, follows the outdoor obstacle grid and enters the target building by its doorway. Workplace waypoint tolerance is 0.2 m rather than 0.5 m to preserve required corner turns, and movement collision checks sweep the capsule between frame positions instead of testing only its destination. Physical crowd avoidance and full NavMesh integration remain future work.
 
 ## Background performers, professional progression and lifecycle
 
