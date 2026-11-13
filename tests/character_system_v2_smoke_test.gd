@@ -223,6 +223,11 @@ func _test_skill_progress_bars(employee: Variant) -> void:
 			),
 			"Refreshing an employee profile must update existing skill bars without rebuilding the UI every game minute."
 		)
+	manager.call("_clear_skill_progress_bars")
+	_expect(
+		container.get_child_count() == 0,
+		"Clearing an employee profile must remove its skill progress rows."
+	)
 	manager.free()
 
 

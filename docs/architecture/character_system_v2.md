@@ -118,3 +118,8 @@ The employee inspector displays each profession skill as a progress bar matching
 ## Employee roster presentation
 
 `EmployeeRosterPanelController` owns the employee roster and recruitment-market workspace controls, row creation, candidate rendering and refresh behavior. `CharacterManager` remains the owner of employee selection, hiring/dismissal, market timing, work-state decisions and production-participant status; it supplies callbacks and data to the view controller. The employee detail inspector and skill-progress UI remain in CharacterManager for the next presentation extraction pass.
+
+
+## Employee skill progression presentation
+
+`EmployeeSkillProgressView` owns the reusable skill-row and progress-bar hierarchy, including individual mastery caps, progress-to-next-point tooltips and in-place refreshes. `CharacterManager` retains the Domain skill progression service and provides compatibility methods for profile refresh and clearing. The view does not change skill values, caps, growth points or progression balance.

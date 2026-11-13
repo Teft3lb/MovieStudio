@@ -39,6 +39,9 @@ const CHARACTER_AGING_SYSTEM_SCRIPT = preload(
 const EMPLOYEE_ROSTER_PANEL_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/characters/employee_roster_panel_controller.gd"
 )
+const EMPLOYEE_SKILL_PROGRESS_VIEW_SCRIPT = preload(
+	"res://scripts/presentation/characters/employee_skill_progress_view.gd"
+)
 const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_skill_progression_system.gd"
 )
@@ -69,6 +72,7 @@ var _manual_workplace_dispatches: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _employee_roster_view: RefCounted
+var _employee_skill_progress_view: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
 
@@ -86,7 +90,6 @@ var _detail_stats_label: Label
 var _detail_task_label: Label
 var _detail_schedule_label: Label
 var _detail_skills_container: VBoxContainer
-var _skill_progress_rows: Dictionary = {}
 var _detail_personality_label: Label
 
 var _energy_label: Label
@@ -1209,6 +1212,7 @@ func _build_detail_panel() -> void:
 	_detail_skills_container.name = "SkillProgressList"
 	_detail_skills_container.add_theme_constant_override("separation", 5)
 	layout.add_child(_detail_skills_container)
+	_ensure_skill_progress_view()
 
 	layout.add_child(HSeparator.new())
 
@@ -2297,97 +2301,31 @@ func _refresh_detail_panel() -> void:
 	)
 
 func _clear_skill_progress_bars() -> void:
-	if not is_instance_valid(_detail_skills_container):
+	_ensure_skill_progress_view()
+	if _employee_skill_progress_view == null:
 		return
-	for child in _detail_skills_container.get_children():
-		_detail_skills_container.remove_child(child)
-		child.queue_free()
-	_skill_progress_rows.clear()
+	_employee_skill_progress_view.call("clear")
 
 func _refresh_skill_progress_bars(
 	employee: Variant,
 	skills: Dictionary
 ) -> void:
+	_ensure_skill_progress_view()
+	if _employee_skill_progress_view == null:
+		return
+	_employee_skill_progress_view.call("refresh", employee, skills)
+
+func _ensure_skill_progress_view() -> void:
+	if _employee_skill_progress_view != null:
+		return
 	if not is_instance_valid(_detail_skills_container):
 		return
-	var profession_skill_ids: Array[String] = (
-		PROFESSION_CATALOG_SCRIPT.get_profession_skill_ids(
-			employee.profession_id,
-			employee.specialization_id
-		)
+	_employee_skill_progress_view = EMPLOYEE_SKILL_PROGRESS_VIEW_SCRIPT.new()
+	_employee_skill_progress_view.call(
+		"setup",
+		_detail_skills_container,
+		_skill_progression_system
 	)
-	var rebuild_rows: bool = (
-		_skill_progress_rows.size() != profession_skill_ids.size()
-	)
-	for skill_id in profession_skill_ids:
-		if not _skill_progress_rows.has(skill_id):
-			rebuild_rows = true
-			break
-	if rebuild_rows:
-		_clear_skill_progress_bars()
-		for skill_id in profession_skill_ids:
-			var row := VBoxContainer.new()
-			row.add_theme_constant_override("separation", 2)
-			var title_label := Label.new()
-			title_label.text = PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id)
-			title_label.add_theme_font_size_override("font_size", 12)
-			row.add_child(title_label)
-			var progress_bar: ProgressBar = _create_progress_bar(
-				row,
-				Color(0.48, 0.82, 0.72, 1.0)
-			)
-			progress_bar.custom_minimum_size = Vector2(0.0, 10.0)
-			_detail_skills_container.add_child(row)
-			_skill_progress_rows[skill_id] = {
-				"label": title_label,
-				"bar": progress_bar,
-			}
-	for skill_id in profession_skill_ids:
-		var skill_value: float = clampf(
-			float(skills.get(skill_id, 0.0)),
-			0.0,
-			100.0
-		)
-		var skill_cap: float = clampf(
-			float(employee.skill_caps.get(skill_id, 100.0)),
-			1.0,
-			100.0
-		)
-		var row_controls: Dictionary = _skill_progress_rows.get(
-			skill_id,
-			{}
-		)
-		var title_label: Label = row_controls.get("label") as Label
-		var progress_bar: ProgressBar = row_controls.get("bar") as ProgressBar
-		if not is_instance_valid(title_label) or not is_instance_valid(progress_bar):
-			continue
-		progress_bar.max_value = skill_cap
-		progress_bar.value = minf(skill_value, skill_cap)
-		var status_text: String
-		if skill_value >= skill_cap:
-			status_text = "потенциал достигнут"
-		elif float(employee.growth_points_remaining) < 1.0:
-			status_text = "резерв развития исчерпан"
-		else:
-			var progress_percent: int = mini(
-				roundi(float(
-					_skill_progression_system.call(
-						"get_progress_percent",
-						employee,
-						skill_id
-					)
-				)),
-				99
-			)
-			status_text = "опыт до следующего пункта: %d%%" % progress_percent
-		var tooltip_text: String = "%s · %.0f / %.0f · %s" % [
-			PROFESSION_CATALOG_SCRIPT.get_skill_title(skill_id),
-			skill_value,
-			skill_cap,
-			status_text,
-		]
-		title_label.tooltip_text = tooltip_text
-		progress_bar.tooltip_text = tooltip_text
 
 func _refresh_workplace_dispatch_button(employee_id: String) -> void:
 	if not is_instance_valid(_workplace_dispatch_button):

@@ -18,8 +18,8 @@ Current approximate source line counts after the production, editing and logisti
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
 | `studio_building_actor.gd` | 677 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
-| `character_manager.gd` | 2,557 | Employee simulation coordination, workplace routing, facilities, relationships, employee market and profile |
-| `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
+| `character_manager.gd` | 2,495 | Employee simulation coordination, workplace routing, facilities, relationships, employee market and profile |
+| `studio_building_interior_smoke_test.gd` | 34 | Single SceneTree runner for focused geometry, sound-stage, facility and employee integration suites |
 
 The line counts are a warning signal, not a target in themselves. A module should own one cohesive responsibility and have a small, explicit dependency surface.
 
@@ -250,7 +250,7 @@ Do not move all UI and simulation code into one replacement manager. Each contro
 
 Keep the actor responsible for the placed building's scene identity, selection and cutaway state. Shared primitive construction is extracted into `StudioBuildingVisualFactory`; per-building indoor path construction is extracted into `StudioBuildingNavigationController`.
 
-Keep the actor's public workplace/scene methods as compatibility adapters. Authored production/facility marker data is extracted into `StudioBuildingMarkerProvider`; reusable set-prop mesh composition is extracted into `StudioSetPropVisualBuilder`. Next, split the interior smoke test by feature boundary. Type-specific visual builders already extracted:
+Keep the actor's public workplace/scene methods as compatibility adapters. Authored production/facility marker data is extracted into `StudioBuildingMarkerProvider`; reusable set-prop mesh composition is extracted into `StudioSetPropVisualBuilder`. The interior smoke test is split into focused geometry, sound-stage, facility and employee suites. Type-specific visual builders already extracted:
 - shared primitive/material construction;
 - sound-stage tier builders (small, medium and large remain distinct authored architectures);
 - TV Studio builder;
@@ -263,10 +263,14 @@ Builders should receive explicit build context and return or populate a visual r
 
 Keep CharacterManager as the employee-system composition root and compatibility façade.
 
-Extract presentation and coordination by responsibility:
-- roster view;
-- employee profile view and skill-progress rows;
-- recruitment market view;
+Extract presentation and coordination by responsibility.
+
+Completed:
+- `EmployeeRosterPanelController` owns roster rows and recruitment-market workspace rendering; manager-owned selection, hiring and dismissal remain unchanged.
+- `EmployeeSkillProgressView` owns skill-row/progress-bar construction and in-place refresh; the Domain skill progression system and manager compatibility methods remain unchanged.
+
+Remaining:
+- `EmployeeProfilePanelController` for biography, stats, needs bars, contracts and employee/candidate profile rendering;
 - workplace/facility dispatch coordinator;
 - relationship/social interaction coordinator.
 
@@ -296,9 +300,8 @@ All suites inherit a shared RefCounted test base that forwards assertions to the
 
 ## Recommended order
 
-1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Continue CharacterManager presentation extraction: move the employee detail/skill profile into its own view controller, then separate simulation dispatch from the manager.
-3. Split CharacterManager presentation from employee simulation coordination.
-4. Split the interior smoke test into focused suites.
+1. Run Godot 4.7.2 parse and smoke tests for the building visual/navigation/marker/set-prop builders and the new interior test suites.
+2. Continue CharacterManager presentation extraction by moving the remaining employee detail inspector into EmployeeProfilePanelController.
+3. Extract workplace/facility dispatch and relationship/social coordination from CharacterManager.
 
-The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider. The interior smoke test is now split into geometry, sound-stage, facility and employee integration suites. CharacterManager presentation extraction is underway: roster and recruitment-market workspace rendering are delegated to EmployeeRosterPanelController while hiring, dismissal and employee state remain in the manager.
+The building-manager UI and visual extractions are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider; reusable prop meshes are delegated to StudioSetPropVisualBuilder. The former interior test monolith is now a small runner over four focused suites. CharacterManager presentation extraction is underway: roster/recruitment rendering and skill-progress rows are delegated to dedicated views while hiring, dismissal, employee state and Domain skill progression remain unchanged.
