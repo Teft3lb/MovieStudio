@@ -1041,26 +1041,40 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 func _try_move_to_position(target_position: Vector3) -> bool:
 	var candidate: Vector3 = target_position
 	candidate.y = global_position.y
+	if candidate.distance_squared_to(global_position) < 0.000001:
+		# No displacement is not a successful move: the previous fallback
+		# could report success forever while a character pressed into a wall.
+		return false
 	if _is_movement_position_clear(candidate):
 		global_position = candidate
 		return true
 	var x_candidate: Vector3 = Vector3(
-		candidate.x,
-		global_position.y,
-		global_position.z
+		candidate.x, global_position.y, global_position.z
 	)
 	var z_candidate: Vector3 = Vector3(
-		global_position.x,
-		global_position.y,
-		candidate.z
+		global_position.x, global_position.y, candidate.z
 	)
-	var x_is_clear: bool = _is_movement_position_clear(x_candidate)
-	var z_is_clear: bool = _is_movement_position_clear(z_candidate)
+	var x_progress: bool = (
+		x_candidate.distance_squared_to(global_position) > 0.000001
+		and x_candidate.distance_squared_to(candidate)
+			< global_position.distance_squared_to(candidate) - 0.000001
+	)
+	var z_progress: bool = (
+		z_candidate.distance_squared_to(global_position) > 0.000001
+		and z_candidate.distance_squared_to(candidate)
+			< global_position.distance_squared_to(candidate) - 0.000001
+	)
+	var x_is_clear: bool = (
+		x_progress and _is_movement_position_clear(x_candidate)
+	)
+	var z_is_clear: bool = (
+		z_progress and _is_movement_position_clear(z_candidate)
+	)
 	if x_is_clear and z_is_clear:
 		global_position = (
 			x_candidate
-			if x_candidate.distance_squared_to(target_position)
-			<= z_candidate.distance_squared_to(target_position)
+			if x_candidate.distance_squared_to(candidate)
+				<= z_candidate.distance_squared_to(candidate)
 			else z_candidate
 		)
 		return true
@@ -1071,7 +1085,6 @@ func _try_move_to_position(target_position: Vector3) -> bool:
 		global_position = z_candidate
 		return true
 	return false
-
 
 func _is_movement_position_clear(candidate_position: Vector3) -> bool:
 	if _movement_collision_shape == null or not is_inside_tree():
