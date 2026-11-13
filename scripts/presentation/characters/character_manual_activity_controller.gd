@@ -237,13 +237,22 @@ func _finish_order(employee: Variant, actor: Node3D) -> void:
 	var home_id: String = str(actor.call("get_workplace_building_id"))
 	var slot_index: int = int(actor.get("_workplace_slot_index"))
 	var return_route: Array[Vector3] = []
-	if not home_id.is_empty() and slot_index >= 0:
-		return_route = _buildings.call(
-			"get_workplace_path_from",
-			home_id,
-			slot_index,
-			actor.global_position
-		)
+	if not home_id.is_empty():
+		if slot_index >= 0:
+			return_route = _buildings.call(
+				"get_workplace_path_from",
+				home_id,
+				slot_index,
+				actor.global_position
+			)
+		else:
+			# Legacy workplaces may not have a slot index. Use the
+			# precise old workplace mark, still routed through doors.
+			return_route = _buildings.call(
+				"get_scene_recovery_path",
+				home_id, actor.global_position,
+				actor.call("get_workplace_position")
+			)
 		if return_route.size() < 2:
 			employee.current_task = "Ожидает маршрута домой"
 			# Keep the order while routing is blocked; try again next minute.
