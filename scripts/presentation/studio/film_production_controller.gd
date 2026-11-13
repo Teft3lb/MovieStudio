@@ -785,12 +785,42 @@ func is_film_production_work_hour(hour: int) -> bool:
 	var shift: Vector2i = get_film_production_shift()
 	return hour >= shift.x and hour < shift.y
 
+func _is_film_lunch_break(hour: int) -> bool:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or not is_film_production_work_hour(hour)
+	):
+		return false
+	var participants: Dictionary = {}
+	for employee_id_value in _active_film_project.crew_assignments.values():
+		participants[str(employee_id_value)] = true
+	for employee_id_value in _active_film_project.cast_assignments.values():
+		participants[str(employee_id_value)] = true
+	for employee_id in _active_film_project.background_performer_ids:
+		participants[employee_id] = true
+	for employee_id_value in participants.keys():
+		var employee_id: String = str(employee_id_value)
+		if employee_id.is_empty():
+			continue
+		var employee: Variant = _find_employee(employee_id)
+		if employee == null:
+			continue
+		if (
+			hour >= int(employee.break_start_hour)
+			and hour < int(employee.break_end_hour)
+		):
+			return true
+	return false
+
+
 func should_release_production_employee_for_off_hours(hour: int) -> bool:
 	if (
 		_active_film_project == null
 		or str(_active_film_project.status) != "in_production"
-		or is_film_production_work_hour(hour)
 	):
+		return false
+	if is_film_production_work_hour(hour) and not _is_film_lunch_break(hour):
 		return false
 
 	var phase: String = str(_active_film_project.current_phase)
@@ -875,6 +905,27 @@ func _advance_film_production(hour: int = -1) -> void:
 	if resolved_hour < 0:
 		resolved_hour = DEFAULT_FILM_SHIFT_START_HOUR
 	var current_phase: String = str(_active_film_project.current_phase)
+	if _is_film_lunch_break(resolved_hour):
+		_film_phase_actions_pending = true
+		var logistics_pending: bool = (
+			current_phase in ["set_dressing", "set_strike"]
+			and not _are_set_logistics_tasks_complete()
+		)
+		if logistics_pending:
+			_sync_film_set_dressing()
+		if not logistics_pending or _are_set_logistics_tasks_complete():
+			_pause_film_scene_for_off_hours()
+			_active_film_project.pause_reason = (
+				"Обеденный перерыв. Съёмки продолжатся после возвращения команды."
+			)
+		else:
+			_active_film_project.pause_reason = (
+				"Обед. Техники завершают перевозку декораций."
+			)
+		_active_film_project.last_activity_message = _active_film_project.pause_reason
+		_update_film_stage_slate()
+		_update_film_production_ui()
+		return
 	if not is_film_production_work_hour(resolved_hour):
 		_film_phase_actions_pending = true
 		var logistics_pending: bool = (
