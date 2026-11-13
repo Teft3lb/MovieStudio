@@ -1,6 +1,10 @@
 extends RefCounted
 class_name EmployeeProfilePanelController
 
+const PUBLICITY_CONTROLS_SCRIPT = preload(
+	"res://scripts/presentation/characters/employee_publicity_controls.gd"
+)
+
 var _studio_hud: Node
 var _on_contract_type_selected: Callable
 var _on_hire_requested: Callable
@@ -8,6 +12,8 @@ var _on_dismiss_requested: Callable
 var _on_dismiss_confirmed: Callable
 var _on_workplace_dispatch_requested: Callable
 var _on_workplace_assignment_requested: Callable
+var _on_publicity_event_requested: Callable
+var _publicity_controls: RefCounted
 
 var _detail_name_label: Label
 var _detail_profession_label: Label
@@ -41,7 +47,8 @@ func setup(
 	on_dismiss_requested: Callable,
 	on_dismiss_confirmed: Callable,
 	on_workplace_dispatch_requested: Callable,
-	on_workplace_assignment_requested: Callable = Callable()
+	on_workplace_assignment_requested: Callable = Callable(),
+	on_publicity_event_requested: Callable = Callable()
 ) -> void:
 	_on_contract_type_selected = on_contract_type_selected
 	_on_hire_requested = on_hire_requested
@@ -49,6 +56,7 @@ func setup(
 	_on_dismiss_confirmed = on_dismiss_confirmed
 	_on_workplace_dispatch_requested = on_workplace_dispatch_requested
 	_on_workplace_assignment_requested = on_workplace_assignment_requested
+	_on_publicity_event_requested = on_publicity_event_requested
 
 
 func build(studio_hud: Node) -> void:
@@ -112,6 +120,10 @@ func build(studio_hud: Node) -> void:
 	layout.add_child(_recognition_label)
 	_recognition_bar = _create_progress_bar(
 		layout, Color(0.88, 0.70, 0.30, 1.0)
+	)
+	_publicity_controls = PUBLICITY_CONTROLS_SCRIPT.new()
+	_publicity_controls.call(
+		"build", layout, _on_publicity_event_requested
 	)
 
 	_detail_task_label = Label.new()
@@ -356,6 +368,8 @@ func clear() -> void:
 	_workplace_assignment_option.visible = false
 	_recognition_label.visible = false
 	_recognition_bar.visible = false
+	if _publicity_controls != null:
+		_publicity_controls.call("refresh", {})
 
 
 func refresh(profile_data: Dictionary) -> void:
@@ -376,8 +390,10 @@ func refresh(profile_data: Dictionary) -> void:
 		var recognition: float = clampf(
 			float(profile_data.get("recognition", 0.0)), 0.0, 100.0
 		)
-		_recognition_label.text = "ИЗВЕСТНОСТЬ · %.0f%% / 70%% для ток-шоу" % recognition
+		_recognition_label.text = "ИЗВЕСТНОСТЬ · %.0f / 100" % recognition
 		_recognition_bar.value = recognition
+	if _publicity_controls != null:
+		_publicity_controls.call("refresh", profile_data)
 	_detail_task_label.text = str(profile_data.get("task", ""))
 	_detail_schedule_label.text = str(profile_data.get("schedule", ""))
 	_detail_contract_label.text = str(profile_data.get("contract", ""))
