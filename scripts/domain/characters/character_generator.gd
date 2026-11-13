@@ -144,6 +144,18 @@ func generate(
 			data.recognition = data.popularity * 0.35
 		_:
 			data.recognition = 0.0
+	# Established performers in the hiring market can arrive with public
+	# recognition. Starter employees stay inexperienced and unknown.
+	if not starter_staff and data.profession_id in ["actor", "director"]:
+		data.recognition = clampf(
+			data.experience * 1.15
+			+ maxf(float(data.age - 25), 0.0) * 0.35
+			+ rng.randf_range(0.0, 21.0),
+			0.0, 88.0
+		)
+		data.popularity = maxf(
+			data.popularity, data.recognition * 0.65
+		)
 
 	var primary_skill_value: float = float(skills.get(primary_skill_id, 50.0))
 	var base_salary: float = float(
