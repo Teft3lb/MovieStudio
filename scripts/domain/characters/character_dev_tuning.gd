@@ -51,7 +51,7 @@ func get_stat_value(employee: Variant, stat_id: String) -> float:
 
 
 func set_stat(employee: Variant, stat_id: String, value: float) -> bool:
-	if employee == null or not is_finite(value):
+	if employee == null or is_nan(value) or is_inf(value):
 		return false
 	var normalized: float = clampf(value, 0.0, 100.0)
 	match stat_id:
