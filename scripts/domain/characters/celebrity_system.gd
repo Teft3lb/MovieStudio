@@ -15,7 +15,7 @@ func apply_tv_appearance(
 ) -> Dictionary:
 	if employee == null:
 		return {}
-	if str(employee.profession_id) not in ["actor", "extra"]:
+	if str(employee.profession_id) not in ["actor", "extra", "director"]
 		return {
 			"applied": false,
 			"reason": "Персонаж не относится к актёрскому составу.",
@@ -91,6 +91,39 @@ func apply_tv_appearance(
 		"recognition_after": employee.recognition,
 		"recognition_delta": employee.recognition - previous_recognition,
 		"experience_delta": experience_delta,
+	}
+
+
+func apply_film_release(
+	employee: Variant,
+	is_director: bool,
+	film_quality: float
+) -> Dictionary:
+	if employee == null:
+		return {}
+	if str(employee.profession_id) not in ["actor", "extra", "director"]:
+		return {"applied": false}
+	var quality: float = clampf(film_quality, 0.0, 100.0)
+	var exposure: float = 0.6 if str(employee.profession_id) == "extra" else 1.0
+	var recognition_gain: float = (
+		1.4 + quality * 0.036
+	) * exposure * (0.9 if is_director else 1.0)
+	var popularity_gain: float = (
+		-0.8 + quality * 0.035
+	) * exposure
+	var before: float = float(employee.recognition)
+	employee.recognition = clampf(
+		before + recognition_gain, 0.0, 100.0
+	)
+	employee.popularity = clampf(
+		float(employee.popularity) + popularity_gain, 0.0, 100.0
+	)
+	return {
+		"applied": true,
+		"recognition_before": before,
+		"recognition_after": employee.recognition,
+		"recognition_delta": employee.recognition - before,
+		"popularity_delta": popularity_gain,
 	}
 
 
