@@ -319,6 +319,16 @@ func get_tv_guest_show_controller() -> RefCounted:
 	return _get_tv_guest_show_controller()
 
 
+func has_tv_staff_conflict(
+	crew: Dictionary, cast: Dictionary, background_ids: Array[String]
+) -> bool:
+	if _tv_guest_show_controller == null:
+		return false
+	return bool(_tv_guest_show_controller.call(
+		"has_staff_conflict", crew, cast, background_ids
+	))
+
+
 func get_building_actor_by_id(building_id: String) -> Node3D:
 	return _building_actors.get(building_id) as Node3D
 
