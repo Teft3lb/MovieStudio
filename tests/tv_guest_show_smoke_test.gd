@@ -289,10 +289,27 @@ func _run_tests() -> void:
 		and str(active_episode.host_employee_id) == "EXT-TV-HOST-MERCER",
 		"Existing TV domain must own the invited-host episode."
 	)
+	var overlapping_cast: Dictionary = {"LEAD": str(star.id)}
+	var background_ids: Array[String] = []
+	_expect(
+		bool(production.call(
+			"has_staff_conflict", {}, overlapping_cast, background_ids
+		))
+		and not bool(production.call(
+			"has_staff_conflict", {}, {"LEAD": "UNRELATED"}, background_ids
+		)),
+		"Feature films must be blocked only when their cast or crew overlaps an active TV show."
+	)
 	var before_tv: float = float(star.recognition)
 	for minute_index in range(45):
 		production.call("advance_minute", 1, 10, minute_index % 60)
 	var broadcast: Dictionary = production.call("get_last_broadcast")
+	_expect(
+		not bool(production.call(
+			"has_staff_conflict", {}, overlapping_cast, background_ids
+		)),
+		"Film employees must become available again after TV production finishes."
+	)
 	_expect(
 		bool(broadcast.get("success", false))
 		and int(broadcast.get("audience_reach", 0)) > 0
