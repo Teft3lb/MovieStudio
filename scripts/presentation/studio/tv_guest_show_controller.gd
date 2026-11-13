@@ -345,6 +345,25 @@ func get_tv_system() -> RefCounted:
 	return _television
 
 
+func has_staff_conflict(
+	crew: Dictionary,
+	cast: Dictionary,
+	background_ids: Array[String]
+) -> bool:
+	if _television.call("get_active_episode") == null:
+		return false
+	for employee_id_value in crew.values():
+		if is_participant(str(employee_id_value)):
+			return true
+	for employee_id_value in cast.values():
+		if is_participant(str(employee_id_value)):
+			return true
+	for employee_id in background_ids:
+		if is_participant(employee_id):
+			return true
+	return false
+
+
 func is_participant(employee_id: String) -> bool:
 	if _television.call("get_active_episode") == null:
 		return false
