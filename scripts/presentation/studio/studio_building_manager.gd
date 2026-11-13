@@ -1139,6 +1139,13 @@ func set_stage_camera_target(
 	actor.call("set_camera_target", target_position, active)
 
 
+func begin_character_drag(employee_id: String, screen_position: Vector2) -> void:
+	if _character_drag_controller != null:
+		_character_drag_controller.call(
+			"begin", employee_id, screen_position
+		)
+
+
 func _input(event: InputEvent) -> void:
 	if _character_drag_controller != null:
 		if event is InputEventMouseMotion:
@@ -1191,12 +1198,10 @@ func _unhandled_input(event: InputEvent) -> void:
 		and _character_manager.has_method("try_select_employee_from_screen")
 		and bool(_character_manager.call("try_select_employee_from_screen", mouse_event.position))
 	):
-		if _character_drag_controller != null:
-			_character_drag_controller.call(
-				"begin",
-				str(_character_manager.call("get_selected_employee_id")),
-				mouse_event.position
-			)
+		begin_character_drag(
+			str(_character_manager.call("get_selected_employee_id")),
+			mouse_event.position
+		)
 		get_viewport().set_input_as_handled()
 		return
 	var building_actor: Node = _get_building_actor_at(mouse_event.position)
