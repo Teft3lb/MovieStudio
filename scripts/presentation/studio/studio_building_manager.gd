@@ -67,6 +67,12 @@ const BUILDING_INSPECTOR_CONTROLLER_SCRIPT = preload(
 const FILM_DOSSIER_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_film_dossier_controller.gd"
 )
+const TV_GUEST_SHOW_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/studio/tv_guest_show_controller.gd"
+)
+const CELEBRITY_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/characters/celebrity_system.gd"
+)
 
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
@@ -94,6 +100,7 @@ var _film_production_controller: RefCounted
 var _building_placement_controller: RefCounted
 var _building_inspector_controller: RefCounted
 var _film_dossier_controller: RefCounted
+var _tv_guest_show_controller: RefCounted
 var _released_film_records: Array[Dictionary] = []
 
 var _set_logistics_phase: String:
@@ -187,6 +194,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_get_building_placement_controller()
 	_get_building_inspector_controller()
 	_get_film_dossier_controller()
+	_get_tv_guest_show_controller()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
@@ -290,6 +298,27 @@ func _get_film_dossier_controller() -> RefCounted:
 	return _film_dossier_controller
 
 
+func _get_tv_guest_show_controller() -> RefCounted:
+	if _tv_guest_show_controller == null:
+		_tv_guest_show_controller = TV_GUEST_SHOW_CONTROLLER_SCRIPT.new()
+		_tv_guest_show_controller.call(
+			"setup", self, _character_manager, _game_clock
+		)
+	return _tv_guest_show_controller
+
+
+func build_tv_guest_show_detail(
+	layout: VBoxContainer, building_id: String
+) -> void:
+	_get_tv_guest_show_controller().call(
+		"build_controls", layout, building_id
+	)
+
+
+func get_tv_guest_show_controller() -> RefCounted:
+	return _get_tv_guest_show_controller()
+
+
 func get_building_actor_by_id(building_id: String) -> Node3D:
 	return _building_actors.get(building_id) as Node3D
 
@@ -366,6 +395,12 @@ func on_film_editing_started() -> void:
 
 func on_film_dossier_released(payload: Dictionary) -> void:
 	_released_film_records.append(payload.duplicate(true))
+	if _active_film_project != null and is_instance_valid(_character_manager):
+		CELEBRITY_SYSTEM_SCRIPT.new().call(
+			"apply_film_project_release",
+			_active_film_project,
+			_character_manager.call("get_employees")
+		)
 	archive_completed_film_chain()
 	_refresh_building_detail()
 
@@ -1380,6 +1415,10 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		_update_script_writing_ui()
 	_advance_film_production(hour)
 	_advance_film_editing()
+	if _tv_guest_show_controller != null:
+		_tv_guest_show_controller.call(
+			"advance_minute", _day, hour, _minute
+		)
 
 
 func get_latest_script() -> Variant:
