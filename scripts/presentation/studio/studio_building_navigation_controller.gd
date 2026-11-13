@@ -44,23 +44,18 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	if _workplace_points.is_empty():
 		return path
 	var normalized_slot: int = clampi(slot_index, 0, _workplace_points.size() - 1)
-	var building_type_id: String = str(_building_data.building_type_id)
-	var slot_offset: float = _get_entrance_slot_offset(
+	var offset: float = _get_entrance_slot_offset(
 		normalized_slot,
-		building_type_id
+		str(_building_data.building_type_id)
 	)
-	var workplace_point: Vector3 = _workplace_points[normalized_slot]
-	var outside: Vector3 = _entrance_outside + Vector3(slot_offset, 0.0, 0.0)
-	var inside: Vector3 = _entrance_inside + Vector3(slot_offset, 0.0, 0.0)
-	var corridor: Vector3 = Vector3(
-		workplace_point.x,
-		0.0,
-		_entrance_inside.z - 1.0
-	)
+	var outside: Vector3 = _entrance_outside + Vector3(offset, 0.0, 0.0)
+	var inside: Vector3 = _entrance_inside + Vector3(offset, 0.0, 0.0)
+	var target: Vector3 = _workplace_points[normalized_slot]
+	# The old door-to-corridor segment cut straight through set walls.
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
-		corridor,
-		workplace_point,
+		inside,
+		target,
 		_get_interior_navigation_obstacles(normalized_slot),
 		0.5,
 		_get_interior_navigation_bounds()
@@ -69,17 +64,17 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		return path
 	path.append(_interior_root.to_global(outside))
 	path.append(_interior_root.to_global(inside))
-	path.append(_interior_root.to_global(corridor))
-	for point_index in range(1, indoor_path.size()):
-		var world_point: Vector3 = _interior_root.to_global(indoor_path[point_index])
-		if path.back().distance_to(world_point) > 0.2:
-			path.append(world_point)
-	# AStar can return a single point when a workstation is close to the
-	# corridor; do not drop the authored destination or turn a route into
-	# a three-point path that ends short of the actual workstation.
-	var workplace_world_position: Vector3 = _interior_root.to_global(workplace_point)
-	if path.size() == 3 or path.back().distance_to(workplace_world_position) > 0.01:
-		path.append(workplace_world_position)
+	for index in range(1, indoor_path.size()):
+		var point: Vector3 = _interior_root.to_global(indoor_path[index])
+		if path.back().distance_to(point) > 0.05:
+			path.append(point)
+	var work_position: Vector3 = _interior_root.to_global(target)
+	if path.back().distance_to(work_position) > 0.01:
+		path.append(work_position)
+	if path.size() == 2:
+		path.append(work_position)
+	if path.size() == 3:
+		path.insert(2, path[1].lerp(path[2], 0.5))
 	return path
 
 func _get_entrance_slot_offset(
@@ -337,33 +332,11 @@ func get_scene_path(
 	target_world_position: Vector3
 ) -> Array[Vector3]:
 	var result: Array[Vector3] = []
-	if not BUILDING_CATALOG_SCRIPT.is_sound_stage(
-		str(_building_data.building_type_id)
-	):
-		result.append(start_world_position)
-		result.append(target_world_position)
-		return result
 	var local_start: Vector3 = _interior_root.to_local(start_world_position)
 	var local_target: Vector3 = _interior_root.to_local(target_world_position)
 	var local_start_2d: Vector2 = Vector2(local_start.x, local_start.z)
 	var local_target_2d: Vector2 = Vector2(local_target.x, local_target.z)
-	var obstacles: Array[Dictionary] = [
-		{
-			"center": Vector2(-3.9, -2.3),
-			"half_extents": Vector2(0.14, 1.4),
-			"clearance": 0.28,
-		},
-		{
-			"center": Vector2(3.9, -2.3),
-			"half_extents": Vector2(0.14, 1.4),
-			"clearance": 0.28,
-		},
-		{
-			"center": Vector2(0.0, -5.0),
-			"half_extents": Vector2(4.1, 0.12),
-			"clearance": 0.28,
-		},
-	]
+	var obstacles: Array[Dictionary] = _get_interior_navigation_obstacles(-1)
 	if is_instance_valid(_set_dressing_root):
 		for prop_node in _set_dressing_root.get_children():
 			var prop: Node3D = prop_node as Node3D

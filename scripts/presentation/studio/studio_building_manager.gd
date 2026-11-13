@@ -554,7 +554,9 @@ func get_roaming_route(
 			target_position,
 			obstacles,
 			0.75,
-			Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+			_get_outdoor_navigation_bounds(
+			current_position, target_position
+		)
 		)
 		if segment.is_empty():
 			return []
@@ -564,6 +566,22 @@ func get_roaming_route(
 		current_position = target_position
 
 	return result
+
+
+func _get_outdoor_navigation_bounds(
+	start_position: Vector3,
+	target_position: Vector3
+) -> Rect2:
+	var half_size: float = PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE
+	var margin: float = 18.0
+	var min_x: float = maxf(minf(start_position.x, target_position.x) - margin, -half_size)
+	var max_x: float = minf(maxf(start_position.x, target_position.x) + margin, half_size)
+	var min_z: float = maxf(minf(start_position.z, target_position.z) - margin, -half_size)
+	var max_z: float = minf(maxf(start_position.z, target_position.z) + margin, half_size)
+	return Rect2(
+		Vector2(min_x, min_z),
+		Vector2(maxf(max_x - min_x, 1.0), maxf(max_z - min_z, 1.0))
+	)
 
 
 func _get_safe_roaming_waypoint(
@@ -609,8 +627,8 @@ func _get_safe_roaming_waypoint(
 		var best_distance: float = INF
 		for candidate_value in candidates:
 			var bounded_candidate: Vector2 = Vector2(
-				clampf(candidate_value.x, -46.0, 46.0),
-				clampf(candidate_value.y, -46.0, 46.0)
+				clampf(candidate_value.x, -PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE + 2.0, PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE - 2.0),
+				clampf(candidate_value.y, -PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE + 2.0, PLACEMENT_RULES_SCRIPT.DEFAULT_PLOT_HALF_SIZE - 2.0)
 			)
 			if _is_roaming_point_blocked(
 				bounded_candidate,
@@ -722,7 +740,9 @@ func get_workplace_path_from(
 		workplace_path[0],
 		_get_building_navigation_obstacles(),
 		0.75,
-		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
+		_get_outdoor_navigation_bounds(
+		path_start, workplace_path[0]
+	)
 	)
 	if travel_path.is_empty():
 		return []
@@ -738,6 +758,39 @@ func get_workplace_path_from(
 		if result.is_empty() or result.back().distance_to(workplace_path[index]) > 0.2:
 			result.append(workplace_path[index])
 	return result
+
+
+func get_employee_recovery_path(
+	building_id: String,
+	slot_index: int,
+	start_position: Vector3,
+	leaving: bool = false
+) -> Array[Vector3]:
+	var building_actor: Node3D = get_building_actor_by_id(building_id)
+	var building: Variant = _find_building(building_id)
+	if not is_instance_valid(building_actor) or building == null:
+		return []
+	var local_position: Vector3 = building_actor.to_local(start_position)
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
+		str(building.building_type_id),
+		0.0,
+		int(building.stage_size_tier)
+	)
+	var inside: bool = (
+		absf(local_position.x) < footprint.x * 0.5 - 0.15
+		and absf(local_position.z) < footprint.y * 0.5 - 0.15
+	)
+	if inside:
+		if leaving:
+			return get_exit_path_from(building_id, start_position, slot_index)
+		return get_scene_path(
+			building_id,
+			start_position,
+			get_workplace_position(building_id, slot_index)
+		)
+	if leaving:
+		return []
+	return get_workplace_path_from(building_id, slot_index, start_position)
 
 
 func get_facility_path_from(
