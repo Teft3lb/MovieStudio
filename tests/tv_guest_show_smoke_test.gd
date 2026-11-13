@@ -98,6 +98,17 @@ class FakeStudio extends Node3D:
 			target,
 		]
 
+	func get_scene_recovery_path(
+		_source_building_id: String,
+		start_position: Vector3,
+		target_position: Vector3
+	) -> Array[Vector3]:
+		return [
+			start_position,
+			Vector3(0.0, 0.0, 8.0),
+			target_position,
+		]
+
 	func get_workplace_position(
 		building_id: String, slot_index: int
 	) -> Vector3:
@@ -111,6 +122,9 @@ class FakeStudio extends Node3D:
 		return [start_position, Vector3(0.0, 0.0, 8.0)]
 
 	func is_employee_in_active_production(employee_id: String) -> bool:
+		return busy_ids.has(employee_id)
+
+	func is_employee_in_active_film_production(employee_id: String) -> bool:
 		return busy_ids.has(employee_id)
 
 	func is_employee_in_active_editing(_employee_id: String) -> bool:
