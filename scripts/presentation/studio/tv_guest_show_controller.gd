@@ -315,6 +315,12 @@ func _is_busy(employee_id: String) -> bool:
 	return (
 		feature_film_busy
 		or bool(_manager.call("is_employee_in_active_editing", employee_id))
+		or (
+			_manager.has_method("is_employee_in_publicity_event")
+			and bool(_manager.call(
+				"is_employee_in_publicity_event", employee_id
+			))
+		)
 	)
 
 
