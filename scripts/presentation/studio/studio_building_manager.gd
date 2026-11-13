@@ -1823,8 +1823,22 @@ func _get_stage_size_requirement_message() -> String:
 func _can_start_film_production() -> bool:
 	return bool(_get_film_production_controller().call("_can_start_film_production"))
 
+func is_employee_in_active_film_production(employee_id: String) -> bool:
+	return bool(_get_film_production_controller().call(
+		"is_employee_in_active_production", employee_id
+	))
+
+
 func is_employee_in_active_production(employee_id: String) -> bool:
-	return bool(_get_film_production_controller().call("is_employee_in_active_production", employee_id))
+	if is_employee_in_active_film_production(employee_id):
+		return true
+	return (
+		_tv_guest_show_controller != null
+		and bool(_tv_guest_show_controller.call(
+			"is_participant", employee_id
+		))
+	)
+
 
 func is_employee_in_active_editing(employee_id: String) -> bool:
 	return bool(
