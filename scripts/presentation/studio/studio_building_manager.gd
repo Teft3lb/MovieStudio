@@ -554,6 +554,23 @@ func get_roaming_route(
 	return result
 
 
+func get_roaming_loop_start_index(
+	computed_route: Array[Vector3],
+	base_route: Array[Vector3]
+) -> int:
+	# The prefix may contain the actor's indoor starting position, a complete
+	# exit path and a one-time outdoor approach. Never loop back to that prefix.
+	if computed_route.size() < 2 or base_route.is_empty():
+		return 0
+	var first_waypoint: Vector3 = _get_safe_roaming_waypoint(
+		base_route.front(), _get_building_navigation_obstacles()
+	)
+	for index in range(computed_route.size()):
+		if computed_route[index].distance_to(first_waypoint) <= 0.2:
+			return index
+	return 0
+
+
 func _get_outdoor_navigation_bounds(
 	start_position: Vector3,
 	target_position: Vector3
