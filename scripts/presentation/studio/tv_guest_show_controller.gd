@@ -216,14 +216,15 @@ func advance_minute(day: int, _hour: int, _minute: int) -> void:
 	var episode: Variant = _television.call("get_active_episode")
 	if episode == null:
 		return
-	if (
+	var performers_needed: bool = str(episode.current_phase) != "postproduction"
+	if performers_needed and (
 		not is_instance_valid(_external_host)
 		or not is_instance_valid(_guest_actor)
 	):
 		_feedback = "Телешоу остановлено: один из участников отсутствует."
 		_refresh_ui()
 		return
-	if bool(_clock.is_manual_fast_forward):
+	if bool(_clock.is_manual_fast_forward) and performers_needed:
 		_external_host.call("snap_to_mark")
 		_guest_actor.call("snap_to_scene_mark")
 	var crew_ready: bool = true
@@ -237,18 +238,23 @@ func advance_minute(day: int, _hour: int, _minute: int) -> void:
 		)):
 			_characters.call("dispatch_employee_to_workplace", employee_id)
 			crew_ready = false
-	var talent_ready: bool = (
-		bool(_external_host.call("has_arrived"))
-		and bool(_guest_actor.call("is_at_scene_mark"))
-		and not _is_busy(_active_guest_id)
-	)
+	var talent_ready: bool = not performers_needed
+	if performers_needed:
+		talent_ready = (
+			bool(_external_host.call("has_arrived"))
+			and bool(_guest_actor.call("is_at_scene_mark"))
+			and not _is_busy(_active_guest_id)
+		)
 	var snapshot: Dictionary = _build_performance_snapshot()
 	var result: Dictionary = _television.call(
 		"advance_minute", crew_ready, talent_ready, snapshot
 	)
-	if str(episode.current_phase) == "shooting":
+	if str(episode.current_phase) == "shooting" and is_instance_valid(_guest_actor):
 		_guest_actor.call(
-			"set_production_action", "speaking"
+			"start_scene_performance",
+			_guest_actor.get("_scene_target_position"),
+			_manager.call("get_workplace_position", _active_stage_id, 0),
+			"speaking"
 		)
 	if str(episode.current_phase) == "postproduction" and not _guest_released:
 		_release_guests()
