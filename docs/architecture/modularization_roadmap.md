@@ -274,14 +274,13 @@ Existing Domain systems for needs, aging, work, skill progression and employment
 
 ### 4. Tests
 
-Split the large interior smoke test by feature boundary once the corresponding production modules are stable:
-- building geometry and authored dimensions;
-- workplace and facility navigation;
-- sleeping pose / bed alignment;
-- production stage marks and camera blocking;
-- set logistics and warehouse transfers.
+The former 1,122-line interior smoke test is now a small top-level runner backed by four focused suites:
+- `studio_building_geometry_test_suite.gd`: office, TV Studio and warehouse architecture;
+- `studio_sound_stage_test_suite.gd`: stage tiers, production blocking and cross-building exit integration;
+- `studio_building_facility_test_suite.gd`: cafeteria, lounge, fitness, staff housing, rotated sleeping alignment and facility poses;
+- `studio_building_employee_test_suite.gd`: live-scene exits, employee workplace entry/exit and profession work animations.
 
-Keep a small top-level runner that invokes the focused suites.
+All suites inherit a shared RefCounted test base that forwards assertions to the single SceneTree runner. This preserves one test process and one aggregated exit code while keeping feature-specific test code independently navigable.
 
 ## Refactoring rules
 
@@ -298,8 +297,8 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Split the large interior smoke test by feature boundary, beginning with navigation and sleeping/facility pose cases.
+2. Run the focused interior suites alongside the navigation, marker and set-prop builder smoke tests; then split CharacterManager presentation from employee simulation coordination.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 
-The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider. The next step is splitting the large interior smoke test by feature boundary.
+The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider. The interior smoke test is now split into geometry, sound-stage, facility and employee integration suites. The next structural boundary is CharacterManager presentation versus employee simulation coordination.

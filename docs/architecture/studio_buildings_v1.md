@@ -191,3 +191,8 @@ The initial catalog table above describes the original Buildings v1 set. The cur
 All three models have identity interior transforms. Their wall positions, roof geometry, set dimensions, camera/light placement, navigation bounds and crew marks are authored independently for each tier. The production selector chooses the smallest operational stage that satisfies the current script and owned set-piece requirements.
 
 The Fitness Center provides four training stations; the Studio Lounge provides six social places. See staff_facilities_v1.md for schedules and simulation effects.
+
+
+## Building test suites
+
+The top-level `tests/studio_building_interior_smoke_test.gd` remains the single SceneTree entry point. It runs the geometry, sound-stage, facility and employee integration suites through a shared RefCounted test base, preserving one aggregated assertion list and process exit code. Dedicated navigation, marker-provider and set-prop visual-builder smoke tests cover their extracted components directly.
