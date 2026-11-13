@@ -672,91 +672,43 @@ func _are_set_logistics_workers_ready() -> bool:
 
 
 func _build_route_stage_to_warehouse(
-	worker_id: String,
+	_worker_id: String,
 	stage_id: String,
 	warehouse_id: String,
 	prop_index: int,
 	start_position: Vector3
 ) -> Array[Vector3]:
-	var stage_workplace_path: Array[Vector3] = _character_manager.call(
-		"get_employee_workplace_path",
-		worker_id
+	# Reuse the common indoor -> door -> outdoor -> indoor route. Previously
+	# get_scene_path() was asked to find a path from inside the sound stage
+	# directly to an *outside* waypoint, making workers walk into a wall.
+	var storage_mark: Vector3 = _manager.call(
+		"get_storage_mark", warehouse_id, prop_index
 	)
-	var warehouse_path: Array[Vector3] = _manager.call("get_workplace_path", warehouse_id, posmod(prop_index, 8))
-	if stage_workplace_path.is_empty() or warehouse_path.is_empty():
-		return []
-	var stage_exit_path: Array[Vector3] = _manager.call(
-		"get_scene_path",
-		stage_id,
-		start_position,
-		stage_workplace_path[0]
+	return _manager.call(
+		"get_scene_recovery_path", stage_id, start_position, storage_mark
 	)
-	var outdoor_path: Array[Vector3] = _navigation_system.call(
-		"build_path",
-		stage_workplace_path[0],
-		warehouse_path[0],
-		_manager.call("get_building_navigation_obstacles"),
-		0.75,
-		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
-	)
-	if stage_exit_path.is_empty() or outdoor_path.is_empty():
-		return []
-	var result: Array[Vector3] = []
-	_append_logistics_path(result, stage_exit_path)
-	_append_logistics_path(result, outdoor_path)
-	_append_logistics_path(result, warehouse_path)
-	return result
-
 
 
 func _build_route_warehouse_to_stage(
 	worker_id: String,
 	stage_id: String,
-	warehouse_id: String,
-	prop_index: int,
+	_warehouse_id: String,
+	_prop_index: int,
 	target_position: Vector3
 ) -> Array[Vector3]:
-	var stage_workplace_path: Array[Vector3] = _character_manager.call(
-		"get_employee_workplace_path",
-		worker_id
-	)
-	var warehouse_path: Array[Vector3] = _manager.call("get_workplace_path", warehouse_id, posmod(prop_index, 8))
-	if stage_workplace_path.is_empty() or warehouse_path.is_empty():
+	var actor: Node3D = _character_manager.call(
+		"get_employee_actor", worker_id
+	) as Node3D
+	if not is_instance_valid(actor):
 		return []
-	var warehouse_exit_path: Array[Vector3] = warehouse_path.duplicate()
-	warehouse_exit_path.reverse()
-	var outdoor_path: Array[Vector3] = _navigation_system.call(
-		"build_path",
-		warehouse_path[0],
-		stage_workplace_path[0],
-		_manager.call("get_building_navigation_obstacles"),
-		0.75,
-		Rect2(Vector2(-47.0, -47.0), Vector2(94.0, 94.0))
-	)
-	var stage_path: Array[Vector3] = _manager.call(
-		"get_scene_path",
+	# Start from the worker's real warehouse position, not a reversed saved
+	# route; any partially completed transport is handled without teleporting.
+	return _manager.call(
+		"get_scene_recovery_path",
 		stage_id,
-		stage_workplace_path[0],
+		actor.global_position,
 		target_position
 	)
-	if outdoor_path.is_empty() or stage_path.is_empty():
-		return []
-	var result: Array[Vector3] = []
-	_append_logistics_path(result, warehouse_exit_path)
-	_append_logistics_path(result, outdoor_path)
-	_append_logistics_path(result, stage_path)
-	return result
-
-
-
-func _append_logistics_path(
-	target: Array[Vector3],
-	source: Array[Vector3]
-) -> void:
-	for point in source:
-		if target.is_empty() or target.back().distance_to(point) > 0.2:
-			target.append(point)
-
 
 
 func _reset_set_logistics() -> void:
