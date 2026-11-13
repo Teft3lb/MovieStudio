@@ -76,6 +76,9 @@ const CELEBRITY_SYSTEM_SCRIPT = preload(
 const PUBLICITY_EVENT_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_publicity_event_controller.gd"
 )
+const CHARACTER_DRAG_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_drag_drop_controller.gd"
+)
 
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
@@ -105,6 +108,7 @@ var _building_inspector_controller: RefCounted
 var _film_dossier_controller: RefCounted
 var _tv_guest_show_controller: RefCounted
 var _publicity_event_controller: RefCounted
+var _character_drag_controller: RefCounted
 var _released_film_records: Array[Dictionary] = []
 
 var _set_logistics_phase: String:
@@ -247,6 +251,8 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 
 	_spawn_initial_buildings()
 	_build_ui()
+	_character_drag_controller = CHARACTER_DRAG_CONTROLLER_SCRIPT.new()
+	_character_drag_controller.call("setup", self, _character_manager)
 	if studio_hud != null:
 		studio_hud.call(
 			"set_developer_funds_status",
@@ -351,6 +357,31 @@ func get_publicity_event_status() -> String:
 	if _publicity_event_controller == null:
 		return ""
 	return str(_publicity_event_controller.call("get_status"))
+
+
+func is_employee_in_manual_activity(employee_id: String) -> bool:
+	return (
+		is_instance_valid(_character_manager)
+		and _character_manager.has_method("is_employee_on_manual_activity")
+		and bool(_character_manager.call(
+			"is_employee_on_manual_activity", employee_id
+		))
+	)
+
+
+func has_manual_staff_conflict(
+	crew: Dictionary, cast: Dictionary, background_ids: Array[String]
+) -> bool:
+	for employee_id_value in crew.values():
+		if is_employee_in_manual_activity(str(employee_id_value)):
+			return true
+	for employee_id_value in cast.values():
+		if is_employee_in_manual_activity(str(employee_id_value)):
+			return true
+	for employee_id in background_ids:
+		if is_employee_in_manual_activity(employee_id):
+			return true
+	return false
 
 
 func has_publicity_staff_conflict(
@@ -526,6 +557,8 @@ func _on_employee_roster_changed() -> void:
 
 
 func _process(delta: float) -> void:
+	if _character_drag_controller != null:
+		_character_drag_controller.call("advance", delta)
 	_get_building_placement_controller().call("process")
 	if (
 		_film_dossier_controller != null
@@ -1107,6 +1140,24 @@ func set_stage_camera_target(
 
 
 func _input(event: InputEvent) -> void:
+	if _character_drag_controller != null:
+		if event is InputEventMouseMotion:
+			if bool(_character_drag_controller.call(
+				"on_motion", (event as InputEventMouseMotion).position
+			)):
+				get_viewport().set_input_as_handled()
+				return
+		elif event is InputEventMouseButton:
+			var drop_button := event as InputEventMouseButton
+			if (
+				drop_button.button_index == MOUSE_BUTTON_LEFT
+				and not drop_button.pressed
+				and bool(_character_drag_controller.call(
+					"on_release", drop_button.position
+				))
+			):
+				get_viewport().set_input_as_handled()
+				return
 	# Handle mouse release even when the cursor finishes over HUD controls.
 	if (
 		_film_dossier_controller == null
@@ -1140,6 +1191,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		and _character_manager.has_method("try_select_employee_from_screen")
 		and bool(_character_manager.call("try_select_employee_from_screen", mouse_event.position))
 	):
+		if _character_drag_controller != null:
+			_character_drag_controller.call(
+				"begin",
+				str(_character_manager.call("get_selected_employee_id")),
+				mouse_event.position
+			)
 		get_viewport().set_input_as_handled()
 		return
 	var building_actor: Node = _get_building_actor_at(mouse_event.position)
