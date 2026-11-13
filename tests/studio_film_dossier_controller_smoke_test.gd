@@ -87,6 +87,9 @@ func _run_tests() -> void:
 	var actor: Node3D = visuals.get(screenplay.id) as Node3D
 	_expect(
 		actor.get_node_or_null("DocumentVisual/ScreenplayCover") != null
+		and actor.get_node_or_null("DocumentPickupBeacon") != null
+		and actor.get_node_or_null("PickupInstruction") != null
+		and actor.get_node_or_null("DocumentBeaconLight") != null
 		and doc.phase == DOSSIER_SCRIPT.AT_WRITERS,
 		"The 3D screenplay must be visible outside the writers' building."
 	)

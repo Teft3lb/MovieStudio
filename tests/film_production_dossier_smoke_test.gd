@@ -69,6 +69,8 @@ func _run_tests() -> void:
 	_expect(
 		actor.get_node_or_null("DossierHitbox/CollisionShape3D") != null
 		and actor.get_node_or_null("DocumentVisual/ScreenplayCover") != null
+		and actor.get_node_or_null("DocumentPickupBeacon") != null
+		and actor.get_node_or_null("DocumentBeaconLight") != null
 		and actor.is_in_group("film_dossier"),
 		"World screenplay must have visible 3D geometry and an independently clickable hitbox."
 	)
