@@ -454,7 +454,7 @@ func _process_scene_performance(simulation_delta: float) -> void:
 				_set_walking(false)
 				_advance_visual(simulation_delta)
 				return
-	_blocked_movement_seconds = 0.0
+		_blocked_movement_seconds = 0.0
 		_set_walking(true)
 		_advance_visual(simulation_delta)
 		return
