@@ -19,6 +19,9 @@ const SET_PROP_VISUAL_BUILDER_SCRIPT = preload(
 const VISUAL_FACTORY_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_visual_factory.gd"
 )
+const INTERIOR_LIGHTING_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_interior_lighting_controller.gd"
+)
 const SOUND_STAGE_VISUAL_BUILDER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_sound_stage_visual_builder.gd"
 )
@@ -56,6 +59,7 @@ var _navigation_controller: RefCounted
 var _marker_provider: RefCounted
 var _set_prop_visual_builder: RefCounted
 var _visual_factory: RefCounted
+var _interior_lighting: RefCounted
 
 func setup(data: Variant) -> void:
 	building_data = data
@@ -68,6 +72,22 @@ func setup(data: Variant) -> void:
 	rotation_degrees.y = float(data.rotation_degrees)
 	add_to_group("studio_building")
 	_build_visual()
+	_interior_lighting = INTERIOR_LIGHTING_SCRIPT.new()
+	_interior_lighting.call(
+		"setup",
+		self,
+		_interior_root,
+		BUILDING_CATALOG_SCRIPT.get_footprint(
+			str(building_data.building_type_id),
+			0.0,
+			int(building_data.stage_size_tier)
+		),
+		BUILDING_CATALOG_SCRIPT.get_building_height(
+			str(building_data.building_type_id),
+			int(building_data.stage_size_tier)
+		),
+		str(building_data.building_type_id)
+	)
 	_navigation_controller = BUILDING_NAVIGATION_CONTROLLER_SCRIPT.new()
 	_navigation_controller.call(
 		"setup",
@@ -91,8 +111,17 @@ func setup(data: Variant) -> void:
 	_create_selection_marker()
 	_create_name_tag()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_update_cutaway()
+	if _interior_lighting != null:
+		_interior_lighting.call("advance", delta)
+
+
+func is_interior_occupied() -> bool:
+	return (
+		_interior_lighting != null
+		and bool(_interior_lighting.call("is_occupied"))
+	)
 
 func get_building_id() -> String:
 	if building_data == null:
