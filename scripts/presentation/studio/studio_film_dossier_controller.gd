@@ -194,6 +194,23 @@ func release_film(script_id: String) -> bool:
 	_last_message = "Фильм «%s» выпущен! Он добавлен в архив студии." % str(
 		dossier.title
 	)
+	# Keep the latest master on the release platform, but retire older
+	# released mesh instances so the studio does not accumulate 3D props.
+	for previous_script_id in _dossier_order:
+		if previous_script_id == script_id:
+			continue
+		var previous_dossier: Variant = _dossiers.get(previous_script_id)
+		if (
+			previous_dossier == null
+			or str(previous_dossier.phase) != DOSSIER_SCRIPT.RELEASED
+		):
+			continue
+		var previous_visual: Node3D = (
+			_visuals.get(previous_script_id) as Node3D
+		)
+		if is_instance_valid(previous_visual):
+			previous_visual.queue_free()
+		_visuals.erase(previous_script_id)
 	_place_visual(script_id)
 	_refresh_visual(script_id)
 	if _manager.has_method("on_film_dossier_released"):
@@ -314,7 +331,14 @@ func _place_visual(script_id: String) -> void:
 		0.0,
 		int(building.stage_size_tier)
 	)
-	var local_dock := Vector3(0.0, 0.05, footprint.y * 0.5 + 1.85)
+	var index: int = _dossier_order.find(script_id)
+	var column: int = posmod(index, 4)
+	var row_index: int = maxi(index, 0) / 4
+	var local_dock := Vector3(
+		(float(column) - 1.5) * 1.65,
+		0.05,
+		footprint.y * 0.5 + 1.85 + float(row_index) * 1.55
+	)
 	var building_actor: Node3D = _manager.call(
 		"get_building_actor_by_id",
 		str(building.id)

@@ -1768,7 +1768,13 @@ func _update_film_production_ui() -> void:
 				if editing_completed
 				else "ОЖИДАЕТСЯ МОНТАЖ"
 			)
-			_film_production_start_button.disabled = not _can_start_film_production()
+			var next_film_blocker: String = _get_film_production_blocker()
+			_film_production_start_button.disabled = not next_film_blocker.is_empty()
+			_film_production_start_button.tooltip_text = next_film_blocker
+			if editing_completed and not next_film_blocker.is_empty():
+				_film_production_detail_label.text += (
+					"\n\nСледующий фильм: %s" % next_film_blocker
+				)
 
 func is_employee_in_active_production(employee_id: String) -> bool:
 	if (
