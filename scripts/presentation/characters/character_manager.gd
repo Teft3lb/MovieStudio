@@ -21,6 +21,9 @@ const CHARACTER_GENERATOR_SCRIPT = preload(
 const CHARACTER_ACTOR_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_actor.gd"
 )
+const MANUAL_ACTIVITY_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_manual_activity_controller.gd"
+)
 const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_needs_system.gd"
 )
@@ -84,6 +87,7 @@ var _employee_actors: Dictionary = {}
 var _employee_roster_view: RefCounted
 var _employee_skill_progress_view: RefCounted
 var _employee_profile_view: RefCounted
+var _manual_activity_controller: RefCounted
 var _developer_employee_panel: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
@@ -118,6 +122,10 @@ func _ready() -> void:
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
 	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
+	_manual_activity_controller = MANUAL_ACTIVITY_CONTROLLER_SCRIPT.new()
+	_manual_activity_controller.call(
+		"setup", self, _game_clock, _skill_progression_system
+	)
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	_game_clock.day_advanced.connect(_on_game_day_advanced)
 	_game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
@@ -271,6 +279,8 @@ func set_employee_production_action(
 
 func initialize_workplaces(building_manager: Node) -> void:
 	_studio_building_manager = building_manager
+	if _manual_activity_controller != null:
+		_manual_activity_controller.call("set_building_manager", building_manager)
 	_workplace_system = EMPLOYEE_WORK_SYSTEM_SCRIPT.new()
 	if (
 		is_instance_valid(_studio_building_manager)
@@ -1062,6 +1072,8 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 	_employee_actors[employee_id] = actor
 
 func _remove_employee_actor(employee_id: String) -> void:
+	if _manual_activity_controller != null:
+		_manual_activity_controller.call("forget_employee", employee_id)
 	_employee_task_overrides.erase(employee_id)
 	_manual_workplace_dispatches.erase(employee_id)
 	_manual_workplace_assignments.erase(employee_id)
@@ -1227,6 +1239,34 @@ func developer_change_employee_stat(
 		_refresh_detail_panel()
 		_refresh_roster()
 	return success
+
+
+func get_manual_activity_preview(
+	employee_id: String, building_id: String
+) -> Dictionary:
+	if _manual_activity_controller == null:
+		return {"success": false, "message": "Ручные поручения недоступны."}
+	return _manual_activity_controller.call(
+		"preview", employee_id, building_id
+	)
+
+
+func request_manual_activity(employee_id: String, building_id: String) -> Dictionary:
+	if _manual_activity_controller == null:
+		return {"success": false, "message": "Ручные поручения недоступны."}
+	var result: Dictionary = _manual_activity_controller.call(
+		"request", employee_id, building_id
+	)
+	_refresh_roster()
+	_refresh_detail_panel()
+	return result
+
+
+func is_employee_on_manual_activity(employee_id: String) -> bool:
+	return (
+		_manual_activity_controller != null
+		and bool(_manual_activity_controller.call("has_order", employee_id))
+	)
 
 
 func _on_publicity_event_requested(employee_id: String, event_id: String) -> void:
@@ -1587,6 +1627,15 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 		)
 
 		if actor == null or not is_instance_valid(actor):
+			continue
+		# A player-issued drag order owns movement until the timed activity
+		# finishes. Natural needs still advance above this check.
+		if (
+			_manual_activity_controller != null
+			and bool(_manual_activity_controller.call(
+				"advance_employee", employee, actor
+			))
+		):
 			continue
 		# Public appearances temporarily own the actor's route and task.
 		# Do not replace the invitation route with a lunch/housing/work call.
