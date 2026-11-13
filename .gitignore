@@ -1,5 +1,10 @@
 # Godot 4 editor/import cache
 .godot/
+*.translation
+
+# Local editor/test output (UID sidecars are intentionally NOT ignored)
+*.log
+*.log.*
 
 # Godot export configuration may contain local paths or credentials
 export.cfg
