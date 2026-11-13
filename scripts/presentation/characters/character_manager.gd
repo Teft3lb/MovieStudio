@@ -996,8 +996,15 @@ func _refresh_roaming_routes() -> void:
 			start_position,
 			base_route
 		)
+		# The first leg may be a one-time trip from inside a building
+		# through its door. After that, only loop the outdoor patrol.
+		var loop_start_index: int = 0
+		if _studio_building_manager.has_method("get_roaming_loop_start_index"):
+			loop_start_index = int(_studio_building_manager.call(
+				"get_roaming_loop_start_index", safe_route, base_route
+			))
 		# Never keep the old unsanitized route when a new building blocks it.
-		actor.call("set_roaming_route", safe_route)
+		actor.call("set_roaming_route", safe_route, loop_start_index)
 
 func refresh_navigation_routes() -> void:
 	_refresh_roaming_routes()
