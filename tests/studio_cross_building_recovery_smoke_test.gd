@@ -204,16 +204,29 @@ func _run_tests() -> void:
 		"_build_route_warehouse_to_stage",
 		"TECHNICIAN", stage.id, warehouse.id, 0, set_mark
 	)
-	var to_stage_uses_exit: bool = false
-	for point in to_stage:
-		if point.distance_to(warehouse_workplace.front()) < 0.1:
-			to_stage_uses_exit = true
+	# Unknown-source-slot recovery exits via the *central* warehouse
+	# doorway. Slot 0 has a small lateral offset in get_workplace_path(0),
+	# so testing against that slot's outside marker gives a false negative.
+	var warehouse_exit_path: Array[Vector3] = warehouse_actor.call(
+		"get_exit_path_from", storage_mark
+	)
+	var warehouse_exit_index: int = -1
+	var stage_entrance_index: int = -1
+	if not warehouse_exit_path.is_empty():
+		var warehouse_exit: Vector3 = warehouse_exit_path.back()
+		for index in range(to_stage.size()):
+			if to_stage[index].distance_to(warehouse_exit) < 0.1:
+				warehouse_exit_index = index
+			if to_stage[index].distance_to(stage_workplace.front()) < 0.1:
+				stage_entrance_index = index
 	_expect(
 		to_stage.size() >= 5
-		and to_stage_uses_exit
+		and not warehouse_exit_path.is_empty()
 		and to_stage.front().distance_to(storage_mark) < 0.1
+		and warehouse_exit_index > 0
+		and stage_entrance_index > warehouse_exit_index
 		and to_stage.back().distance_to(set_mark) < 0.1,
-		"Warehouse returns must first exit through the warehouse door before entering the stage."
+		"Warehouse returns must pass through the physical exit, then the stage entrance."
 	)
 	characters.free()
 	worker.free()
