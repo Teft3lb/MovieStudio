@@ -89,6 +89,19 @@ func choose_crew(employees: Array, guest_id: String, unavailable_ids: Array[Stri
 	return result
 
 
+func allow_guest_director(crew: Dictionary, guest: Variant) -> Dictionary:
+	var assignments: Dictionary = crew.duplicate(true)
+	if (
+		guest != null
+		and str(guest.profession_id) == "director"
+		and str(assignments.get("director", "")).is_empty()
+	):
+		# A director guest may also coordinate the interview when the
+		# studio does not have a second director. This does not add staff.
+		assignments["director"] = str(guest.id)
+	return assignments
+
+
 func has_complete_crew(crew_assignments: Dictionary) -> bool:
 	for role_id in ["director", "camera_operator", "technician"]:
 		if str(crew_assignments.get(role_id, "")).is_empty():
