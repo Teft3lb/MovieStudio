@@ -1744,6 +1744,10 @@ func get_active_film_project() -> Variant:
 	return _get_film_production_controller().call("get_active_project")
 
 
+func get_active_film_script() -> Variant:
+	return _get_film_production_controller().call("get_active_script")
+
+
 func get_active_film_editing_project() -> Variant:
 	return _get_film_editing_controller().call("get_active_project")
 
