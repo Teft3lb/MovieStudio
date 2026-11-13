@@ -75,6 +75,15 @@ class StubFacilityManager extends Node:
 		building_id: String,
 		_slot_index: int
 	) -> Array[Vector3]:
+		# Production dispatch requires the destination building's entrance
+		# and interior route, separately from get_workplace_path_from().
+		# The mock must model a valid stage, not only facility buildings.
+		if building_id == "BLD-WORKPLACE":
+			return [
+				Vector3(0.0, 0.0, -2.0),
+				Vector3(0.0, 0.0, 0.0),
+				Vector3(2.0, 0.0, 0.0),
+			]
 		if building_id in [
 			"BLD-HOUSING",
 			"BLD-STAR-HOUSING",
