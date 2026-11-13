@@ -24,20 +24,36 @@ func _init() -> void:
 func build_assignments(
 	employees: Array,
 	buildings: Array,
-	preferred_stage_building_id: String = ""
+	preferred_stage_building_id: String = "",
+	manual_building_ids: Dictionary = {}
 ) -> Dictionary:
 	var assignments: Dictionary = {}
 	var occupied_slots: Dictionary = {}
+	# Player assignments take precedence, so refreshing or hiring staff
+	# cannot silently move a manually transferred employee elsewhere.
 	for employee in employees:
 		var employee_id: String = str(employee.id)
-		var profession_id: String = str(employee.profession_id)
-		var preferred_types: Array[String] = get_preferred_building_types(profession_id)
-		if preferred_types.is_empty():
+		var target_building_id: String = str(manual_building_ids.get(employee_id, ""))
+		if target_building_id.is_empty():
 			continue
+		for building in buildings:
+			if str(building.id) != target_building_id:
+				continue
+			_assign_employee_to_building(
+				assignments, occupied_slots, employee, building
+			)
+			break
+	for employee in employees:
+		var employee_id: String = str(employee.id)
+		if assignments.has(employee_id):
+			continue
+		var profession_id: String = str(employee.profession_id)
+		var preferred_types: Array[String] = get_preferred_building_types(
+			profession_id
+		)
 		for preferred_type in preferred_types:
 			for building in buildings:
-				var building_type_id: String = str(building.building_type_id)
-				if building_type_id != preferred_type:
+				if str(building.building_type_id) != preferred_type:
 					continue
 				if (
 					preferred_type == "sound_stage"
@@ -45,33 +61,45 @@ func build_assignments(
 					and str(building.id) != preferred_stage_building_id
 				):
 					continue
-				if not bool(building.is_operational):
-					continue
-				if not BUILDING_CATALOG_SCRIPT.accepts_profession(
-					building_type_id,
-					profession_id
+				if _assign_employee_to_building(
+					assignments, occupied_slots, employee, building
 				):
-					continue
-				var building_id: String = str(building.id)
-				var slot_index: int = int(occupied_slots.get(building_id, 0))
-				var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(
-					building
-				)
-				if slot_index >= capacity:
-					continue
-				assignments[employee_id] = {
-					"building_id": building_id,
-					"building_type_id": building_type_id,
-					"slot_index": slot_index,
-					"task_title": PROFESSION_CATALOG_SCRIPT.get_default_task(profession_id),
-					"primary_skill_id": PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(profession_id),
-				}
-				occupied_slots[building_id] = slot_index + 1
-				break
+					break
 			if assignments.has(employee_id):
 				break
 	return assignments
 
+
+func _assign_employee_to_building(
+	assignments: Dictionary,
+	occupied_slots: Dictionary,
+	employee: Variant,
+	building: Variant
+) -> bool:
+	if not bool(building.is_operational):
+		return false
+	var building_type_id: String = str(building.building_type_id)
+	var profession_id: String = str(employee.profession_id)
+	if not BUILDING_CATALOG_SCRIPT.accepts_profession(
+		building_type_id, profession_id
+	):
+		return false
+	var building_id: String = str(building.id)
+	var slot_index: int = int(occupied_slots.get(building_id, 0))
+	var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(
+		building
+	)
+	if slot_index >= capacity:
+		return false
+	assignments[str(employee.id)] = {
+		"building_id": building_id,
+		"building_type_id": building_type_id,
+		"slot_index": slot_index,
+		"task_title": PROFESSION_CATALOG_SCRIPT.get_default_task(profession_id),
+		"primary_skill_id": PROFESSION_CATALOG_SCRIPT.get_primary_skill_id(profession_id),
+	}
+	occupied_slots[building_id] = slot_index + 1
+	return true
 
 func get_preferred_building_types(profession_id: String) -> Array[String]:
 	match profession_id:

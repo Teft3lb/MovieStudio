@@ -72,6 +72,7 @@ var _studio_building_manager: Node
 var _workplace_assignments: Dictionary = {}
 var _employee_task_overrides: Dictionary = {}
 var _manual_workplace_dispatches: Dictionary = {}
+var _manual_workplace_assignments: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
 var _employee_roster_view: RefCounted
@@ -103,7 +104,8 @@ func _ready() -> void:
 		Callable(self, "_on_hire_button_pressed"),
 		Callable(self, "_on_dismiss_button_pressed"),
 		Callable(self, "_confirm_dismiss_employee"),
-		Callable(self, "_on_workplace_dispatch_button_pressed")
+		Callable(self, "_on_workplace_dispatch_button_pressed"),
+		Callable(self, "_on_workplace_assignment_selected")
 	)
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
@@ -756,6 +758,107 @@ func release_employee_from_workplace_manually(employee_id: String) -> void:
 		_leave_actor_from_workplace(actor)
 	clear_employee_task(employee_id)
 
+func set_employee_workplace_assignment(
+	employee_id: String,
+	building_id: String
+) -> bool:
+	if _workplace_system == null or not is_instance_valid(_studio_building_manager):
+		return false
+	if _is_active_production_participant(employee_id) or _is_active_editing_participant(employee_id):
+		return false
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return false
+	var previous: String = str(_manual_workplace_assignments.get(employee_id, ""))
+	if building_id.is_empty():
+		_manual_workplace_assignments.erase(employee_id)
+	else:
+		_manual_workplace_assignments[employee_id] = building_id
+	var buildings: Array = _studio_building_manager.call("get_buildings")
+	var preferred_stage: String = ""
+	if _studio_building_manager.has_method("get_preferred_stage_building_id"):
+		preferred_stage = str(
+			_studio_building_manager.call("get_preferred_stage_building_id")
+		)
+	var candidate_assignments: Dictionary = _workplace_system.call(
+		"build_assignments",
+		employees,
+		buildings,
+		preferred_stage,
+		_manual_workplace_assignments
+	)
+	var proposed: Dictionary = candidate_assignments.get(employee_id, {})
+	if not building_id.is_empty() and str(proposed.get("building_id", "")) != building_id:
+		if previous.is_empty():
+			_manual_workplace_assignments.erase(employee_id)
+		else:
+			_manual_workplace_assignments[employee_id] = previous
+		return false
+	_manual_workplace_dispatches.erase(employee_id)
+	_refresh_workplace_assignments()
+	return true
+
+
+func _on_workplace_assignment_selected(building_id: String) -> void:
+	if _selected_employee_id.is_empty():
+		return
+	if not set_employee_workplace_assignment(_selected_employee_id, building_id):
+		_show_employee_message(
+			"Нельзя перевести сотрудника: проверь профессию, свободные места "
+			+ "или участие в текущем производстве."
+		)
+	_refresh_detail_panel()
+
+
+func _refresh_employee_workplace_options(employee_id: String) -> void:
+	if _employee_profile_view == null or not is_instance_valid(_studio_building_manager):
+		return
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return
+	var selected_building_id: String = str(
+		_manual_workplace_assignments.get(employee_id, "")
+	)
+	var actual_assignment: Dictionary = _workplace_assignments.get(
+		employee_id, {}
+	)
+	var active: bool = (
+		_is_active_production_participant(employee_id)
+		or _is_active_editing_participant(employee_id)
+	)
+	var choices: Array[Dictionary] = []
+	for building in _studio_building_manager.call("get_buildings"):
+		if not bool(building.is_operational):
+			continue
+		if not BUILDING_CATALOG_SCRIPT.accepts_profession(
+			str(building.building_type_id), str(employee.profession_id)
+		):
+			continue
+		var assigned_here: int = get_employees_assigned_to_building(
+			str(building.id)
+		).size()
+		var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(
+			building
+		)
+		var is_current: bool = (
+			str(actual_assignment.get("building_id", "")) == str(building.id)
+		)
+		choices.append({
+			"id": str(building.id),
+			"title": "%s (%d/%d)" % [
+				str(building.display_name), assigned_here, capacity
+			],
+			"disabled": active or (assigned_here >= capacity and not is_current),
+		})
+	_employee_profile_view.call(
+		"set_workplace_assignment_options",
+		choices,
+		selected_building_id,
+		str(actual_assignment.get("building_id", "")),
+		not active
+	)
+
+
 func refresh_workplace_assignments() -> void:
 	_refresh_workplace_assignments()
 
@@ -775,7 +878,8 @@ func _refresh_workplace_assignments() -> void:
 		"build_assignments",
 		employees,
 		buildings,
-		preferred_stage_building_id
+		preferred_stage_building_id,
+		_manual_workplace_assignments
 	)
 	for employee in employees:
 		var employee_id: String = str(employee.id)
@@ -2100,6 +2204,7 @@ func _refresh_detail_panel() -> void:
 	_refresh_skill_progress_bars(employee, skills)
 	if not is_market_candidate:
 		_refresh_workplace_dispatch_button(str(employee.id))
+		_refresh_employee_workplace_options(str(employee.id))
 
 func _clear_skill_progress_bars() -> void:
 	_ensure_skill_progress_view()

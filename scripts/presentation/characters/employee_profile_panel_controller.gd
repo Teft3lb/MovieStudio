@@ -7,6 +7,7 @@ var _on_hire_requested: Callable
 var _on_dismiss_requested: Callable
 var _on_dismiss_confirmed: Callable
 var _on_workplace_dispatch_requested: Callable
+var _on_workplace_assignment_requested: Callable
 
 var _detail_name_label: Label
 var _detail_profession_label: Label
@@ -21,6 +22,8 @@ var _hire_button: Button
 var _dismiss_button: Button
 var _dismiss_dialog: ConfirmationDialog
 var _workplace_dispatch_button: Button
+var _workplace_assignment_label: Label
+var _workplace_assignment_option: OptionButton
 var _energy_label: Label
 var _energy_bar: ProgressBar
 var _morale_label: Label
@@ -35,13 +38,15 @@ func setup(
 	on_hire_requested: Callable,
 	on_dismiss_requested: Callable,
 	on_dismiss_confirmed: Callable,
-	on_workplace_dispatch_requested: Callable
+	on_workplace_dispatch_requested: Callable,
+	on_workplace_assignment_requested: Callable = Callable()
 ) -> void:
 	_on_contract_type_selected = on_contract_type_selected
 	_on_hire_requested = on_hire_requested
 	_on_dismiss_requested = on_dismiss_requested
 	_on_dismiss_confirmed = on_dismiss_confirmed
 	_on_workplace_dispatch_requested = on_workplace_dispatch_requested
+	_on_workplace_assignment_requested = on_workplace_assignment_requested
 
 
 func build(studio_hud: Node) -> void:
@@ -113,6 +118,19 @@ func build(studio_hud: Node) -> void:
 			_on_workplace_dispatch_requested
 		)
 	layout.add_child(_workplace_dispatch_button)
+
+	_workplace_assignment_label = Label.new()
+	_workplace_assignment_label.text = "НАЗНАЧИТЬ В ЗДАНИЕ"
+	_workplace_assignment_label.visible = false
+	layout.add_child(_workplace_assignment_label)
+	_workplace_assignment_option = OptionButton.new()
+	_workplace_assignment_option.fit_to_longest_item = false
+	_workplace_assignment_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_workplace_assignment_option.visible = false
+	_workplace_assignment_option.item_selected.connect(
+		_on_workplace_assignment_item_selected
+	)
+	layout.add_child(_workplace_assignment_option)
 
 	_detail_schedule_label = Label.new()
 	_detail_schedule_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -264,6 +282,47 @@ func set_workplace_dispatch_state(
 		_workplace_dispatch_button.text = button_text
 
 
+func _on_workplace_assignment_item_selected(index: int) -> void:
+	if not _on_workplace_assignment_requested.is_valid():
+		return
+	if index < 0 or index >= _workplace_assignment_option.get_item_count():
+		return
+	_on_workplace_assignment_requested.call(
+		str(_workplace_assignment_option.get_item_metadata(index))
+	)
+
+
+func set_workplace_assignment_options(
+	choices: Array[Dictionary],
+	manual_building_id: String,
+	assigned_building_id: String,
+	allow_changes: bool
+) -> void:
+	if not is_instance_valid(_workplace_assignment_option):
+		return
+	_workplace_assignment_label.visible = true
+	_workplace_assignment_option.visible = true
+	_workplace_assignment_option.disabled = not allow_changes
+	_workplace_assignment_option.clear()
+	var automatic_label: String = "Автоматически"
+	if not assigned_building_id.is_empty():
+		automatic_label += " (текущее: %s)" % assigned_building_id
+	_workplace_assignment_option.add_item(automatic_label)
+	_workplace_assignment_option.set_item_metadata(0, "")
+	var selected_index: int = 0
+	for choice in choices:
+		var index: int = _workplace_assignment_option.get_item_count()
+		_workplace_assignment_option.add_item(str(choice.get("title", "")))
+		var building_id: String = str(choice.get("id", ""))
+		_workplace_assignment_option.set_item_metadata(index, building_id)
+		_workplace_assignment_option.set_item_disabled(
+			index, bool(choice.get("disabled", false))
+		)
+		if building_id == manual_building_id:
+			selected_index = index
+	_workplace_assignment_option.select(selected_index)
+
+
 func clear() -> void:
 	if not is_built():
 		return
@@ -285,6 +344,8 @@ func clear() -> void:
 	_hire_button.visible = false
 	_dismiss_button.visible = false
 	_workplace_dispatch_button.visible = false
+	_workplace_assignment_label.visible = false
+	_workplace_assignment_option.visible = false
 
 
 func refresh(profile_data: Dictionary) -> void:
