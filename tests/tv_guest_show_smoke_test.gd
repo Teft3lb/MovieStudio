@@ -200,6 +200,18 @@ func _run_tests() -> void:
 		not bool(policy.call("has_complete_crew", crew)),
 		"An unavailable camera operator must prevent production readiness."
 	)
+	var no_busy: Array[String] = []
+	var small_tv_crew: Dictionary = policy.call(
+		"choose_crew", [camera, technician], str(director.id), no_busy
+	)
+	small_tv_crew = policy.call(
+		"allow_guest_director", small_tv_crew, director
+	)
+	_expect(
+		bool(policy.call("has_complete_crew", small_tv_crew))
+		and str(small_tv_crew.get("director", "")) == str(director.id),
+		"A director guest can co-direct their interview without forcing another employee hire."
+	)
 	var celebrity: RefCounted = CELEBRITY.new()
 	var before_film: float = float(director.recognition)
 	celebrity.call("apply_film_release", director, true, 85.0)
