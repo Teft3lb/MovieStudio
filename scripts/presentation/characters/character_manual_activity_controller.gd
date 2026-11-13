@@ -129,7 +129,7 @@ func request(employee_id: String, building_id: String) -> Dictionary:
 	var route: Array[Vector3] = []
 	if str(valid["building_type"]) == "prop_warehouse":
 		var target: Vector3 = _buildings.call(
-			"get_workplace_position", building_id, 0
+			"get_storage_mark", building_id, slot
 		)
 		route = _buildings.call(
 			"get_scene_recovery_path", building_id,
@@ -207,6 +207,11 @@ func advance_employee(employee: Variant, actor: Node3D) -> bool:
 		return true
 	order["arrived"] = true
 	var activity: Dictionary = order["activity"]
+	if int(order["elapsed_minutes"]) >= int(activity["minutes"]):
+		# A temporarily blocked journey home must not keep granting
+		# training XP or wellness bonuses after the session has finished.
+		_finish_order(employee, actor)
+		return true
 	_policy.call(
 		"apply_minute", employee, activity, _skill_progression
 	)
