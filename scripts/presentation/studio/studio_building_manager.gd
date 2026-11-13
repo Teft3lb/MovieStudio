@@ -497,33 +497,19 @@ func get_roaming_route(
 
 	var obstacles: Array[Dictionary] = _get_building_navigation_obstacles()
 	var route_start: Vector3 = start_position
-	for building in _buildings:
-		var footprint: Vector2 = PLACEMENT_RULES_SCRIPT.get_footprint(
-			str(building.building_type_id),
-			float(building.rotation_degrees),
-			int(building.stage_size_tier)
+	# A roaming request can originate inside a rotated pavilion or a facility.
+	# The exterior pathfinder must never receive an indoor start point.
+	var source_id: String = _find_navigation_building_at(start_position)
+	if not source_id.is_empty():
+		var exit_path: Array[Vector3] = get_exit_path_from(
+			source_id, start_position
 		)
-		var inside_building: bool = (
-			absf(start_position.x - building.position.x) <= footprint.x * 0.5
-			and absf(start_position.z - building.position.z) <= footprint.y * 0.5
-		)
-		if not inside_building:
-			continue
-		var building_actor: Variant = _building_actors.get(str(building.id))
-		if building_actor == null or not is_instance_valid(building_actor):
-			return result
-		var exit_path: Array[Vector3] = building_actor.call(
-			"get_exit_path_from",
-			start_position
-		)
-		if exit_path.is_empty():
-			return result
+		if exit_path.size() < 2:
+			return []
 		result.append_array(exit_path)
 		route_start = exit_path.back()
-		break
-
-	if result.is_empty():
-		result.append(route_start)
+	else:
+		result.append(start_position)
 
 	var safe_waypoints: Array[Vector3] = []
 	for waypoint in base_route:
@@ -679,83 +665,62 @@ func get_workplace_path_from(
 	source_slot_index: int = 0
 ) -> Array[Vector3]:
 	var workplace_path: Array[Vector3] = get_workplace_path(
-		building_id,
-		slot_index
+		building_id, slot_index
 	)
-	if workplace_path.is_empty():
+	if workplace_path.size() < 2 or _navigation_system == null:
 		return []
 
-	var path_start: Vector3 = start_position
-	var source_exit_path: Array[Vector3] = []
-	if not source_building_id.is_empty():
-		var source_path: Array[Vector3] = get_workplace_path(
-			source_building_id,
-			source_slot_index
+	# The actor's *actual* position is authoritative. Its recorded workplace
+	# may be empty (new assignment), or refer to a facility it is still
+	# travelling toward. Never run the outdoor AStar from inside a building.
+	var actual_source_id: String = _find_navigation_building_at(start_position)
+	if actual_source_id == building_id:
+		return get_scene_path(
+			building_id, start_position, workplace_path.back()
 		)
-		var source_actor: Variant = _building_actors.get(
-			source_building_id
-		)
-		if (
-			source_path.size() > 1
-			and source_actor != null
-			and is_instance_valid(source_actor)
-		):
-			var local_start: Vector3 = source_actor.to_local(start_position)
-			var source_type_id: String = str(
-				source_actor.building_data.building_type_id
-			)
-			var source_footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(
-				source_type_id,
-				0.0,
-				int(source_actor.building_data.stage_size_tier)
-			)
-			var is_inside_source: bool = (
-				absf(local_start.x) <= source_footprint.x * 0.5 + 0.7
-				and absf(local_start.z) <= source_footprint.y * 0.5 + 0.7
-			)
-			if is_inside_source:
-				if source_actor.has_method("get_exit_path_from"):
-					source_exit_path = source_actor.call(
-						"get_exit_path_from",
-						start_position,
-						source_slot_index
-					)
-				if source_exit_path.is_empty():
-					source_exit_path.append(start_position)
-					if start_position.distance_to(source_path.back()) > 0.2:
-						source_exit_path.append(source_path.back())
-					for index in range(source_path.size() - 2, -1, -1):
-						var exit_point: Vector3 = source_path[index]
-						if (
-							source_exit_path.is_empty()
-							or source_exit_path.back().distance_to(exit_point) > 0.2
-						):
-							source_exit_path.append(exit_point)
-				if not source_exit_path.is_empty():
-					path_start = source_exit_path.back()
 
-	var travel_path: Array[Vector3] = _navigation_system.call(
+	var result: Array[Vector3] = []
+	var exterior_start: Vector3 = start_position
+	if not actual_source_id.is_empty():
+		var exit_slot_index: int = (
+			source_slot_index
+			if actual_source_id == source_building_id
+			else -1
+		)
+		var exit_path: Array[Vector3] = get_exit_path_from(
+			actual_source_id, start_position, exit_slot_index
+		)
+		# Do not fall back to a direct segment through a wall. A blocked
+		# indoor exit must be repaired by the indoor navigator first.
+		if exit_path.size() < 2:
+			return []
+		result.append_array(exit_path)
+		exterior_start = exit_path.back()
+	else:
+		result.append(start_position)
+
+	# Stage 2: outdoor world, starting at the exterior door and ending
+	# outside the destination's entrance.
+	var outdoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
-		path_start,
-		workplace_path[0],
+		exterior_start,
+		workplace_path.front(),
 		_get_building_navigation_obstacles(),
 		0.75,
 		_get_outdoor_navigation_bounds(
-			path_start, workplace_path[0]
+			exterior_start, workplace_path.front()
 		)
 	)
-	if travel_path.is_empty():
+	if outdoor_path.is_empty():
 		return []
+	for point in outdoor_path:
+		if result.back().distance_to(point) > 0.05:
+			result.append(point)
 
-	var result: Array[Vector3] = []
-	for point in source_exit_path:
-		if result.is_empty() or result.back().distance_to(point) > 0.2:
-			result.append(point)
-	for point in travel_path:
-		if result.is_empty() or result.back().distance_to(point) > 0.2:
-			result.append(point)
+	# Stage 3: explicitly cross the doorway, then use the indoor route
+	# to the assigned workstation/bed/seat. Preserve close door turns.
 	for index in range(1, workplace_path.size()):
-		if result.is_empty() or result.back().distance_to(workplace_path[index]) > 0.2:
+		if result.back().distance_to(workplace_path[index]) > 0.05:
 			result.append(workplace_path[index])
 	return result
 
