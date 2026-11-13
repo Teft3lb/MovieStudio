@@ -206,3 +206,8 @@ The interior smoke suites run cases with separate building fixtures. Each case f
 ### Workstation route contracts
 
 Forward and reverse workplace routes use the same authored per-slot doorway offset in offices and warehouses. Sound stages, TV studios and shared facilities retain the centered entrance. Workplace routes contain at least four positions (outside, inside, corridor, workstation); the navigation solver may add intermediate positions around obstacles. Wall-collision bodies expose a consistently named `CollisionShape3D` child, preserving scene-path checks and character collision.
+
+
+### Expanded studio plot
+
+Studio construction limits now span 168 × 168 world units (previously 96 × 96); the ground plane and access road are correspondingly wider/longer, and camera zoom supports the expanded site. Production-start readiness reports an actionable reason instead of showing a generic missing-crew message, and a suitably sized stage with the most assigned staff is preferred when multiple stages exist.

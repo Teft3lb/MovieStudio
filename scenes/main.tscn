@@ -8,14 +8,14 @@
 [ext_resource type="Script" path="res://scripts/presentation/ui/studio_hud.gd" id="6_hud"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
-size = Vector2(100, 100)
+size = Vector2(180, 180)
 
 [sub_resource type="StandardMaterial3D" id="Material_ground"]
 albedo_color = Color(0.22, 0.27, 0.23, 1)
 roughness = 1.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_road"]
-size = Vector3(4, 0.08, 80)
+size = Vector3(4, 0.08, 148)
 
 [sub_resource type="StandardMaterial3D" id="Material_road"]
 albedo_color = Color(0.13, 0.14, 0.15, 1)

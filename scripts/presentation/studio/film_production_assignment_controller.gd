@@ -399,6 +399,52 @@ func _on_film_cast_role_selected(
 			background_option.set_pressed_no_signal(false)
 	_refresh_production_ui()
 
+func get_assignment_blocker(
+	crew_assignments: Dictionary,
+	cast_assignments: Dictionary,
+	assigned_staff: Array
+) -> String:
+	var script: Variant = _get_latest_script()
+	if script == null:
+		return "Нет готового сценария."
+	var employees_by_id: Dictionary = {}
+	for employee in assigned_staff:
+		employees_by_id[str(employee.id)] = employee
+	var used_ids: Dictionary = {}
+	for role in FILM_CREW_CATALOG_SCRIPT.FILM_CREW_ROLE_CONFIG:
+		var role_id: String = str(role.get("id", ""))
+		var employee_id: String = str(crew_assignments.get(role_id, ""))
+		if employee_id.is_empty():
+			if bool(role.get("required", false)):
+				return "Не назначен сотрудник: %s." % str(role.get("title", role_id))
+			continue
+		if not employees_by_id.has(employee_id):
+			return "Сотрудник для позиции «%s» не назначен в выбранный павильон." % str(role.get("title", role_id))
+		if used_ids.has(employee_id):
+			return "Один сотрудник выбран на несколько позиций съёмочной группы."
+		var employee: Variant = employees_by_id[employee_id]
+		if str(employee.profession_id) != str(role.get("profession_id", "")):
+			return "Профессия сотрудника не подходит для позиции «%s»." % str(role.get("title", role_id))
+		var specialization: String = str(role.get("specialization_id", ""))
+		if not specialization.is_empty() and str(employee.specialization_id) != specialization:
+			return "Необходима специализация для позиции «%s»." % str(role.get("title", role_id))
+		used_ids[employee_id] = true
+	for cast_role in script.cast:
+		var role_id: String = str(cast_role.get("role_id", ""))
+		var employee_id: String = str(cast_assignments.get(role_id, ""))
+		if employee_id.is_empty():
+			return "Не назначен актёр на роль «%s»." % str(cast_role.get("role_title", role_id))
+		if not employees_by_id.has(employee_id):
+			return "Актёр роли «%s» не назначен в выбранный павильон." % str(cast_role.get("role_title", role_id))
+		if used_ids.has(employee_id):
+			return "Один актёр назначен на несколько ролей или одновременно в съёмочную группу. Распредели роли между разными сотрудниками."
+		var actor: Variant = employees_by_id[employee_id]
+		if str(actor.profession_id) not in ["actor", "extra"]:
+			return "На роль «%s» нужен актёр." % str(cast_role.get("role_title", role_id))
+		used_ids[employee_id] = true
+	return "Проверь назначение массовки и обязательные позиции съёмочной группы."
+
+
 func _get_film_crew_assignments(_assigned_staff: Array) -> Dictionary:
 	var result: Dictionary = {}
 	for role_config in FILM_CREW_CATALOG_SCRIPT.FILM_CREW_ROLE_CONFIG:

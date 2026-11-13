@@ -6,7 +6,7 @@ const BUILDING_CATALOG_SCRIPT = preload(
 )
 
 const MIN_BUILDING_GAP: float = 1.5
-const DEFAULT_PLOT_HALF_SIZE: float = 48.0
+const DEFAULT_PLOT_HALF_SIZE: float = 84.0
 const ROAD_CENTER_X: float = 10.0
 const ROAD_HALF_WIDTH: float = 2.0
 const ROAD_CLEARANCE: float = 1.0

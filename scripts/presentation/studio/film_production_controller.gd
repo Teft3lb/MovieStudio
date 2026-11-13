@@ -183,32 +183,46 @@ func _get_stage_size_requirement_message() -> String:
 	]
 
 func _can_start_film_production() -> bool:
-	if _get_latest_script() == null:
-		return false
+	return _get_film_production_blocker().is_empty()
+
+
+func _get_film_production_blocker() -> String:
+	var script: Variant = _get_latest_script()
+	if script == null:
+		return "Нет готового сценария. Заверши работу в сценарном отделе."
 	if _active_film_project != null:
 		if str(_active_film_project.status) != "completed":
-			return false
+			return "Предыдущий фильм ещё снимается."
 		var editing_project: Variant = _get_active_editing_project()
 		if editing_project == null or str(editing_project.status) != "completed":
-			return false
+			return "Сначала закончи монтаж предыдущего фильма."
 	var stage_id: String = _get_sound_stage_building_id()
-	if stage_id.is_empty() or not _get_stage_size_requirement_message().is_empty():
-		return false
+	if stage_id.is_empty():
+		return "Построй съёмочный павильон."
+	var stage_size_message: String = _get_stage_size_requirement_message()
+	if not stage_size_message.is_empty():
+		return stage_size_message
 	var assigned_staff: Array = _get_assigned_staff(stage_id)
 	var assignment_controller: RefCounted = _get_assignment_controller()
 	var crew_assignments: Dictionary = assignment_controller.call(
-		"get_film_crew_assignments",
-		assigned_staff
+		"get_film_crew_assignments", assigned_staff
 	)
 	var cast_assignments: Dictionary = assignment_controller.call(
 		"get_cast_assignments"
 	)
-	return bool(assignment_controller.call(
+	if not bool(assignment_controller.call(
 		"has_complete_production_assignments",
 		crew_assignments,
 		cast_assignments,
 		assigned_staff
-	))
+	)):
+		return str(assignment_controller.call(
+			"get_assignment_blocker",
+			crew_assignments,
+			cast_assignments,
+			assigned_staff
+		))
+	return ""
 
 func _find_employee(employee_id: String) -> Variant:
 	if not is_instance_valid(_character_manager):
@@ -1558,11 +1572,8 @@ func _update_film_production_ui() -> void:
 				_film_production_status_label.text = "НУЖЕН БОЛЕЕ КРУПНЫЙ ПАВИЛЬОН"
 				_film_production_detail_label.text = stage_size_message
 			else:
-				_film_production_status_label.text = "НЕ ХВАТАЕТ КОМАНДЫ"
-				_film_production_detail_label.text = (
-					"Назначь режиссёра, оператора и техника, затем распредели "
-					+ "актёров по всем ролям сценария."
-			)
+				_film_production_status_label.text = "СЪЁМКИ ПОКА НЕДОСТУПНЫ"
+				_film_production_detail_label.text = _get_film_production_blocker()
 		if _get_latest_script() != null:
 			var set_preview: Dictionary = _get_script_set_dressing_preview(
 				_get_latest_script()
@@ -1590,6 +1601,9 @@ func _update_film_production_ui() -> void:
 		if is_instance_valid(_film_production_start_button):
 			_film_production_start_button.text = "НАЧАТЬ СЪЁМКИ"
 			_film_production_start_button.disabled = not can_start
+			_film_production_start_button.tooltip_text = (
+				"" if can_start else _get_film_production_blocker()
+			)
 		return
 
 	var project: Variant = _active_film_project

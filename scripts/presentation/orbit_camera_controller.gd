@@ -6,7 +6,7 @@ class_name OrbitCameraController
 @export_range(0.0005, 0.02, 0.0005) var mouse_sensitivity: float = 0.004
 @export_range(0.02, 0.3, 0.01) var zoom_factor: float = 0.12
 @export var min_distance: float = 5.0
-@export var max_distance: float = 70.0
+@export var max_distance: float = 125.0
 
 var focus_point: Vector3 = Vector3.ZERO
 var orbit_distance: float = 22.0

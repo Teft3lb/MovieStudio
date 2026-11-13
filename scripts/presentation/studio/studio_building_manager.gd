@@ -1374,6 +1374,7 @@ func _get_sound_stage_building_id() -> String:
 	var required_tier: int = _get_required_stage_size_tier()
 	var best_suitable_id: String = ""
 	var best_suitable_tier: int = 4
+	var best_staff_count: int = -1
 	var largest_available_id: String = ""
 	var largest_available_tier: int = 0
 	for building in _buildings:
@@ -1385,16 +1386,29 @@ func _get_sound_stage_building_id() -> String:
 		var tier: int = BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
 			int(building.stage_size_tier)
 		)
+		var building_id: String = str(building.id)
 		if tier > largest_available_tier:
 			largest_available_tier = tier
-			largest_available_id = str(building.id)
-		if tier >= required_tier and tier < best_suitable_tier:
+			largest_available_id = building_id
+		if tier < required_tier:
+			continue
+		var staffed_count: int = _get_assigned_staff(building_id).size()
+		if (
+			staffed_count > best_staff_count
+			or (
+				staffed_count == best_staff_count
+				and building_id == _selected_building_id
+			)
+			or (
+				staffed_count == best_staff_count
+				and best_suitable_tier > tier
+				and best_suitable_id != _selected_building_id
+			)
+		):
+			best_staff_count = staffed_count
 			best_suitable_tier = tier
-			best_suitable_id = str(building.id)
-	if not best_suitable_id.is_empty():
-		return best_suitable_id
-	return largest_available_id
-
+			best_suitable_id = building_id
+	return best_suitable_id if not best_suitable_id.is_empty() else largest_available_id
 
 func _dispatch_film_crew_to_stage() -> void:
 	_get_film_production_controller().call("_dispatch_film_crew_to_stage")
