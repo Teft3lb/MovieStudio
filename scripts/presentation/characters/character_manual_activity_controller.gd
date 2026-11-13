@@ -254,9 +254,15 @@ func _finish_order(employee: Variant, actor: Node3D) -> void:
 				actor.call("get_workplace_position")
 			)
 		if return_route.size() < 2:
-			employee.current_task = "Ожидает маршрута домой"
-			# Keep the order while routing is blocked; try again next minute.
-			return
+			var home_mark: Vector3 = actor.call("get_workplace_position")
+			if actor.global_position.distance_to(home_mark) <= 0.25:
+				# The actor may have rehearsed at their own workstation.
+				# No walking segment is needed when already home.
+				return_route = [actor.global_position, home_mark]
+			else:
+				employee.current_task = "Ожидает маршрута домой"
+				# Keep the order while routing is blocked; try again next minute.
+				return
 	actor.call("return_to_workplace", return_route)
 	_orders.erase(employee_id)
 	employee.current_task = (
