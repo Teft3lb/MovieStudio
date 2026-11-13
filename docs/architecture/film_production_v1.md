@@ -162,12 +162,12 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 12. Confirm the director, camera operator, technician and producer display their production poses/tasks.
 13. After the scene is accepted, observe Set Strike: technicians remove the pieces, carry them back to the warehouse and place them on the shelves. Confirm the stage is not cleared before the last prop is returned.
 14. Confirm the next scene does not begin until the previous set is cleared and the technicians return to their workstations.
-15. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
+15. Confirm assigned participants break for lunch, visit the cafeteria where available and return before scene progress resumes; actors are called only for scenes in which they participate.
 16. Let the clock pass the end of the shared production shift and reach 00:15. Confirm production phase minutes stop, performers leave the active marks, and outstanding prop logistics can finish safely.
 17. Advance to the next shared work shift without restarting the film, including via the +1 day button. Confirm the same scene and phase resume after the crew returns, without duplicated props, reset progress, or indefinitely travelling technicians.
 18. Confirm low-quality takes request no more than two retakes.
 19. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
-20. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
+20. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls. Confirm employees can be transferred from the building inspector before a screenplay exists and pending cast/crew changes apply at the next scene's Preparation phase.
 
 ## Explicit limitations
 
