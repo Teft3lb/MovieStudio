@@ -216,3 +216,12 @@ Studio construction limits now span 168 × 168 world units (previously 96 × 96)
 ### Film dossier infrastructure
 
 The studio scene now hosts 3D production dossiers and a small marked release dock for handoff of finished films. The dock is an operational handoff target, not a new workforce building. Its world-space footprint is reserved by construction rules so the player cannot inadvertently block the release route. Finished films enter the completed-film archive on release; a later distribution/PR economy can consume those releases.
+
+
+### Interactive production handoffs and lighting
+
+Completed screenplays have a prominent 3D pickup beacon outside the writers' building and a "show screenplay" camera-focus control in the writers' inspector. Moving the physical script to a suitable sound stage, then the finished footage to editing, and finally the master to the release dock is required for the respective production transitions. Occupied buildings use one to four shadowless ceiling OmniLight3D fixtures; occupancy is sampled at a throttled interval so empty buildings do not illuminate the scene needlessly.
+
+### Navigation recovery
+
+The entire interior route from the front door to each workstation is generated with AStarGrid2D, including large-studio set-wall obstacles. Outdoor navigation uses local bounds derived from the larger studio plot instead of the legacy 94-unit map. Characters request a new route after a sustained collision on a workplace, facility or scene-performance path; the system never grants arrival while the actor is blocked. Smoke coverage checks entry, exit, obstruction recovery and expanded plot navigation.

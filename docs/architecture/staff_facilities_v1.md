@@ -106,3 +106,8 @@ Studio Lounge relationships are reciprocal scores keyed by employee ID, ranging 
 CharacterData schema version 8 persists physical_fitness (0–100) and a relationships dictionary keyed by employee ID. Fitness is generated with profession- and age-aware variation and improved by training. Relationship scores are reciprocal values from −100 (conflict) to +100 (friendship); sociability, ambition and discipline affect compatibility. The employee inspector shows the strongest current ties.
 
 Relationship scores are an initial pairwise model. Conversation topics, social events, jealousy, romance, decay and full social decision-making remain future work. Physical fitness is persistent and visible but does not yet affect stunt performance or casting eligibility. Training/socializing currently use procedural pivot animations rather than full skeletal or equipment-interaction animations.
+
+
+### Manual reassignment to buildings
+
+The employee profile provides a building-selection dropdown. It lists operational workplaces compatible with the employee's profession, current occupancy and capacity. Manual destinations take priority over automatic assignment, including the default sound stage, and remain stable through roster refreshes. The transfer is refused when the destination is ineligible or full or when the employee is currently participating in active film production/editing. Returning to "Auto" restores the original allocation policy. After reassignment the employee exits the former workplace and navigates to the new one; no forced teleportation is performed.
