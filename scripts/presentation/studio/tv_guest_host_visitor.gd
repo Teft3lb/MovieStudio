@@ -85,6 +85,11 @@ func depart(exit_route: Array[Vector3]) -> void:
 		push_warning("TVGuestHostVisitor: departure route is unavailable.")
 		return
 	_assign_path(exit_route)
+	if (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+	):
+		snap_to_mark()
 
 
 func snap_to_mark() -> void:
