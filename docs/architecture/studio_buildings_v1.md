@@ -196,3 +196,8 @@ The Fitness Center provides four training stations; the Studio Lounge provides s
 ## Building test suites
 
 The top-level `tests/studio_building_interior_smoke_test.gd` remains the single SceneTree entry point. It runs the geometry, sound-stage, facility and employee integration suites through a shared RefCounted test base, preserving one aggregated assertion list and process exit code. Dedicated navigation, marker-provider and set-prop visual-builder smoke tests cover their extracted components directly.
+
+
+### Fixture isolation
+
+The interior smoke suites run cases with separate building fixtures. Each case frees its spawned building nodes immediately after its assertions, avoiding stacked physics wall colliders when testing employee movement and TV Studio routes. The top-level runner asserts that no building fixtures leak between suites.

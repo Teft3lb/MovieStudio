@@ -9,11 +9,10 @@ const NAVIGATION_SYSTEM_SCRIPT = preload(
 
 
 func _run_tests() -> void:
-	_test_sound_stage_interior()
-	_test_small_sound_stage_geometry()
-	_test_large_sound_stage_geometry()
-	_test_large_stage_exit_route()
-
+	_run_case(Callable(self, "_test_sound_stage_interior"))
+	_run_case(Callable(self, "_test_small_sound_stage_geometry"))
+	_run_case(Callable(self, "_test_large_sound_stage_geometry"))
+	_run_case(Callable(self, "_test_large_stage_exit_route"))
 
 func _test_sound_stage_interior() -> void:
 	var actor: Node3D = _create_building("sound_stage", 0.0)

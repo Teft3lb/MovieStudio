@@ -15,14 +15,13 @@ const GAME_CLOCK_SCRIPT = preload(
 
 
 func _run_tests() -> void:
-	_test_fitness_center_interior()
-	_test_studio_lounge_interior()
-	_test_cafeteria_seating_layout()
-	_test_staff_housing_beds()
-	_test_rotated_housing_sleep_alignment()
-	_test_star_bungalow_interior()
-	_test_facility_poses()
-
+	_run_case(Callable(self, "_test_fitness_center_interior"))
+	_run_case(Callable(self, "_test_studio_lounge_interior"))
+	_run_case(Callable(self, "_test_cafeteria_seating_layout"))
+	_run_case(Callable(self, "_test_staff_housing_beds"))
+	_run_case(Callable(self, "_test_rotated_housing_sleep_alignment"))
+	_run_case(Callable(self, "_test_star_bungalow_interior"))
+	_run_case(Callable(self, "_test_facility_poses"))
 
 func _test_fitness_center_interior() -> void:
 	var actor: Node3D = _create_building("fitness_center", 0.0)

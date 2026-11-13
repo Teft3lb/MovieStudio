@@ -10,6 +10,7 @@ const BUILDING_DATA_SCRIPT = preload(
 
 var _test_context: SceneTree
 var root: Node
+var _created_buildings: Array[Node3D] = []
 
 
 func run(test_context: SceneTree) -> void:
@@ -20,6 +21,16 @@ func run(test_context: SceneTree) -> void:
 
 func _run_tests() -> void:
 	pass
+
+
+func _run_case(test_method: Callable) -> void:
+	test_method.call()
+	# Each case can use multiple buildings. Release all of them after that
+	# case rather than keeping their wall collision shapes in later tests.
+	for building_actor in _created_buildings:
+		if is_instance_valid(building_actor):
+			building_actor.free()
+	_created_buildings.clear()
 
 
 func _expect(
@@ -44,6 +55,7 @@ func _create_building(
 	var actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
 	actor.call("setup", data)
 	root.add_child(actor)
+	_created_buildings.append(actor)
 	return actor
 
 

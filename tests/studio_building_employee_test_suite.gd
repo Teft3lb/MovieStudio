@@ -15,10 +15,9 @@ const GAME_CLOCK_SCRIPT = preload(
 
 
 func _run_tests() -> void:
-	_test_large_stage_exit_from_live_scene_position()
-	_test_profession_work_animation()
-	_test_employee_enters_and_leaves_workplace()
-
+	_run_case(Callable(self, "_test_large_stage_exit_from_live_scene_position"))
+	_run_case(Callable(self, "_test_profession_work_animation"))
+	_run_case(Callable(self, "_test_employee_enters_and_leaves_workplace"))
 
 func _test_large_stage_exit_from_live_scene_position() -> void:
 	var stage_actor: Node3D = _create_building("sound_stage", 0.0, 3)

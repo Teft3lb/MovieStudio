@@ -31,3 +31,7 @@ func _run_tests() -> void:
 func _run_suite(suite: RefCounted) -> void:
 	_active_suites.append(suite)
 	suite.call("run", self)
+	_expect(
+		get_nodes_in_group("studio_building").is_empty(),
+		"Interior test fixtures must be released between suites to avoid overlapping wall collisions."
+	)

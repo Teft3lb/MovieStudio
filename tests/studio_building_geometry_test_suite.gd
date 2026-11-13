@@ -4,11 +4,10 @@ extends "res://tests/studio_building_interior_test_suite_base.gd"
 
 
 func _run_tests() -> void:
-	_test_script_department_interior()
-	_test_tv_studio_interior()
-	_test_prop_warehouse_interior()
-	_test_editing_suite_interior()
-
+	_run_case(Callable(self, "_test_script_department_interior"))
+	_run_case(Callable(self, "_test_tv_studio_interior"))
+	_run_case(Callable(self, "_test_prop_warehouse_interior"))
+	_run_case(Callable(self, "_test_editing_suite_interior"))
 
 func _test_script_department_interior() -> void:
 	var actor: Node3D = _create_building("script_department", 90.0)
