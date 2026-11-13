@@ -28,7 +28,7 @@ func _run_tests() -> void:
 	collision.shape = shape
 	barrier.add_child(collision)
 	root.add_child(barrier)
-	await get_tree().physics_frame
+	await physics_frame
 
 	var no_progress: bool = bool(actor.call(
 		"_try_move_to_position",
