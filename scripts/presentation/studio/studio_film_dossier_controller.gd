@@ -333,7 +333,7 @@ func _place_visual(script_id: String) -> void:
 	)
 	var index: int = _dossier_order.find(script_id)
 	var column: int = posmod(index, 4)
-	var row_index: int = maxi(index, 0) / 4
+	var row_index: int = floori(float(maxi(index, 0)) / 4.0)
 	var local_dock := Vector3(
 		(float(column) - 1.5) * 1.65,
 		0.05,
