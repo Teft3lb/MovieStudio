@@ -10,6 +10,8 @@ const PICKING_LAYER: int = 32
 var dossier: Variant
 var _visual_root: Node3D
 var _status_label: Label3D
+var _beacon: OmniLight3D
+var _instruction: Label3D
 var _dragged: bool = false
 
 
@@ -38,13 +40,46 @@ func setup(production_dossier: Variant) -> void:
 
 	_status_label = Label3D.new()
 	_status_label.name = "DossierTitle"
-	_status_label.position = Vector3(0.0, 1.45, 0.0)
-	_status_label.font_size = 24
-	_status_label.pixel_size = 0.006
+	_status_label.position = Vector3(0.0, 2.6, 0.0)
+	_status_label.font_size = 30
+	_status_label.pixel_size = 0.01
 	_status_label.outline_size = 6
 	_status_label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	_status_label.no_depth_test = true
 	add_child(_status_label)
+	var locator := MeshInstance3D.new()
+	locator.name = "DocumentPickupBeacon"
+	var locator_mesh := CylinderMesh.new()
+	locator_mesh.top_radius = 1.45
+	locator_mesh.bottom_radius = 1.45
+	locator_mesh.height = 0.12
+	locator.mesh = locator_mesh
+	locator.position.y = 0.1
+	var locator_material := StandardMaterial3D.new()
+	locator_material.albedo_color = Color(0.98, 0.73, 0.24)
+	locator_material.emission_enabled = true
+	locator_material.emission = Color(0.9, 0.6, 0.18)
+	locator_material.emission_energy_multiplier = 1.5
+	locator.material_override = locator_material
+	add_child(locator)
+	_beacon = OmniLight3D.new()
+	_beacon.name = "DocumentBeaconLight"
+	_beacon.position.y = 1.1
+	_beacon.omni_range = 5.0
+	_beacon.light_color = Color(1.0, 0.78, 0.38)
+	_beacon.light_energy = 1.1
+	_beacon.shadow_enabled = false
+	add_child(_beacon)
+	_instruction = Label3D.new()
+	_instruction.name = "PickupInstruction"
+	_instruction.position.y = 3.25
+	_instruction.font_size = 30
+	_instruction.pixel_size = 0.009
+	_instruction.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_instruction.no_depth_test = true
+	_instruction.modulate = Color(1.0, 0.88, 0.42)
+	_instruction.text = "ПЕРЕТАЩИ МЫШЬЮ"
+	add_child(_instruction)
 	refresh_appearance()
 
 
@@ -133,6 +168,10 @@ func refresh_appearance() -> void:
 		str(dossier.title),
 		str(dossier.get_destination_title()),
 	]
+	if is_instance_valid(_instruction):
+		_instruction.visible = bool(dossier.is_movable())
+	if is_instance_valid(_beacon):
+		_beacon.visible = bool(dossier.is_movable())
 	_status_label.modulate = (
 		Color(1.0, 0.86, 0.35)
 		if dossier.is_movable()

@@ -34,6 +34,7 @@ var _script_generate_button: Button
 var _script_progress_bar: ProgressBar
 var _script_progress_label: Label
 var _script_result_label: Label
+var _script_focus_button: Button
 
 
 func setup(manager: Node, character_manager: Node) -> void:
@@ -114,6 +115,7 @@ func _reset_script_ui_references() -> void:
 	_script_progress_bar = null
 	_script_progress_label = null
 	_script_result_label = null
+	_script_focus_button = null
 
 
 func _on_generate_script_pressed() -> void:
@@ -493,7 +495,17 @@ func _build_script_department_detail(eligible_staff: Array) -> void:
 	_script_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_script_result_label.custom_minimum_size = Vector2(0.0, 120.0)
 	_detail_layout.add_child(_script_result_label)
+	_script_focus_button = Button.new()
+	_script_focus_button.text = "ПОКАЗАТЬ СЦЕНАРИЙ НА ТЕРРИТОРИИ"
+	_script_focus_button.visible = false
+	_script_focus_button.pressed.connect(_on_script_focus_requested)
+	_detail_layout.add_child(_script_focus_button)
 	update_script_writing_ui(_manager.call("get_active_writing_project"), _manager.call("get_latest_script"))
+
+
+func _on_script_focus_requested() -> void:
+	if is_instance_valid(_manager) and _manager.has_method("focus_camera_on_latest_script"):
+		_manager.call("focus_camera_on_latest_script")
 
 
 func update_script_writing_ui(writing_project: Variant, latest_script: Variant) -> void:
@@ -503,11 +515,17 @@ func update_script_writing_ui(writing_project: Variant, latest_script: Variant) 
 		return
 	if not is_instance_valid(_script_result_label):
 		return
+	if is_instance_valid(_script_focus_button):
+		_script_focus_button.visible = latest_script != null
 
 	if writing_project == null:
 		_script_progress_bar.value = 0.0
 		_script_progress_label.text = "Сценарий ещё не заказан."
 		_script_result_label.text = _format_script_summary(latest_script)
+		if latest_script != null and _manager.has_method("get_film_dossier_status"):
+			_script_result_label.text += "\n\n" + str(
+				_manager.call("get_film_dossier_status")
+			)
 		if is_instance_valid(_script_generate_button):
 			_script_generate_button.text = "НАЧАТЬ НАПИСАНИЕ СЦЕНАРИЯ"
 			_script_generate_button.disabled = (

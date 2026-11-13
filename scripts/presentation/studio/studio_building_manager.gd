@@ -334,6 +334,18 @@ func get_film_dossier_status() -> String:
 	return str(_get_film_dossier_controller().call("get_latest_message"))
 
 
+func focus_camera_on_latest_script() -> void:
+	if _latest_script == null or _film_dossier_controller == null:
+		return
+	var visual_position: Vector3 = _film_dossier_controller.call(
+		"get_dossier_world_position", str(_latest_script.id)
+	)
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera != null:
+		camera.set("focus_point", visual_position)
+		camera.set("orbit_distance", 16.0)
+
+
 func on_film_production_started(script_id: String, stage_id: String) -> void:
 	_get_film_dossier_controller().call(
 		"on_production_started", script_id, stage_id
@@ -1299,6 +1311,8 @@ func reset_active_film_editing() -> void:
 
 
 func _update_script_writing_ui() -> void:
+	if _latest_script != null and _film_dossier_controller != null:
+		_film_dossier_controller.call("add_completed_script", _latest_script)
 	_get_building_inspector_controller().call(
 		"update_script_writing_ui",
 		_active_writing_project,

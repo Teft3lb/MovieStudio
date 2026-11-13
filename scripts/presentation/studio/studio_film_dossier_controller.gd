@@ -80,6 +80,11 @@ func get_production_stage_id() -> String:
 	return str(dossier.stage_building_id)
 
 
+func get_dossier_world_position(script_id: String) -> Vector3:
+	var visual: Node3D = _visuals.get(script_id) as Node3D
+	return visual.global_position if is_instance_valid(visual) else Vector3.ZERO
+
+
 func get_latest_message() -> String:
 	return _last_message
 
