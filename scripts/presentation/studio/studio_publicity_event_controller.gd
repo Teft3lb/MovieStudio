@@ -21,6 +21,7 @@ var _event_site: Vector3
 var _door_position: Vector3
 var _last_result: Dictionary = {}
 var _last_status: String = ""
+var _waiting_minutes: int = 0
 
 
 func setup(manager: Node3D, characters: Node, clock: Node) -> void:
@@ -66,6 +67,7 @@ func request_event(employee_id: String, event_id: String) -> Dictionary:
 	if not bool(event.get("success", false)):
 		return event
 	_active = event
+	_waiting_minutes = 0
 	_event_site = site
 	_door_position = door
 	_star_actor = actor
@@ -112,11 +114,12 @@ func advance_minute(_day: int, _hour: int, _minute: int) -> void:
 		if is_instance_valid(_crowd):
 			_crowd.call("finish_manual_fast_forward")
 	if not bool(_star_actor.call("is_at_scene_mark")):
-		_last_status = "Ожидание артиста на площадке встречи."
+		_advance_waiting_timeout("Ожидание артиста на площадке встречи.")
 		return
 	if is_instance_valid(_crowd) and not bool(_crowd.call("has_arrived")):
-		_last_status = "Поклонники подходят к месту встречи."
+		_advance_waiting_timeout("Поклонники подходят к месту встречи.")
 		return
+	_waiting_minutes = 0
 	var employee_id: String = str(_active["employee_id"])
 	var employee: Variant = _get_employee(employee_id)
 	if employee == null:
@@ -167,6 +170,14 @@ func advance_minute(_day: int, _hour: int, _minute: int) -> void:
 				guard_skills.size(),
 			]
 		)
+
+
+func _advance_waiting_timeout(message: String) -> void:
+	_waiting_minutes += 1
+	if _waiting_minutes >= 180:
+		_abort_event("Встреча отменена: посетители или артист не смогли добраться до площадки.")
+	else:
+		_last_status = message
 
 
 func is_participant(employee_id: String) -> bool:
@@ -301,6 +312,7 @@ func _finish_event() -> void:
 		if bool(_clock.is_manual_fast_forward):
 			_crowd.call("finish_manual_fast_forward")
 	_active.clear()
+	_waiting_minutes = 0
 	_guard_actors.clear()
 	_previous_tasks.clear()
 	_star_actor = null
