@@ -921,6 +921,11 @@ func set_roaming_route(
 	route: Array[Vector3], loop_start_index: int = 0
 ) -> void:
 	if route.size() < 2:
+		# A newly placed building can invalidate the previous patrol.
+		# Do not keep following the stale route straight into a wall.
+		_route.clear()
+		_route_index = 0
+		_roaming_loop_start_index = 0
 		return
 	_route = route.duplicate()
 	_roaming_loop_start_index = clampi(
