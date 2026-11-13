@@ -303,6 +303,7 @@ func refresh_selected_building() -> void:
 	eligible_summary.add_theme_font_size_override("font_size", 10)
 	eligible_summary.add_theme_color_override("font_color", Color(0.58, 0.76, 0.79, 1.0))
 	_detail_layout.add_child(eligible_summary)
+	_build_workplace_reassignment_controls(assigned_staff)
 	if building_type_id == "script_department":
 		_build_script_department_detail(assigned_staff)
 	elif building_type_id == "sound_stage":
@@ -312,6 +313,87 @@ func refresh_selected_building() -> void:
 	elif building_type_id == "editing_suite":
 		_manager.call("build_film_editing_detail", _detail_layout, assigned_staff)
 	_apply_inspector_width_constraints(_detail_layout)
+
+
+func _build_workplace_reassignment_controls(assigned_staff: Array) -> void:
+	if not is_instance_valid(_character_manager) or not is_instance_valid(_manager):
+		return
+	var heading := Label.new()
+	heading.text = "ПЕРЕВОД СОТРУДНИКОВ"
+	heading.add_theme_font_size_override("font_size", 12)
+	_detail_layout.add_child(heading)
+	var hint := Label.new()
+	hint.text = "Место работы можно изменить до сценария. Участники активного производства временно защищены от перевода."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.add_theme_font_size_override("font_size", 10)
+	_detail_layout.add_child(hint)
+	for employee in assigned_staff:
+		var employee_id: String = str(employee.id)
+		var row := VBoxContainer.new()
+		var name_label := Label.new()
+		name_label.text = employee.get_full_name()
+		name_label.add_theme_font_size_override("font_size", 11)
+		row.add_child(name_label)
+		var destination := OptionButton.new()
+		destination.fit_to_longest_item = false
+		destination.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var selected_index: int = -1
+		var choices_count: int = 0
+		var can_change: bool = bool(_character_manager.call(
+			"can_reassign_employee_workplace", employee_id
+		))
+		for building in _manager.call("get_buildings"):
+			if not bool(building.is_operational):
+				continue
+			if not BUILDING_CATALOG_SCRIPT.accepts_profession(
+				str(building.building_type_id), str(employee.profession_id)
+			):
+				continue
+			var building_id: String = str(building.id)
+			var assigned_count: int = _character_manager.call(
+				"get_employees_assigned_to_building", building_id
+			).size()
+			var capacity: int = BUILDING_CATALOG_SCRIPT.get_workplace_capacity_for_building(building)
+			var current: bool = building_id == str(_selected_building_id)
+			var item_index: int = destination.get_item_count()
+			destination.add_item("%s · %d/%d" % [
+				str(building.display_name), assigned_count, capacity
+			])
+			destination.set_item_metadata(item_index, building_id)
+			destination.set_item_disabled(
+				item_index,
+				(not can_change) or (assigned_count >= capacity and not current)
+			)
+			if current:
+				selected_index = item_index
+			choices_count += 1
+		if selected_index >= 0:
+			destination.select(selected_index)
+		destination.disabled = not can_change or choices_count < 2
+		destination.item_selected.connect(
+			_on_workplace_reassignment_selected.bind(employee_id, destination)
+		)
+		row.add_child(destination)
+		_detail_layout.add_child(row)
+
+
+func _on_workplace_reassignment_selected(
+	selected_index: int,
+	employee_id: String,
+	option: OptionButton
+) -> void:
+	if (
+		not is_instance_valid(option)
+		or selected_index < 0
+		or selected_index >= option.get_item_count()
+	):
+		return
+	var building_id: String = str(option.get_item_metadata(selected_index))
+	if is_instance_valid(_character_manager):
+		_character_manager.call(
+			"set_employee_workplace_assignment", employee_id, building_id
+		)
+	refresh_selected_building()
 
 
 func _apply_inspector_width_constraints(node: Node) -> void:
