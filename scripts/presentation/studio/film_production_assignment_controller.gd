@@ -16,6 +16,7 @@ var _film_background_performer_ids: Array[String] = []
 var _film_background_options: Dictionary = {}
 var _cast_assignment_script_id: String = ""
 var _film_cast_options: Dictionary = {}
+var _bound_active_project_id: String = ""
 
 
 func setup(manager: Node, film_production_system: RefCounted) -> void:
@@ -24,6 +25,7 @@ func setup(manager: Node, film_production_system: RefCounted) -> void:
 
 
 func build_controls(detail_layout: VBoxContainer, assigned_staff: Array) -> void:
+	_sync_from_active_project_if_needed()
 	_detail_layout = detail_layout
 	_build_film_crew_assignment_controls(assigned_staff)
 	_build_film_cast_assignment_controls(assigned_staff)
@@ -34,6 +36,7 @@ func build_crew_assignment_controls(
 	detail_layout: VBoxContainer,
 	assigned_staff: Array
 ) -> void:
+	_sync_from_active_project_if_needed()
 	_detail_layout = detail_layout
 	_build_film_crew_assignment_controls(assigned_staff)
 
@@ -42,6 +45,7 @@ func build_cast_assignment_controls(
 	detail_layout: VBoxContainer,
 	assigned_staff: Array
 ) -> void:
+	_sync_from_active_project_if_needed()
 	_detail_layout = detail_layout
 	_build_film_cast_assignment_controls(assigned_staff)
 
@@ -50,6 +54,7 @@ func build_background_assignment_controls(
 	detail_layout: VBoxContainer,
 	assigned_staff: Array
 ) -> void:
+	_sync_from_active_project_if_needed()
 	_detail_layout = detail_layout
 	_build_film_background_assignment_controls(assigned_staff)
 
@@ -86,6 +91,10 @@ func has_complete_production_assignments(
 func _get_latest_script() -> Variant:
 	if not is_instance_valid(_manager):
 		return null
+	if _manager.has_method("get_active_film_script"):
+		var active_script: Variant = _manager.call("get_active_film_script")
+		if active_script != null:
+			return active_script
 	if _manager.has_method("get_script_for_production"):
 		return _manager.call("get_script_for_production")
 	return _manager.call("get_latest_script")
@@ -95,6 +104,21 @@ func _get_active_film_project() -> Variant:
 	if not is_instance_valid(_manager):
 		return null
 	return _manager.call("get_active_film_project")
+
+
+func _sync_from_active_project_if_needed() -> void:
+	var project: Variant = _get_active_film_project()
+	if project == null or str(project.status) != "in_production":
+		_bound_active_project_id = ""
+		return
+	var project_id: String = str(project.id)
+	if project_id == _bound_active_project_id:
+		return
+	_bound_active_project_id = project_id
+	_film_crew_assignments = project.crew_assignments.duplicate(true)
+	_film_cast_assignments = project.cast_assignments.duplicate(true)
+	_film_background_performer_ids = project.background_performer_ids.duplicate()
+	_cast_assignment_script_id = str(project.script_id)
 
 
 func _refresh_production_ui() -> void:
@@ -108,12 +132,15 @@ func _build_film_crew_assignment_controls(assigned_staff: Array) -> void:
 	heading.add_theme_font_size_override("font_size", 14)
 	_detail_layout.add_child(heading)
 
+	if _get_active_film_project() != null and str(_get_active_film_project().status) == "in_production":
+		var pending_note := Label.new()
+		pending_note.text = "Состав можно изменять во время съёмок. Замены вступят в силу при подготовке следующей сцены, без отмены текущего дубля."
+		pending_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail_layout.add_child(pending_note)
+
 	_film_crew_options.clear()
 	var used_employee_ids: Dictionary = {}
-	var assignments_locked: bool = (
-		_get_active_film_project() != null
-		and str(_get_active_film_project().status) == "in_production"
-	)
+	var assignments_locked: bool = false # Changes are staged until a safe scene boundary.
 
 	for role_config in FILM_CREW_CATALOG_SCRIPT.FILM_CREW_ROLE_CONFIG:
 		var role_id: String = str(role_config.get("id", ""))
@@ -266,10 +293,7 @@ func _build_film_background_assignment_controls(assigned_staff: Array) -> void:
 	_film_background_performer_ids = normalized_selection
 
 	_film_background_options.clear()
-	var assignments_locked: bool = (
-		_get_active_film_project() != null
-		and str(_get_active_film_project().status) == "in_production"
-	)
+	var assignments_locked: bool = false # Changes are staged until a safe scene boundary.
 	for employee in extras:
 		var employee_id: String = str(employee.id)
 		var checkbox := CheckBox.new()
@@ -372,10 +396,7 @@ func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 			selected_index = 0
 
 		role_option.select(selected_index)
-		role_option.disabled = (
-			_get_active_film_project() != null
-			and str(_get_active_film_project().status) == "in_production"
-		)
+		role_option.disabled = false # A safe preparation boundary applies any changed cast.
 		var assigned_actor_id: String = str(
 			role_option.get_item_metadata(selected_index)
 		)
