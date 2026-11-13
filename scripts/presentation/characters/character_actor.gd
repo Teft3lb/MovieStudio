@@ -219,10 +219,11 @@ func start_scene_performance(
 	focus_position: Vector3,
 	action_id: String,
 	dialogue_text: String = "",
-	movement_path: Array = []
+	movement_path: Array = [],
+	allow_unassigned: bool = false
 ) -> void:
 	_clear_facility_route()
-	if not _has_workplace_destination:
+	if not _has_workplace_destination and not allow_unassigned:
 		return
 
 	var target_changed: bool = (
