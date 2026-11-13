@@ -761,13 +761,21 @@ func release_employee_from_workplace_manually(employee_id: String) -> void:
 		_leave_actor_from_workplace(actor)
 	clear_employee_task(employee_id)
 
+func can_reassign_employee_workplace(employee_id: String) -> bool:
+	return (
+		_find_employee(employee_id) != null
+		and not _is_active_production_participant(employee_id)
+		and not _is_active_editing_participant(employee_id)
+	)
+
+
 func set_employee_workplace_assignment(
 	employee_id: String,
 	building_id: String
 ) -> bool:
 	if _workplace_system == null or not is_instance_valid(_studio_building_manager):
 		return false
-	if _is_active_production_participant(employee_id) or _is_active_editing_participant(employee_id):
+	if not can_reassign_employee_workplace(employee_id):
 		return false
 	var employee: Variant = _find_employee(employee_id)
 	if employee == null:
