@@ -87,6 +87,16 @@ func depart(exit_route: Array[Vector3]) -> void:
 	_assign_path(exit_route)
 
 
+func snap_to_mark() -> void:
+	# Only for the existing manual clock fast-forward mode, which has
+	# game-minute signals but no intervening physics/process frames.
+	if _path.is_empty():
+		return
+	global_position = _path.back()
+	_waypoint_index = _path.size()
+	_finish_path()
+
+
 func has_arrived() -> bool:
 	return _at_mark and not _departing
 
