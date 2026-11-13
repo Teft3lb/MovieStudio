@@ -2208,6 +2208,8 @@ func _refresh_detail_panel() -> void:
 			"profession": profession_line,
 			"biography": employee.biography,
 			"stats": stats_text,
+			"show_recognition": str(employee.profession_id) in ["actor", "director"],
+			"recognition": float(employee.recognition),
 			"task": task_text,
 			"schedule": schedule_text,
 			"contract": contract_text,
