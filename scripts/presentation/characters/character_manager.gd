@@ -36,6 +36,9 @@ const PROFESSION_CATALOG_SCRIPT = preload(
 const CHARACTER_AGING_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_aging_system.gd"
 )
+const EMPLOYEE_ROSTER_PANEL_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/characters/employee_roster_panel_controller.gd"
+)
 const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_skill_progression_system.gd"
 )
@@ -65,17 +68,9 @@ var _employee_task_overrides: Dictionary = {}
 var _manual_workplace_dispatches: Dictionary = {}
 
 var _employee_actors: Dictionary = {}
-var _roster_buttons: Dictionary = {}
+var _employee_roster_view: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
-
-var _roster_header: Label
-var _employee_list: VBoxContainer
-var _market_toggle_button: Button
-var _market_panel: PanelContainer
-var _market_header: Label
-var _market_status_label: Label
-var _market_list: VBoxContainer
 
 var _detail_contract_label: Label
 var _contract_type_option: OptionButton
@@ -101,10 +96,19 @@ var _energy_bar: ProgressBar
 var _morale_bar: ProgressBar
 var _stress_bar: ProgressBar
 
-
 func _ready() -> void:
 	_game_clock = get_node("../GameClock")
 	_studio_hud = get_node_or_null("../StudioHUD")
+	_employee_roster_view = EMPLOYEE_ROSTER_PANEL_CONTROLLER_SCRIPT.new()
+	_employee_roster_view.call(
+		"setup",
+		_studio_hud,
+		Callable(self, "_on_roster_employee_pressed"),
+		Callable(self, "_toggle_market_panel"),
+		Callable(self, "_close_market_panel"),
+		Callable(self, "_on_market_candidate_pressed"),
+		Callable(self, "_get_roster_work_state_title")
+	)
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
 	_skill_progression_system = SKILL_PROGRESSION_SYSTEM_SCRIPT.new()
@@ -126,18 +130,14 @@ func _ready() -> void:
 	else:
 		_refresh_detail_panel()
 
-
 func get_employee_count() -> int:
 	return employees.size()
-
 
 func get_employees() -> Array:
 	return employees.duplicate()
 
-
 func get_selected_employee_id() -> String:
 	return _selected_employee_id
-
 
 func get_employee_actor(employee_id: String) -> Node:
 	var actor: Variant = _employee_actors.get(employee_id)
@@ -145,13 +145,11 @@ func get_employee_actor(employee_id: String) -> Node:
 		return null
 	return actor as Node
 
-
 func is_employee_at_scene_mark(employee_id: String) -> bool:
 	var actor: Node = get_employee_actor(employee_id)
 	if actor == null:
 		return false
 	return bool(actor.call("is_at_scene_mark"))
-
 
 func _is_active_production_participant(employee_id: String) -> bool:
 	if not is_instance_valid(_studio_building_manager):
@@ -162,7 +160,6 @@ func _is_active_production_participant(employee_id: String) -> bool:
 			employee_id
 		)
 	)
-
 
 func _is_active_editing_participant(employee_id: String) -> bool:
 	if (
@@ -176,7 +173,6 @@ func _is_active_editing_participant(employee_id: String) -> bool:
 			employee_id
 		)
 	)
-
 
 func _should_auto_dispatch_to_workplace(
 	employee_id: String,
@@ -194,7 +190,6 @@ func _should_auto_dispatch_to_workplace(
 		_:
 			return true
 
-
 func _is_employee_off_camera(employee_id: String) -> bool:
 	if (
 		not is_instance_valid(_studio_building_manager)
@@ -207,7 +202,6 @@ func _is_employee_off_camera(employee_id: String) -> bool:
 			employee_id
 		)
 	)
-
 
 func _should_leave_workplace(
 	employee_id: String,
@@ -222,7 +216,6 @@ func _should_leave_workplace(
 		return false
 	return not _is_active_production_participant(employee_id)
 
-
 func is_employee_assigned_to_building(
 	employee_id: String,
 	building_type_id: String
@@ -236,7 +229,6 @@ func is_employee_assigned_to_building(
 		and str(assignment.get("building_type_id", "")) == building_type_id
 	)
 
-
 func set_employee_task(employee_id: String, task_title: String) -> void:
 	var employee: Variant = _find_employee(employee_id)
 	if employee == null:
@@ -248,7 +240,6 @@ func set_employee_task(employee_id: String, task_title: String) -> void:
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()
-
 
 func clear_employee_task(employee_id: String) -> void:
 	_employee_task_overrides.erase(employee_id)
@@ -262,7 +253,6 @@ func clear_employee_task(employee_id: String) -> void:
 		_refresh_roster()
 		_refresh_detail_panel()
 
-
 func set_employee_production_action(
 	employee_id: String,
 	action_id: String
@@ -271,7 +261,6 @@ func set_employee_production_action(
 	if actor == null:
 		return
 	actor.call("set_production_action", action_id)
-
 
 func initialize_workplaces(building_manager: Node) -> void:
 	_studio_building_manager = building_manager
@@ -294,7 +283,6 @@ func initialize_workplaces(building_manager: Node) -> void:
 			)
 	_refresh_workplace_assignments()
 
-
 func get_employees_assigned_to_building(building_id: String) -> Array:
 	var result: Array = []
 	for employee in employees:
@@ -306,7 +294,6 @@ func get_employees_assigned_to_building(building_id: String) -> Array:
 			result.append(employee)
 	return result
 
-
 func get_employees_using_facility(building_id: String) -> Array:
 	var result: Array = []
 	for employee in employees:
@@ -316,7 +303,6 @@ func get_employees_using_facility(building_id: String) -> Array:
 		if str(actor.call("get_facility_building_id")) == building_id:
 			result.append(employee)
 	return result
-
 
 func _get_facility_assignment(
 	employee_id: String,
@@ -459,7 +445,6 @@ func _route_employee_to_facility(
 	facility_usage_changed.emit()
 	return true
 
-
 func is_employee_at_workplace(
 	employee_id: String,
 	building_type_id: String = ""
@@ -501,7 +486,6 @@ func is_employee_at_workplace(
 		return true
 	return bool(actor.call("is_at_workplace"))
 
-
 func is_employee_ready_for_production(
 	employee_id: String,
 	building_type_id: String
@@ -519,7 +503,6 @@ func is_employee_ready_for_production(
 			or bool(actor.call("is_at_scene_hold_mark"))
 		)
 	return bool(actor.call("is_at_workplace"))
-
 
 func dispatch_employee_to_workplace(employee_id: String) -> bool:
 	if not is_instance_valid(_studio_building_manager):
@@ -759,7 +742,6 @@ func dispatch_employee_to_workplace_manually(employee_id: String) -> bool:
 	set_employee_task(employee_id, task_title)
 	return true
 
-
 func release_employee_from_workplace_manually(employee_id: String) -> void:
 	_manual_workplace_dispatches.erase(employee_id)
 	var assignment: Dictionary = _workplace_assignments.get(
@@ -778,10 +760,8 @@ func release_employee_from_workplace_manually(employee_id: String) -> void:
 		_leave_actor_from_workplace(actor)
 	clear_employee_task(employee_id)
 
-
 func refresh_workplace_assignments() -> void:
 	_refresh_workplace_assignments()
-
 
 func _refresh_workplace_assignments() -> void:
 	if (
@@ -880,10 +860,9 @@ func _refresh_workplace_assignments() -> void:
 				workplace_exit_route
 			)
 	_refresh_roaming_routes()
-	if is_instance_valid(_roster_header):
+	if _employee_roster_view != null:
 		_refresh_roster()
 		_refresh_detail_panel()
-
 
 func _refresh_roaming_routes() -> void:
 	if (
@@ -908,10 +887,8 @@ func _refresh_roaming_routes() -> void:
 		# Never keep the old unsanitized route when a new building blocks it.
 		actor.call("set_roaming_route", safe_route)
 
-
 func refresh_navigation_routes() -> void:
 	_refresh_roaming_routes()
-
 
 func _spawn_initial_roster() -> void:
 	var rng := RandomNumberGenerator.new()
@@ -939,7 +916,6 @@ func _spawn_initial_roster() -> void:
 	for index in range(employees.size()):
 		_spawn_employee_actor(employees[index], index)
 
-
 func _spawn_employee_actor(employee: Variant, index: int) -> void:
 	var employee_id: String = str(employee.id)
 	if _employee_actors.has(employee_id):
@@ -957,7 +933,6 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 	add_child(actor)
 	_employee_actors[employee_id] = actor
 
-
 func _remove_employee_actor(employee_id: String) -> void:
 	_employee_task_overrides.erase(employee_id)
 	_manual_workplace_dispatches.erase(employee_id)
@@ -966,11 +941,8 @@ func _remove_employee_actor(employee_id: String) -> void:
 		actor.queue_free()
 	_employee_actors.erase(employee_id)
 
-	var roster_button: Variant = _roster_buttons.get(employee_id)
-	if roster_button != null and is_instance_valid(roster_button):
-		roster_button.queue_free()
-	_roster_buttons.erase(employee_id)
-
+	if _employee_roster_view != null:
+		_employee_roster_view.call("remove_employee", employee_id)
 
 func _route_for(index: int) -> Array[Vector3]:
 	var route: Array[Vector3] = []
@@ -1034,206 +1006,54 @@ func _route_for(index: int) -> Array[Vector3]:
 
 	return route
 
-
 func _build_roster_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "EmployeeRosterPanel"
-	panel.custom_minimum_size = Vector2(0.0, 0.0)
-	if _studio_hud == null:
-		push_error("CharacterManager: StudioHUD node is missing.")
+	if _employee_roster_view == null:
 		return
-	_studio_hud.call(
-		"register_workspace_panel",
-		"employees",
-		"Персонал студии",
-		panel
+	_employee_roster_view.call(
+		"build",
+		employees,
+		market_candidates,
+		_selected_employee_id,
+		_get_market_days_until_refresh()
 	)
-
-	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 8)
-	panel.add_child(layout)
-
-	var roster_header_row := HBoxContainer.new()
-	roster_header_row.add_theme_constant_override("separation", 8)
-	layout.add_child(roster_header_row)
-
-	_roster_header = Label.new()
-	_roster_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_roster_header.add_theme_font_size_override("font_size", 12)
-	_roster_header.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	roster_header_row.add_child(_roster_header)
-
-	_market_toggle_button = Button.new()
-	_market_toggle_button.text = "РЫНОК"
-	_market_toggle_button.custom_minimum_size = Vector2(94.0, 32.0)
-	_market_toggle_button.pressed.connect(_toggle_market_panel)
-	roster_header_row.add_child(_market_toggle_button)
-
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0.0, 0.0)
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_studio_hud.call("configure_scroll_container", scroll)
-	layout.add_child(scroll)
-
-	_employee_list = VBoxContainer.new()
-	_employee_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_employee_list.add_theme_constant_override("separation", 6)
-	scroll.add_child(_employee_list)
-
-	for employee in employees:
-		_add_roster_button(employee)
-
-	_build_market_panel()
-	_refresh_roster()
-
 
 func _add_roster_button(employee: Variant) -> void:
-	if not is_instance_valid(_employee_list):
+	if _employee_roster_view == null:
 		return
-
-	var employee_id: String = str(employee.id)
-	if _roster_buttons.has(employee_id):
-		return
-
-	var button := Button.new()
-	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(0.0, 60.0)
-	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	button.toggle_mode = true
-	button.add_theme_constant_override("h_separation", 8)
-	button.add_theme_font_size_override("font_size", 12)
-	button.pressed.connect(_on_roster_employee_pressed.bind(employee_id))
-	_employee_list.add_child(button)
-	_roster_buttons[employee_id] = button
-
-
-func _build_market_panel() -> void:
-	if _studio_hud == null:
-		return
-
-	_market_panel = PanelContainer.new()
-	_market_panel.name = "EmployeeMarketPanel"
-	_market_panel.custom_minimum_size = Vector2(0.0, 0.0)
-	_market_panel.visible = false
-	_studio_hud.call(
-		"register_workspace_panel",
-		"market",
-		"Кадровый рынок",
-		_market_panel
-	)
-
-	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 8)
-	_market_panel.add_child(layout)
-
-	var top_row := HBoxContainer.new()
-	layout.add_child(top_row)
-
-	_market_header = Label.new()
-	_market_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_market_header.add_theme_font_size_override("font_size", 13)
-	_market_header.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	top_row.add_child(_market_header)
-
-	var close_button := Button.new()
-	close_button.text = "Закрыть"
-	close_button.pressed.connect(_close_market_panel)
-	top_row.add_child(close_button)
-
-	_market_status_label = Label.new()
-	_market_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_market_status_label.add_theme_font_size_override("font_size", 11)
-	_market_status_label.add_theme_color_override(
-		"font_color",
-		Color(0.58, 0.76, 0.79, 1.0)
-	)
-	layout.add_child(_market_status_label)
-
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0.0, 0.0)
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_studio_hud.call("configure_scroll_container", scroll)
-	layout.add_child(scroll)
-
-	_market_list = VBoxContainer.new()
-	_market_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_market_list.add_theme_constant_override("separation", 6)
-	scroll.add_child(_market_list)
-
-	_refresh_market_panel()
-
+	_employee_roster_view.call("add_employee", employee)
 
 func _toggle_market_panel() -> void:
-	if not is_instance_valid(_market_panel) or _studio_hud == null:
+	if (
+		_employee_roster_view == null
+		or not bool(_employee_roster_view.call("has_market_panel"))
+		or _studio_hud == null
+	):
 		return
 	_refresh_market_panel()
 	_studio_hud.call("show_workspace_panel", "market")
-
 
 func _close_market_panel() -> void:
 	if _studio_hud != null:
 		_studio_hud.call("show_workspace_panel", "employees")
 
-
 func _refresh_market_panel() -> void:
-	if not is_instance_valid(_market_list):
+	if _employee_roster_view == null:
 		return
+	_employee_roster_view.call(
+		"refresh_market_panel",
+		market_candidates,
+		_get_market_days_until_refresh()
+	)
 
-	_market_header.text = "КАДРОВЫЙ РЫНОК  ·  %d" % market_candidates.size()
-	var days_until_refresh: int = int(
+func _get_market_days_until_refresh() -> int:
+	if _employment_system == null or _game_clock == null:
+		return 0
+	return int(
 		_employment_system.call(
 			"get_market_days_until_refresh",
 			int(_game_clock.current_day)
 		)
 	)
-	_market_status_label.text = (
-		"Обновление рынка через %d дн." % days_until_refresh
-	)
-
-	for child in _market_list.get_children():
-		_market_list.remove_child(child)
-		child.queue_free()
-
-	for candidate in market_candidates:
-		var candidate_id: String = str(candidate.id)
-		var button := Button.new()
-		button.name = "Candidate_%s" % candidate_id
-		button.custom_minimum_size = Vector2(0.0, 60.0)
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.add_theme_font_size_override("font_size", 12)
-		var candidate_role_title: String = candidate.get_profession_title()
-		var candidate_specialization: String = candidate.get_specialization_title()
-		if not candidate_specialization.is_empty():
-			candidate_role_title += " · " + candidate_specialization
-		button.text = "%s\n%s · %d ед. / день" % [
-			candidate.get_full_name(),
-			candidate_role_title,
-			candidate.daily_salary,
-		]
-		button.tooltip_text = (
-			"%s · %s: %d / 100"
-			% [
-				candidate.get_department_title(),
-				candidate.get_primary_skill_title(),
-				roundi(candidate.get_primary_skill_value()),
-			]
-		)
-		button.pressed.connect(
-			_on_market_candidate_pressed.bind(candidate_id)
-		)
-		_market_list.add_child(button)
-
-	_market_toggle_button.text = "РЫНОК · %d" % market_candidates.size()
 
 func _build_detail_panel() -> void:
 	var panel := PanelContainer.new()
@@ -1405,7 +1225,6 @@ func _build_detail_panel() -> void:
 	_detail_personality_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_detail_personality_label)
 
-
 func _create_progress_bar(
 	parent: VBoxContainer,
 	fill_color: Color
@@ -1426,10 +1245,8 @@ func _create_progress_bar(
 	parent.add_child(progress)
 	return progress
 
-
 func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
-
 
 func _leave_actor_from_workplace(actor: Variant) -> void:
 	if actor == null or not is_instance_valid(actor):
@@ -1460,7 +1277,6 @@ func _leave_actor_from_workplace(actor: Variant) -> void:
 		actor.call("leave_workplace")
 	else:
 		actor.call("leave_workplace", exit_route)
-
 
 func _release_employee_to_free_roam(actor: Variant) -> void:
 	if bool(actor.call("is_in_facility")):
@@ -1516,7 +1332,6 @@ func _release_employee_to_free_roam(actor: Variant) -> void:
 	):
 		actor.call("snap_outside_workplace")
 
-
 func _get_total_facility_capacity(
 	facility_type_id: String,
 	default_capacity: int
@@ -1532,7 +1347,6 @@ func _get_total_facility_capacity(
 			)
 		)
 	return default_capacity if is_instance_valid(_studio_building_manager) else 0
-
 
 func _is_employee_in_rotating_facility_group(
 	employee_id: String,
@@ -1553,7 +1367,6 @@ func _is_employee_in_rotating_facility_group(
 		if employee_ids[candidate_index] == employee_id:
 			return true
 	return false
-
 
 func _get_free_time_facility_type(
 	employee: Variant,
@@ -1605,7 +1418,6 @@ func _get_free_time_facility_type(
 		):
 			return "studio_lounge"
 	return ""
-
 
 func _update_social_relationships() -> void:
 	var attendees_by_building: Dictionary = {}
@@ -1680,7 +1492,6 @@ func _update_social_relationships() -> void:
 				first.relationships = first_relationships
 				second.relationships = second_relationships
 
-
 func _get_relationship_summary(employee: Variant) -> String:
 	var relationship_ids: Array[String] = []
 	var relationship_scores: Array[float] = []
@@ -1735,7 +1546,6 @@ func _get_relationship_summary(employee: Variant) -> String:
 	if summary_lines.is_empty():
 		return "Отношения: пока нет сложившихся связей"
 	return "Отношения:\n" + "\n".join(summary_lines)
-
 
 func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 	for employee in employees:
@@ -2053,7 +1863,6 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 		_refresh_roster()
 		_refresh_detail_panel()
 
-
 func _on_game_day_advanced(day: int) -> void:
 	for employee in employees:
 		var became_older: bool = bool(
@@ -2086,7 +1895,6 @@ func _on_game_day_advanced(day: int) -> void:
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_after_staffing_day()
 
-
 func _refresh_after_staffing_day() -> void:
 	if _selected_employee_id.is_empty() and _selected_market_candidate_id.is_empty():
 		if not employees.is_empty():
@@ -2097,7 +1905,6 @@ func _refresh_after_staffing_day() -> void:
 	else:
 		_refresh_roster()
 		_refresh_detail_panel()
-
 
 func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 	for employee in employees:
@@ -2141,7 +1948,6 @@ func _on_manual_advance_finished(_minutes_advanced: int) -> void:
 	_refresh_market_panel()
 	_refresh_after_staffing_day()
 
-
 func _unhandled_input(event: InputEvent) -> void:
 	var building_manager: Node = get_node_or_null("../StudioBuildingManager")
 	if (
@@ -2159,11 +1965,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	else:
 		_select_employee("")
 
-
 func _select_from_screen(screen_position: Vector2) -> void:
 	if not try_select_employee_from_screen(screen_position):
 		_select_employee("")
-
 
 func try_select_employee_from_screen(screen_position: Vector2) -> bool:
 	var camera := get_viewport().get_camera_3d()
@@ -2186,7 +1990,6 @@ func try_select_employee_from_screen(screen_position: Vector2) -> bool:
 		return false
 	_select_employee(employee_id)
 	return true
-
 
 func _select_employee(employee_id: String) -> void:
 	var previous_actor: Variant = _employee_actors.get(_selected_employee_id)
@@ -2212,7 +2015,6 @@ func _select_employee(employee_id: String) -> void:
 			_studio_hud.call("show_workspace_panel", "employees")
 			_studio_hud.call("show_inspector_panel", "employee", true)
 
-
 func _select_market_candidate(candidate_id: String) -> void:
 	var previous_actor: Variant = _employee_actors.get(_selected_employee_id)
 	if previous_actor != null and is_instance_valid(previous_actor):
@@ -2229,10 +2031,8 @@ func _select_market_candidate(candidate_id: String) -> void:
 		_studio_hud.call("show_workspace_panel", "market")
 		_studio_hud.call("show_inspector_panel", "employee", true)
 
-
 func _on_market_candidate_pressed(candidate_id: String) -> void:
 	_select_market_candidate(candidate_id)
-
 
 func _find_market_candidate(candidate_id: String) -> Variant:
 	for candidate in market_candidates:
@@ -2240,13 +2040,11 @@ func _find_market_candidate(candidate_id: String) -> Variant:
 			return candidate
 	return null
 
-
 func _find_employee(employee_id: String) -> Variant:
 	for employee in employees:
 		if str(employee.id) == employee_id:
 			return employee
 	return null
-
 
 func _get_workplace_title(employee_id: String) -> String:
 	var assignment: Dictionary = _workplace_assignments.get(
@@ -2262,7 +2060,6 @@ func _get_workplace_title(employee_id: String) -> String:
 			return "Монтажный отдел"
 		_:
 			return "Не назначено"
-
 
 func _get_production_participant_status(employee_id: String) -> String:
 	var actor: Node = get_employee_actor(employee_id)
@@ -2296,39 +2093,23 @@ func _get_production_participant_status(employee_id: String) -> String:
 		return "На площадке"
 	return "Направляется на площадку"
 
-
 func _refresh_roster() -> void:
-	if is_instance_valid(_roster_header):
-		_roster_header.text = "СОСТАВ СТУДИИ  ·  %d" % employees.size()
+	if _employee_roster_view == null:
+		return
+	_employee_roster_view.call(
+		"refresh_roster",
+		employees,
+		_selected_employee_id
+	)
 
-	for employee in employees:
-		var employee_id: String = str(employee.id)
-		var button: Button = _roster_buttons.get(employee_id) as Button
-		if not is_instance_valid(button):
-			continue
-
-		var needs: Dictionary = employee.needs
-		var work_state_title: String = employee.get_work_state_title()
-		if (
-			_is_active_production_participant(employee_id)
-			or _is_employee_off_camera(employee_id)
-		):
-			work_state_title = _get_production_participant_status(
-				employee_id
-			)
-		var energy: int = roundi(float(needs.get("energy", 1.0)) * 100.0)
-		var morale: int = roundi(float(needs.get("morale", 0.75)) * 100.0)
-		button.text = "%s\n%s · %s" % [
-			employee.get_full_name(),
-			employee.get_profession_title(),
-			work_state_title,
-		]
-		button.tooltip_text = (
-			"Энергия: %d%% · Настроение: %d%%\nЗадача: %s"
-			% [energy, morale, employee.current_task]
-		)
-		button.button_pressed = employee_id == _selected_employee_id
-
+func _get_roster_work_state_title(employee: Variant) -> String:
+	var employee_id: String = str(employee.id)
+	if (
+		_is_active_production_participant(employee_id)
+		or _is_employee_off_camera(employee_id)
+	):
+		return _get_production_participant_status(employee_id)
+	return employee.get_work_state_title()
 
 func _refresh_detail_panel() -> void:
 	if not is_instance_valid(_detail_name_label):
@@ -2515,7 +2296,6 @@ func _refresh_detail_panel() -> void:
 		]
 	)
 
-
 func _clear_skill_progress_bars() -> void:
 	if not is_instance_valid(_detail_skills_container):
 		return
@@ -2523,7 +2303,6 @@ func _clear_skill_progress_bars() -> void:
 		_detail_skills_container.remove_child(child)
 		child.queue_free()
 	_skill_progress_rows.clear()
-
 
 func _refresh_skill_progress_bars(
 	employee: Variant,
@@ -2610,7 +2389,6 @@ func _refresh_skill_progress_bars(
 		title_label.tooltip_text = tooltip_text
 		progress_bar.tooltip_text = tooltip_text
 
-
 func _refresh_workplace_dispatch_button(employee_id: String) -> void:
 	if not is_instance_valid(_workplace_dispatch_button):
 		return
@@ -2645,7 +2423,6 @@ func _refresh_workplace_dispatch_button(employee_id: String) -> void:
 			else "ОТПРАВИТЬ В МОНТАЖНУЮ"
 		)
 
-
 func _on_workplace_dispatch_button_pressed() -> void:
 	var employee_id: String = _selected_employee_id
 	if employee_id.is_empty():
@@ -2659,10 +2436,8 @@ func _on_workplace_dispatch_button_pressed() -> void:
 	_refresh_detail_panel()
 	_refresh_roster()
 
-
 func _on_contract_type_selected(_index: int) -> void:
 	_refresh_detail_panel()
-
 
 func _get_selected_contract_type() -> String:
 	if not is_instance_valid(_contract_type_option):
@@ -2672,7 +2447,6 @@ func _get_selected_contract_type() -> String:
 		return "permanent"
 	return str(_contract_type_option.get_item_metadata(selected_index))
 
-
 func _get_contract_type_title(contract_type: String) -> String:
 	match contract_type:
 		"fixed_30_days":
@@ -2681,7 +2455,6 @@ func _get_contract_type_title(contract_type: String) -> String:
 			return "Срочный · 90 дней"
 		_:
 			return "Бессрочный"
-
 
 func _on_hire_button_pressed() -> void:
 	if _selected_market_candidate_id.is_empty():
@@ -2714,7 +2487,6 @@ func _on_hire_button_pressed() -> void:
 	_show_employee_message(str(result.get("message", "Сотрудник принят в штат.")))
 	employees_changed.emit()
 
-
 func _on_dismiss_button_pressed() -> void:
 	var employee: Variant = _find_employee(_selected_employee_id)
 	if employee == null:
@@ -2725,7 +2497,6 @@ func _on_dismiss_button_pressed() -> void:
 		% employee.get_full_name()
 	)
 	_dismiss_dialog.popup_centered()
-
 
 func _confirm_dismiss_employee() -> void:
 	var employee_id: String = _selected_employee_id
@@ -2752,7 +2523,6 @@ func _confirm_dismiss_employee() -> void:
 	_show_employee_message(str(result.get("message", "Сотрудник уволен.")))
 	employees_changed.emit()
 
-
 func _show_employee_message(message: String) -> void:
 	var dialog := AcceptDialog.new()
 	dialog.title = "Управление персоналом"
@@ -2761,9 +2531,6 @@ func _show_employee_message(message: String) -> void:
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.close_requested.connect(dialog.queue_free)
 	dialog.popup_centered()
-
-
-
 
 func get_employee_workplace_path(employee_id: String) -> Array[Vector3]:
 	var result: Array[Vector3] = []

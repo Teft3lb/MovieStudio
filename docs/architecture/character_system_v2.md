@@ -113,3 +113,8 @@ Staff-housing and star-bungalow arrivals apply the sleeping pose immediately, in
 ## Employee skill profile presentation
 
 The employee inspector displays each profession skill as a progress bar matching the energy and stress indicators in height and track contrast, scaled to that employee's individual skill cap. This makes current mastery and remaining personal potential readable without small numeric fractions. Exact skill/cap values, the remaining experience to the next point, and exhausted/achieved potential states remain available in the control tooltip. Skill rows are reused while the selected employee's profession remains unchanged, avoiding per-minute UI reconstruction.
+
+
+## Employee roster presentation
+
+`EmployeeRosterPanelController` owns the employee roster and recruitment-market workspace controls, row creation, candidate rendering and refresh behavior. `CharacterManager` remains the owner of employee selection, hiring/dismissal, market timing, work-state decisions and production-participant status; it supplies callbacks and data to the view controller. The employee detail inspector and skill-progress UI remain in CharacterManager for the next presentation extraction pass.

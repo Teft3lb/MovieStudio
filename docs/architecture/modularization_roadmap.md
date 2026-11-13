@@ -18,7 +18,7 @@ Current approximate source line counts after the production, editing and logisti
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
 | `studio_building_actor.gd` | 677 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
-| `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
+| `character_manager.gd` | 2,557 | Employee simulation coordination, workplace routing, facilities, relationships, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
 The line counts are a warning signal, not a target in themselves. A module should own one cohesive responsibility and have a small, explicit dependency surface.
@@ -297,8 +297,8 @@ All suites inherit a shared RefCounted test base that forwards assertions to the
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Run the focused interior suites alongside the navigation, marker and set-prop builder smoke tests; then split CharacterManager presentation from employee simulation coordination.
+2. Continue CharacterManager presentation extraction: move the employee detail/skill profile into its own view controller, then separate simulation dispatch from the manager.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 
-The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider. The interior smoke test is now split into geometry, sound-stage, facility and employee integration suites. The next structural boundary is CharacterManager presentation versus employee simulation coordination.
+The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider. The interior smoke test is now split into geometry, sound-stage, facility and employee integration suites. CharacterManager presentation extraction is underway: roster and recruitment-market workspace rendering are delegated to EmployeeRosterPanelController while hiring, dismissal and employee state remain in the manager.
