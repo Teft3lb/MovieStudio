@@ -2171,7 +2171,7 @@ func _refresh_detail_panel() -> void:
 
 	if is_market_candidate:
 		stats_text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nИзвестность: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
@@ -2204,7 +2204,7 @@ func _refresh_detail_panel() -> void:
 		show_hire_button = true
 	else:
 		stats_text = (
-			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
+			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nИзвестность: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
