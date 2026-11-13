@@ -18,8 +18,16 @@ class MockEmployee extends RefCounted:
 
 
 class MockCharacterManager extends Node:
+	var script_department_staff: Array = []
+
 	func get_employees_using_facility(_building_id: String) -> Array:
 		return []
+
+	func can_reassign_employee_workplace(_employee_id: String) -> bool:
+		return true
+
+	func get_employees_assigned_to_building(building_id: String) -> Array:
+		return script_department_staff if building_id == "BLD-SCRIPT" else []
 
 
 class MockBuildingManager extends Node:
@@ -37,8 +45,11 @@ class MockBuildingManager extends Node:
 				return building
 		return null
 
-	func get_assigned_staff_for_building(_building_id: String) -> Array:
-		return assigned_staff
+	func get_buildings() -> Array:
+		return buildings
+
+	func get_assigned_staff_for_building(building_id: String) -> Array:
+		return assigned_staff if building_id == "BLD-SCRIPT" else []
 
 	func get_eligible_staff_for_building(building_type_id: String) -> Array:
 		return eligible_staff if building_type_id == "script_department" else []
@@ -156,6 +167,20 @@ func _run_tests() -> void:
 		and hud.active_workspace_id == "studio",
 		"Selecting a valid building must update selection and open the Studio inspector."
 	)
+	# Profession eligibility alone is not a workplace assignment. An
+	# unassigned writer must not be able to start a department project.
+	_script_request.clear()
+	controller.call("_on_generate_script_pressed")
+	_expect(
+		_script_request.is_empty(),
+		"An eligible but unassigned writer must not start script generation."
+	)
+
+	# Mirror the live CharacterManager/StudioBuildingManager assignment
+	# state before testing the signal's typed payload.
+	manager.assigned_staff = [writer]
+	character_manager.script_department_staff = [writer]
+	controller.call("refresh_selected_building")
 	controller.call("_on_generate_script_pressed")
 	_expect(
 		str(_script_request.get("writer_id", "")) == writer.id
