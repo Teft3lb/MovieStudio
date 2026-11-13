@@ -1697,6 +1697,42 @@ func _get_script_set_dressing_preview(script: Variant) -> Dictionary:
 		"missing_prop_ids": missing_prop_ids,
 	}
 
+func _get_staged_assignment_notice() -> String:
+	if _active_film_project == null or str(_active_film_project.status) != "in_production":
+		return ""
+	var stage_id: String = _get_sound_stage_building_id()
+	if stage_id.is_empty():
+		return ""
+	var assigned_staff: Array = _get_assigned_staff(stage_id)
+	var editor: RefCounted = _get_assignment_controller()
+	var crew: Dictionary = editor.call("get_film_crew_assignments", assigned_staff)
+	var cast: Dictionary = editor.call("get_cast_assignments")
+	var extras: Array[String] = editor.call("get_background_performer_ids")
+	if (
+		crew == _active_film_project.crew_assignments
+		and cast == _active_film_project.cast_assignments
+		and extras == _active_film_project.background_performer_ids
+	):
+		return ""
+	if not bool(editor.call(
+		"has_complete_production_assignments", crew, cast, assigned_staff
+	)):
+		return "\n\nЗамена состава пока невозможна: %s" % str(editor.call(
+			"get_assignment_blocker", crew, cast, assigned_staff
+		))
+	var is_last_scene: bool = (
+		int(_active_film_project.current_scene_index)
+		>= int(_active_film_project.total_scene_count) - 1
+	)
+	var can_apply_now: bool = (
+		str(_active_film_project.current_phase) == "preparation"
+		and int(_active_film_project.phase_minutes_elapsed) == 0
+	)
+	if is_last_scene and not can_apply_now:
+		return "\n\nЗамену состава нельзя применить: подготовка последней сцены уже закончилась."
+	return "\n\nСостав изменён: новые назначения вступят в силу перед следующей сценой."
+
+
 func _update_film_production_ui() -> void:
 	if not is_instance_valid(_film_production_status_label):
 		return
@@ -1839,6 +1875,7 @@ func _update_film_production_ui() -> void:
 			float(project.get_remaining_work_days()),
 			int(project.current_scene_retakes),
 		]
+		_film_production_detail_label.text += _get_staged_assignment_notice()
 		if is_instance_valid(_film_production_start_button):
 			_film_production_start_button.text = "СЪЁМКИ ИДУТ"
 			_film_production_start_button.disabled = true
