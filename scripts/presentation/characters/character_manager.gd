@@ -564,8 +564,8 @@ func dispatch_employee_to_workplace(employee_id: String) -> bool:
 	var slot_index: int = int(assignment.get("slot_index", 0))
 	var profession_id: String = str(employee.profession_id)
 	if bool(actor.call("is_in_facility")):
-		if not bool(actor.call("is_at_facility")):
-			return false
+		# A new work shift cancels an unfinished trip to a rest facility.
+		# Replan from the actor's actual position, including the facility exit.
 		var source_building_id: String = str(
 			actor.call("get_facility_building_id")
 		)
