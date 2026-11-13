@@ -219,8 +219,9 @@ func _run_tests() -> void:
 	employee.needs["stress"] = 0.65
 	characters.employees = [employee]
 	var actor := FakeEmployeeActor.new()
-	actor.global_position = Vector3(-10.0, 0.0, 0.0)
 	studio.add_child(actor)
+	# Node3D.global_position is valid only after entering SceneTree.
+	actor.global_position = Vector3(-10.0, 0.0, 0.0)
 	characters.actor = actor
 	var skills: RefCounted = SKILL_SYSTEM.new()
 	var activities: RefCounted = ACTIVITY_CONTROLLER.new()
