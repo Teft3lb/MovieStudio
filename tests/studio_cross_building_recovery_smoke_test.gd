@@ -278,6 +278,13 @@ func _run_tests() -> void:
 		int(actor.get("_route_index")) == patrol_loop_index,
 		"Finishing the patrol loop must never send an employee back to an indoor spawn point."
 	)
+	var blocked_patrol: Array[Vector3] = []
+	actor.call("set_roaming_route", blocked_patrol)
+	var remaining_patrol: Array[Vector3] = actor.get("_route")
+	_expect(
+		remaining_patrol.is_empty(),
+		"An invalidated outdoor patrol must be cleared instead of following a stale path through new walls."
+	)
 	patrol_clock.free()
 	parent.free()
 	studio.free()
