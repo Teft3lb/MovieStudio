@@ -65,6 +65,67 @@ func _run_tests() -> void:
 		return
 	var start: Vector3 = stage_workplace.back()
 	var target: Vector3 = warehouse_workplace.back()
+	# The source building must be inferred from the physical position even
+	# when an employee has no workplace assignment or a stale building ID.
+	var implicit_commute: Array[Vector3] = studio.call(
+		"get_workplace_path_from", warehouse.id, 0, start
+	)
+	var stale_source_commute: Array[Vector3] = studio.call(
+		"get_workplace_path_from", warehouse.id, 0, start,
+		warehouse.id, 0
+	)
+	var implicit_facility: Array[Vector3] = studio.call(
+		"get_facility_path_from", warehouse.id, 0, start
+	)
+	for path in [implicit_commute, stale_source_commute, implicit_facility]:
+		var exit_index: int = -1
+		var entrance_index: int = -1
+		for index in range(path.size()):
+			if path[index].distance_to(stage_workplace.front()) <= 0.1:
+				exit_index = index
+			if path[index].distance_to(warehouse_workplace.front()) <= 0.1:
+				entrance_index = index
+		_expect(
+			path.size() >= 5
+			and path.front().distance_to(start) < 0.1
+			and path.back().distance_to(target) < 0.1
+			and exit_index > 0 and entrance_index > exit_index,
+			"Every inter-building commute must exit the source doorway before outdoor navigation."
+		)
+	var inside_to_inside: Array[Vector3] = studio.call(
+		"get_workplace_path_from", stage.id, 1, start
+	)
+	var indoor_target: Array[Vector3] = stage_actor.call(
+		"get_workplace_path", 1
+	)
+	var inside_routes_outside: bool = false
+	for point in inside_to_inside:
+		if point.distance_to(stage_workplace.front()) < 0.1:
+			inside_routes_outside = true
+	_expect(
+		inside_to_inside.size() >= 2
+		and inside_to_inside.front().distance_to(start) < 0.1
+		and inside_to_inside.back().distance_to(indoor_target.back()) < 0.1
+		and not inside_routes_outside,
+		"Workstation changes inside one building must use indoor navigation, not exit and re-enter."
+	)
+	var roam_targets: Array[Vector3] = [
+		Vector3(38.0, 0.0, 32.0),
+		Vector3(40.0, 0.0, 34.0),
+	]
+	var indoor_to_roaming: Array[Vector3] = studio.call(
+		"get_roaming_route", start, roam_targets
+	)
+	var roaming_outside_index: int = -1
+	for index in range(indoor_to_roaming.size()):
+		if indoor_to_roaming[index].distance_to(stage_workplace.front()) < 0.1:
+			roaming_outside_index = index
+	_expect(
+		roaming_outside_index > 0
+		and indoor_to_roaming.front().distance_to(start) < 0.1,
+		"Leaving for free time must first reach the building exit, never traverse a wall."
+	)
+
 	var route: Array[Vector3] = studio.call(
 		"get_scene_recovery_path", stage.id, start, target
 	)
