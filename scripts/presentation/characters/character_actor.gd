@@ -114,9 +114,11 @@ func _process(delta: float) -> void:
 		global_position + direction * _move_speed * simulation_delta
 	)
 	if not _try_move_to_position(next_position):
+		_recover_blocked_route(simulation_delta, "roaming")
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
+	_blocked_movement_seconds = 0.0
 	look_at(global_position + direction, Vector3.UP)
 	_set_walking(true)
 	_advance_visual(simulation_delta)
@@ -177,7 +179,8 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 	var target: Vector3 = _workplace_path[_workplace_path_index]
 	var direction: Vector3 = target - global_position
 	direction.y = 0.0
-	if direction.length_squared() <= 0.25:
+	# Keep corners and door thresholds: half-meter skipping cut across walls.
+	if direction.length_squared() <= 0.04:
 		if _workplace_path_index < _workplace_path.size() - 1:
 			_workplace_path_index += 1
 			_blocked_movement_seconds = 0.0
@@ -988,8 +991,24 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 	if navigation_manager == null:
 		return
 	var route: Array[Vector3] = []
-	if route_kind == "scene":
-		if (
+	if route_kind == "roaming":
+		if navigation_manager.has_method("get_roaming_route") and _route.size() >= 2:
+			var target_index: int = mini(_route_index, _route.size() - 1)
+			var waypoint: Vector3 = _route[target_index]
+			var following: Vector3 = _route[(target_index + 1) % _route.size()]
+			var route_targets: Array[Vector3] = [waypoint, following]
+			route = navigation_manager.call(
+				"get_roaming_route", global_position, route_targets
+			)
+	elif route_kind == "scene":
+		if navigation_manager.has_method("get_scene_recovery_path"):
+			route = navigation_manager.call(
+				"get_scene_recovery_path",
+				_workplace_building_id,
+				global_position,
+				_scene_target_position
+			)
+		elif (
 			not _workplace_building_id.is_empty()
 			and navigation_manager.has_method("get_scene_path")
 		):
@@ -1027,6 +1046,9 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 	if route.size() < 2:
 		return
 	match route_kind:
+		"roaming":
+			_route = route
+			_route_index = 1
 		"scene":
 			_scene_path = route
 			_scene_path_index = 0
@@ -1045,7 +1067,7 @@ func _try_move_to_position(target_position: Vector3) -> bool:
 		# No displacement is not a successful move: the previous fallback
 		# could report success forever while a character pressed into a wall.
 		return false
-	if _is_movement_position_clear(candidate):
+	if _is_movement_segment_clear(candidate):
 		global_position = candidate
 		return true
 	var x_candidate: Vector3 = Vector3(
@@ -1065,10 +1087,10 @@ func _try_move_to_position(target_position: Vector3) -> bool:
 			< global_position.distance_squared_to(candidate) - 0.000001
 	)
 	var x_is_clear: bool = (
-		x_progress and _is_movement_position_clear(x_candidate)
+		x_progress and _is_movement_segment_clear(x_candidate)
 	)
 	var z_is_clear: bool = (
-		z_progress and _is_movement_position_clear(z_candidate)
+		z_progress and _is_movement_segment_clear(z_candidate)
 	)
 	if x_is_clear and z_is_clear:
 		global_position = (
@@ -1085,6 +1107,21 @@ func _try_move_to_position(target_position: Vector3) -> bool:
 		global_position = z_candidate
 		return true
 	return false
+
+func _is_movement_segment_clear(target_position: Vector3) -> bool:
+	# Sweep the capsule in short steps so 3x/6x simulation cannot tunnel
+	# through thin interior partitions between frame updates.
+	var start_position: Vector3 = global_position
+	var distance: float = start_position.distance_to(target_position)
+	var steps: int = maxi(ceili(distance / 0.18), 1)
+	for step_index in range(1, steps + 1):
+		var sample: Vector3 = start_position.lerp(
+			target_position, float(step_index) / float(steps)
+		)
+		if not _is_movement_position_clear(sample):
+			return false
+	return true
+
 
 func _is_movement_position_clear(candidate_position: Vector3) -> bool:
 	if _movement_collision_shape == null or not is_inside_tree():
