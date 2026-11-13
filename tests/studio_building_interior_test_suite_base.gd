@@ -71,13 +71,15 @@ func _assert_workplace_route(
 		slot_index
 	)
 	_expect(
-		route.size() == 4,
-		"Workplace routes must contain outside, entrance, corridor and work points."
+		route.size() >= 4,
+		"Workplace routes must contain outside, entrance, corridor and work points, with optional obstacle-avoidance waypoints."
 	)
+	if route.size() < 4:
+		return
 
 	var outside: Vector3 = actor.to_local(route[0])
 	var inside: Vector3 = actor.to_local(route[1])
-	var workstation: Vector3 = actor.to_local(route[3])
+	var workstation: Vector3 = actor.to_local(route.back())
 
 	_expect(
 		outside.z > depth * 0.5,

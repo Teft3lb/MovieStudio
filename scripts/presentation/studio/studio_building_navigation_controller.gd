@@ -45,14 +45,10 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		return path
 	var normalized_slot: int = clampi(slot_index, 0, _workplace_points.size() - 1)
 	var building_type_id: String = str(_building_data.building_type_id)
-	var slot_offset: float = 0.0
-	if building_type_id not in [
-		"cafeteria", "staff_housing", "star_bungalow", "sound_stage",
-		"tv_studio", "fitness_center", "studio_lounge",
-	]:
-		slot_offset = (
-			float(normalized_slot) - float(_workplace_points.size() - 1) * 0.5
-		) * 0.22
+	var slot_offset: float = _get_entrance_slot_offset(
+		normalized_slot,
+		building_type_id
+	)
 	var workplace_point: Vector3 = _workplace_points[normalized_slot]
 	var outside: Vector3 = _entrance_outside + Vector3(slot_offset, 0.0, 0.0)
 	var inside: Vector3 = _entrance_inside + Vector3(slot_offset, 0.0, 0.0)
@@ -86,6 +82,25 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		path.append(workplace_world_position)
 	return path
 
+func _get_entrance_slot_offset(
+	slot_index: int,
+	building_type_id: String
+) -> float:
+	if slot_index < 0 or _workplace_points.is_empty():
+		return 0.0
+	if building_type_id in [
+		"cafeteria", "staff_housing", "star_bungalow", "sound_stage",
+		"tv_studio", "fitness_center", "studio_lounge",
+	]:
+		return 0.0
+	var normalized_slot: int = clampi(
+		slot_index, 0, _workplace_points.size() - 1
+	)
+	return (
+		float(normalized_slot) - float(_workplace_points.size() - 1) * 0.5
+	) * 0.22
+
+
 func _resolve_exit_navigation_slot(
 	local_start: Vector3,
 	requested_slot_index: int
@@ -117,10 +132,16 @@ func get_exit_path_from(
 		local_start,
 		slot_index
 	)
+	var slot_offset: float = _get_entrance_slot_offset(
+		resolved_slot_index,
+		str(_building_data.building_type_id)
+	)
+	var doorway_offset := Vector3(slot_offset, 0.0, 0.0)
+	var inside_position: Vector3 = _entrance_inside + doorway_offset
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		local_start,
-		_entrance_inside,
+		inside_position,
 		_get_interior_navigation_obstacles(resolved_slot_index),
 		0.5,
 		_get_interior_navigation_bounds()
@@ -130,7 +151,9 @@ func get_exit_path_from(
 	var result: Array[Vector3] = []
 	for point in indoor_path:
 		result.append(_interior_root.to_global(point))
-	var outside_position: Vector3 = _interior_root.to_global(_entrance_outside)
+	var outside_position: Vector3 = _interior_root.to_global(
+		_entrance_outside + doorway_offset
+	)
 	if result.back().distance_to(outside_position) > 0.2:
 		result.append(outside_position)
 	return result

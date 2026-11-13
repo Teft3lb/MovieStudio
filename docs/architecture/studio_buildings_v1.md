@@ -201,3 +201,8 @@ The top-level `tests/studio_building_interior_smoke_test.gd` remains the single 
 ### Fixture isolation
 
 The interior smoke suites run cases with separate building fixtures. Each case frees its spawned building nodes immediately after its assertions, avoiding stacked physics wall colliders when testing employee movement and TV Studio routes. The top-level runner asserts that no building fixtures leak between suites.
+
+
+### Workstation route contracts
+
+Forward and reverse workplace routes use the same authored per-slot doorway offset in offices and warehouses. Sound stages, TV studios and shared facilities retain the centered entrance. Workplace routes contain at least four positions (outside, inside, corridor, workstation); the navigation solver may add intermediate positions around obstacles. Wall-collision bodies expose a consistently named `CollisionShape3D` child, preserving scene-path checks and character collision.

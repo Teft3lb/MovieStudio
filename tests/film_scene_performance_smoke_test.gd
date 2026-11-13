@@ -380,12 +380,21 @@ func _test_idle_production_staff_roam_until_dispatched() -> void:
 	employee.shift_end_hour = 8
 	character_manager.call("_on_game_minute_advanced", 1, 9, 1)
 	_expect(
+		str(employee.work_state) == "free_time"
+		and bool(actor.call("is_at_workplace"))
+		and character_manager.get("_manual_workplace_dispatches").has(
+			str(employee.id)
+		),
+		"A manual stage call must override after-shift free-time routing until released."
+	)
+	character_manager.call("_on_game_minute_advanced", 1, 22, 0)
+	_expect(
 		str(employee.work_state) == "off_duty"
 		and bool(actor.call("is_at_workplace"))
 		and character_manager.get("_manual_workplace_dispatches").has(
 			str(employee.id)
 		),
-		"A manual stage call must override the normal shift-end housing schedule until released."
+		"A manual stage call must also override night-time housing until released."
 	)
 	character_manager.call(
 		"release_employee_from_workplace_manually",

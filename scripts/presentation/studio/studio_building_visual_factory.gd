@@ -123,6 +123,7 @@ func create_wall_collision(
 	body.collision_layer = 8
 	body.collision_mask = 0
 	var collision := CollisionShape3D.new()
+	collision.name = "CollisionShape3D"
 	var shape := BoxShape3D.new()
 	shape.size = size
 	collision.shape = shape
