@@ -8,6 +8,7 @@ const CHARACTER_VISUAL_SCRIPT = preload(
 var character_data: Variant
 var _route: Array[Vector3] = []
 var _route_index: int = 1
+var _roaming_loop_start_index: int = 0
 var _move_speed: float = 1.25
 var _visual: Node3D
 var _game_clock: Node
@@ -105,7 +106,9 @@ func _process(delta: float) -> void:
 	var direction: Vector3 = target - global_position
 	direction.y = 0.0
 	if direction.length_squared() <= 0.09:
-		_route_index = (_route_index + 1) % _route.size()
+		_route_index += 1
+		if _route_index >= _route.size():
+			_route_index = _roaming_loop_start_index
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return
@@ -914,10 +917,15 @@ func snap_outside_workplace() -> void:
 	_finish_leaving_workplace()
 
 
-func set_roaming_route(route: Array[Vector3]) -> void:
+func set_roaming_route(
+	route: Array[Vector3], loop_start_index: int = 0
+) -> void:
 	if route.size() < 2:
 		return
 	_route = route.duplicate()
+	_roaming_loop_start_index = clampi(
+		loop_start_index, 0, route.size() - 1
+	)
 	_route_index = 1
 
 
@@ -1053,8 +1061,15 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 		return
 	match route_kind:
 		"roaming":
-			_route = route
-			_route_index = 1
+			var loop_index: int = 0
+			if navigation_manager.has_method("get_roaming_loop_start_index"):
+				var recovery_targets: Array[Vector3] = [
+					waypoint, following
+				]
+				loop_index = int(navigation_manager.call(
+					"get_roaming_loop_start_index", route, recovery_targets
+				))
+			set_roaming_route(route, loop_index)
 		"scene":
 			_scene_path = route
 			_scene_path_index = 0
