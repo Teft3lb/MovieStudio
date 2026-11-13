@@ -133,6 +133,13 @@ func _run_tests() -> void:
 	)
 	controller.call("set_active_project", project)
 	controller.call("set_active_script", studio.active_script)
+	_expect(
+		bool(controller.call("_is_film_lunch_break", 12))
+		and bool(controller.call("should_release_production_employee_for_off_hours", 12))
+		and not bool(controller.call("_is_film_lunch_break", 11))
+		and not bool(controller.call("should_release_production_employee_for_off_hours", 11)),
+		"Production must release its participants for lunch but retain them during the shooting shift."
+	)
 	var editor: RefCounted = controller.call("_get_assignment_controller")
 	var layout := VBoxContainer.new()
 	root.add_child(layout)
