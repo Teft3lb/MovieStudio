@@ -321,6 +321,12 @@ func _is_busy(employee_id: String) -> bool:
 				"is_employee_in_publicity_event", employee_id
 			))
 		)
+		or (
+			_manager.has_method("is_employee_in_manual_activity")
+			and bool(_manager.call(
+				"is_employee_in_manual_activity", employee_id
+			))
+		)
 	)
 
 
