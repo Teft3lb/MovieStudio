@@ -7,7 +7,7 @@ const INVITATION_POLICY_SCRIPT = preload(
 	"res://scripts/domain/tv_production/tv_show_invitation_policy.gd"
 )
 
-var _controller: RefCounted
+var _controller: WeakRef
 var _guest_option: OptionButton
 var _host_option: OptionButton
 var _invite_button: Button
@@ -20,7 +20,7 @@ func build(
 	controller: RefCounted,
 	candidates: Array
 ) -> void:
-	_controller = controller
+	_controller = weakref(controller)
 	var heading := Label.new()
 	heading.text = "ТОК-ШОУ · ПРИГЛАШЁННЫЙ ВЕДУЩИЙ"
 	heading.add_theme_font_size_override("font_size", 13)
@@ -82,7 +82,9 @@ func _on_invite_pressed(stage_id: String) -> void:
 	var host_id: String = str(_host_option.get_item_metadata(
 		_host_option.selected
 	))
-	_controller.call("request_invitation", stage_id, guest_id, host_id)
+	var owner: Variant = _controller.get_ref()
+	if owner != null:
+		owner.call("request_invitation", stage_id, guest_id, host_id)
 
 
 func refresh(
