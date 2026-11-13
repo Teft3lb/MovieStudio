@@ -77,6 +77,9 @@ func _run_tests() -> void:
 	manager.set("employees", [employee_a, employee_b])
 	manager.set("_workplace_system", policy)
 	manager.set("_studio_building_manager", studio)
+	# Mirror the actual CharacterManager state: the initial stage-B placement
+	# was a player override, not merely an isolated policy calculation.
+	manager.set("_manual_workplace_assignments", manual_choices.duplicate())
 	manager.set("_workplace_assignments", assigned)
 	var layout := VBoxContainer.new()
 	root.add_child(layout)
@@ -129,6 +132,18 @@ func _run_tests() -> void:
 		"Non-operational stages must reject reassignment."
 	)
 	stage_b.is_operational = true
+	_expect(
+		bool(manager.call(
+			"set_employee_workplace_assignment", employee_a.id, ""
+		))
+		and manager.call(
+			"get_employees_assigned_to_building", "STAGE-A"
+		).size() == 1
+		and manager.call(
+			"get_employees_assigned_to_building", "STAGE-B"
+		).size() == 1,
+		"Clearing A's override must restore its automatic placement without moving B's manual assignment."
+	)
 
 	var directors: Array = []
 	var manual_targets: Dictionary = {}
