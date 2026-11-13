@@ -142,13 +142,22 @@ func _run_tests() -> void:
 		and int(invitation.get("visitor_count", 0)) >= 4,
 		"Inviting fans must spawn a crowd and route two existing guards to the event."
 	)
+	# Keep the empty background-performer list explicitly typed: GDScript
+	# does not implicitly convert a literal [] to Array[String] in call().
+	var background_ids: Array[String] = []
 	_expect(
 		bool(controller.call("is_participant", str(star.id)))
 		and bool(controller.call("is_participant", str(guards[0].id)))
 		and bool(controller.call("has_staff_conflict",
-			{}, {"LEAD": str(star.id)}, []
+			{}, {"LEAD": str(star.id)}, background_ids
 		)),
 		"Public event participants must be reserved from film production."
+	)
+	_expect(
+		not bool(controller.call(
+			"has_staff_conflict", {}, {"LEAD": "UNRELATED"}, background_ids
+		)),
+		"Unrelated film personnel must remain available during a fan event."
 	)
 	var blocked: Dictionary = controller.call(
 		"request_event", str(star.id), "paparazzi"
