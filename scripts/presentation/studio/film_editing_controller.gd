@@ -127,6 +127,15 @@ func advance() -> void:
 		_manager.call("on_film_editing_completed")
 
 
+func _has_delivered_footage() -> bool:
+	if (
+		is_instance_valid(_manager)
+		and _manager.has_method("is_film_material_at_editing")
+	):
+		return bool(_manager.call("is_film_material_at_editing"))
+	return true
+
+
 func _is_film_editor_ready(editor_id: String) -> bool:
 	var editor: Variant = _find_employee(editor_id)
 	if editor == null or str(editor.work_state) != "working":
@@ -157,6 +166,12 @@ func _build_film_editing_detail(assigned_staff: Array) -> void:
 		waiting_label.text = "Монтаж станет доступен после завершения съёмок всех сцен."
 		waiting_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_detail_layout.add_child(waiting_label)
+		return
+	if not _has_delivered_footage():
+		var delivery_label := Label.new()
+		delivery_label.text = "Отснятый материал ещё на съёмочной площадке. Перетащи катушки из павильона в монтажный отдел."
+		delivery_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail_layout.add_child(delivery_label)
 		return
 
 	var editor_candidates: Array = []
@@ -426,6 +441,7 @@ func _on_create_film_editing_project_pressed() -> void:
 		_get_active_film_project() == null
 		or str(_get_active_film_project().status) != "completed"
 		or _film_editing_editor_id.is_empty()
+		or not _has_delivered_footage()
 	):
 		return
 	var editor: Variant = _find_employee(_film_editing_editor_id)
@@ -495,7 +511,7 @@ func _on_film_editing_move_scene_pressed(direction: int) -> void:
 
 
 func _on_start_film_editing_pressed() -> void:
-	if _active_editing_project == null:
+	if _active_editing_project == null or not _has_delivered_footage():
 		return
 	if not _is_film_editor_ready(str(_active_editing_project.editor_id)):
 		if is_instance_valid(_film_editing_status_label):
@@ -504,6 +520,8 @@ func _on_start_film_editing_pressed() -> void:
 			)
 		return
 	if _film_editing_system.call("start_editing", _active_editing_project):
+		if _manager.has_method("on_film_editing_started"):
+			_manager.call("on_film_editing_started")
 		_manager.call("refresh_building_detail")
 
 
@@ -564,7 +582,8 @@ func _update_film_editing_ui() -> void:
 			"Фильм: %s\nИтоговое качество: %d/100\n"
 			+ "Качество исходного материала: %d/100\n"
 			+ "Навык монтажёра: %d/100\nСвязность таймлайна: %d/100\n"
-			+ "Затрачено: %.1f рабочих дней\nФильм готов к выпуску."
+			+ "Затрачено: %.1f рабочих дней\n"
+		+ "Перетащи готовый фильм к площадке «РЕЛИЗ» на территории студии."
 		) % [
 			str(project.film_title),
 			int(project.final_quality),

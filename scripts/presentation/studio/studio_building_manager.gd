@@ -64,6 +64,9 @@ const BUILDING_PLACEMENT_CONTROLLER_SCRIPT = preload(
 const BUILDING_INSPECTOR_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_inspector_controller.gd"
 )
+const FILM_DOSSIER_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_film_dossier_controller.gd"
+)
 
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
@@ -90,6 +93,8 @@ var _film_editing_controller: RefCounted
 var _film_production_controller: RefCounted
 var _building_placement_controller: RefCounted
 var _building_inspector_controller: RefCounted
+var _film_dossier_controller: RefCounted
+var _released_film_records: Array[Dictionary] = []
 
 var _set_logistics_phase: String:
 	get:
@@ -181,6 +186,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_get_film_production_controller()
 	_get_building_placement_controller()
 	_get_building_inspector_controller()
+	_get_film_dossier_controller()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
@@ -277,6 +283,85 @@ func _get_film_production_controller() -> RefCounted:
 	return _film_production_controller
 
 
+func _get_film_dossier_controller() -> RefCounted:
+	if _film_dossier_controller == null:
+		_film_dossier_controller = FILM_DOSSIER_CONTROLLER_SCRIPT.new()
+		_film_dossier_controller.call("setup", self)
+	return _film_dossier_controller
+
+
+func get_building_actor_by_id(building_id: String) -> Node3D:
+	return _building_actors.get(building_id) as Node3D
+
+
+func get_script_for_production() -> Variant:
+	if _film_dossier_controller != null:
+		var delivered_script: Variant = _film_dossier_controller.call(
+			"get_script_at_stage"
+		)
+		if delivered_script != null:
+			return delivered_script
+	return _latest_script
+
+
+func is_film_script_staged(script_id: String, stage_id: String) -> bool:
+	return bool(_get_film_dossier_controller().call(
+		"is_script_at_stage", script_id, stage_id
+	))
+
+
+func is_film_material_at_editing() -> bool:
+	if _active_film_script == null:
+		return false
+	return bool(_get_film_dossier_controller().call(
+		"is_footage_at_editing", str(_active_film_script.id)
+	))
+
+
+func is_prior_film_released() -> bool:
+	if _active_film_script == null:
+		return true
+	var dossier: Variant = _get_film_dossier_controller().call(
+		"get_dossier", str(_active_film_script.id)
+	)
+	return (
+		dossier == null
+		or str(dossier.phase) == "released"
+	)
+
+
+func get_film_dossier_status() -> String:
+	return str(_get_film_dossier_controller().call("get_latest_message"))
+
+
+func on_film_production_started(script_id: String, stage_id: String) -> void:
+	_get_film_dossier_controller().call(
+		"on_production_started", script_id, stage_id
+	)
+
+
+func on_film_production_completed(script_id: String) -> void:
+	_get_film_dossier_controller().call("on_production_completed", script_id)
+	_refresh_building_detail()
+
+
+func on_film_editing_started() -> void:
+	if _active_film_script != null:
+		_get_film_dossier_controller().call(
+			"on_editing_started", str(_active_film_script.id)
+	)
+
+
+func on_film_dossier_released(payload: Dictionary) -> void:
+	_released_film_records.append(payload.duplicate(true))
+	archive_completed_film_chain()
+	_refresh_building_detail()
+
+
+func get_released_film_records() -> Array[Dictionary]:
+	return _released_film_records.duplicate(true)
+
+
 func _get_building_placement_controller() -> RefCounted:
 	if _building_placement_controller == null:
 		_building_placement_controller = BUILDING_PLACEMENT_CONTROLLER_SCRIPT.new()
@@ -339,9 +424,15 @@ func _on_employee_roster_changed() -> void:
 		_refresh_building_detail()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_get_building_placement_controller().call("process")
-
+	if (
+		_film_dossier_controller != null
+		and bool(_film_dossier_controller.call("is_dragging"))
+	):
+		_film_dossier_controller.call(
+			"update_drag", get_viewport().get_mouse_position()
+	)
 
 func is_placing_building() -> bool:
 	return bool(_get_building_placement_controller().call("is_placing_building"))
@@ -802,6 +893,20 @@ func set_stage_camera_target(
 	actor.call("set_camera_target", target_position, active)
 
 
+func _input(event: InputEvent) -> void:
+	# Handle mouse release even when the cursor finishes over HUD controls.
+	if (
+		_film_dossier_controller == null
+		or not bool(_film_dossier_controller.call("is_dragging"))
+		or not event is InputEventMouseButton
+	):
+		return
+	var button_event := event as InputEventMouseButton
+	if button_event.button_index == MOUSE_BUTTON_LEFT and not button_event.pressed:
+		_film_dossier_controller.call("release_drag", button_event.position)
+		get_viewport().set_input_as_handled()
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if is_placing_building():
 		_get_building_placement_controller().call("handle_input", event)
@@ -810,6 +915,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	var mouse_event := event as InputEventMouseButton
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if (
+		_film_dossier_controller != null
+		and bool(_film_dossier_controller.call("try_pickup", mouse_event.position))
+	):
+		get_viewport().set_input_as_handled()
 		return
 	if (
 		is_instance_valid(_character_manager)
@@ -1050,6 +1161,10 @@ func refresh_building_detail() -> void:
 
 
 func on_film_editing_completed() -> void:
+	if _active_film_script != null:
+		_get_film_dossier_controller().call(
+			"on_editing_completed", str(_active_film_script.id)
+		)
 	_update_film_production_ui()
 	var selected_building: Variant = _find_building(_selected_building_id)
 	if (
@@ -1131,6 +1246,11 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		)
 		if bool(result.get("completed", false)):
 			_latest_script = result.get("script")
+			if _latest_script != null:
+				_get_film_dossier_controller().call(
+					"add_completed_script", _latest_script
+				)
+				_refresh_building_detail()
 		elif bool(result.get("failed", false)):
 			_show_script_generation_error(str(_active_writing_project.last_activity_message))
 		_update_script_writing_ui()
@@ -1156,15 +1276,22 @@ func increment_script_sequence() -> void:
 
 func archive_completed_film_chain() -> void:
 	if (
-		_active_film_project != null
-		and _active_editing_project != null
-		and str(_active_editing_project.status) == "completed"
+		_active_film_project == null
+		or _active_editing_project == null
+		or str(_active_editing_project.status) != "completed"
 	):
-		_completed_film_archive.append({
-			"production": _active_film_project.to_dict(),
-			"editing": _active_editing_project.to_dict(),
-		})
-
+		return
+	var production_id: String = str(_active_film_project.id)
+	for archived_entry in _completed_film_archive:
+		var archived_production: Dictionary = archived_entry.get(
+			"production", {}
+		)
+		if str(archived_production.get("id", "")) == production_id:
+			return
+	_completed_film_archive.append({
+		"production": _active_film_project.to_dict(),
+		"editing": _active_editing_project.to_dict(),
+	})
 
 func reset_active_film_editing() -> void:
 	_active_editing_project = null
@@ -1371,6 +1498,18 @@ func get_preferred_stage_building_id() -> String:
 
 
 func _get_sound_stage_building_id() -> String:
+	if _film_dossier_controller != null:
+		if _active_film_project != null and str(_active_film_project.status) == "in_production":
+			var active_stage_id: String = str(_film_dossier_controller.call(
+				"get_production_stage_id"
+			))
+			if not active_stage_id.is_empty() and _find_building(active_stage_id) != null:
+				return active_stage_id
+		var delivered_stage_id: String = str(_film_dossier_controller.call(
+			"get_staged_stage_id"
+		))
+		if not delivered_stage_id.is_empty() and _find_building(delivered_stage_id) != null:
+			return delivered_stage_id
 	var required_tier: int = _get_required_stage_size_tier()
 	var best_suitable_id: String = ""
 	var best_suitable_tier: int = 4
@@ -1500,15 +1639,18 @@ func get_required_stage_size_tier() -> int:
 
 
 func _get_required_stage_size_tier() -> int:
-	if _latest_script == null:
+	return get_required_stage_size_tier_for_script(get_script_for_production())
+
+
+func get_required_stage_size_tier_for_script(script: Variant) -> int:
+	if script == null:
 		return 1
 	var owned_prop_ids: Array[String] = _set_inventory.call("get_owned_prop_ids")
 	return SET_CATALOG_SCRIPT.get_required_stage_tier(
-		_latest_script.scenes,
+		script.scenes,
 		owned_prop_ids,
-		str(_latest_script.genre_id)
+		str(script.genre_id)
 	)
-
 
 func _get_stage_size_requirement_message() -> String:
 	return str(_get_film_production_controller().call("_get_stage_size_requirement_message"))

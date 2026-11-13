@@ -202,3 +202,8 @@ An 8–12-scene feature now targets 8–15 shared-shift working days from first 
 Feature-film career credits will count released feature films, not background appearances or uncompleted shoots. That counter belongs with the future distribution/release flow and must not be inferred from scene count alone.
 
 Staffing remains player-controlled. The initial six-person team is not automatically expanded to fill optional crew roles or background positions. Those positions must be assigned from existing employees; only an explicit player hiring action can grow the roster.
+
+
+## Physical screenplay and film transfer
+
+Completed screenplays now have a tracked production dossier and a clickable 3D folder outside the writers' entrance. Drag with the left mouse button to a suitable sound stage before production can begin. When shooting finishes, the folder becomes an actual reel that must be dragged to an editing suite before the editing project can be created. Once the editor finishes, drag the mastered film to the marked release dock at world position (23, 0, -28). The release dock records the film in the studio's completed archive. A pending previous film must be delivered for release before starting the next one. Building placement reserves the release dock area, and the staged screenplay determines the cast/scene assignments. This is the handoff layer, not a substitute for a future marketing or distribution economy.

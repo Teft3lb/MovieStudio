@@ -1,6 +1,10 @@
 extends Node3D
 class_name StudioFilmDossierActor
 
+const DOSSIER_SCRIPT = preload(
+	"res://scripts/domain/film_production/film_production_dossier.gd"
+)
+
 const PICKING_LAYER: int = 32
 
 var dossier: Variant
@@ -89,7 +93,7 @@ func refresh_appearance() -> void:
 
 	var phase: String = str(dossier.phase)
 	if phase in [
-		dossier.AT_WRITERS, dossier.AT_STAGE, dossier.IN_PRODUCTION
+		DOSSIER_SCRIPT.AT_WRITERS, DOSSIER_SCRIPT.AT_STAGE, DOSSIER_SCRIPT.IN_PRODUCTION
 	]:
 		_make_box(
 			"ScreenplayPages",
@@ -118,7 +122,7 @@ func refresh_appearance() -> void:
 			Color(0.31, 0.36, 0.41),
 			Vector3(0.0, 0.35, 0.0)
 		)
-		if phase in [dossier.MASTER_READY, dossier.RELEASED]:
+		if phase in [DOSSIER_SCRIPT.MASTER_READY, DOSSIER_SCRIPT.RELEASED]:
 			_make_box(
 				"MasterGoldLabel",
 				Vector3(1.1, 0.05, 0.5),

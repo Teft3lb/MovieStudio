@@ -211,3 +211,8 @@ Forward and reverse workplace routes use the same authored per-slot doorway offs
 ### Expanded studio plot
 
 Studio construction limits now span 168 × 168 world units (previously 96 × 96); the ground plane and access road are correspondingly wider/longer, and camera zoom supports the expanded site. Production-start readiness reports an actionable reason instead of showing a generic missing-crew message, and a suitably sized stage with the most assigned staff is preferred when multiple stages exist.
+
+
+### Film dossier infrastructure
+
+The studio scene now hosts 3D production dossiers and a small marked release dock for handoff of finished films. The dock is an operational handoff target, not a new workforce building. Its world-space footprint is reserved by construction rules so the player cannot inadvertently block the release route. Finished films enter the completed-film archive on release; a later distribution/PR economy can consume those releases.

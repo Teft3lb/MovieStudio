@@ -10,7 +10,7 @@ const IN_EDITING: String = "in_editing"
 const MASTER_READY: String = "master_ready"
 const RELEASED: String = "released"
 
-var script: Variant
+var screenplay: Variant
 var script_id: String = ""
 var title: String = ""
 var phase: String = AT_WRITERS
@@ -20,7 +20,7 @@ var editing_building_id: String = ""
 
 
 func setup(completed_script: Variant, writers_building_id: String) -> void:
-	script = completed_script
+	screenplay = completed_script
 	script_id = str(completed_script.id)
 	title = str(completed_script.title)
 	phase = AT_WRITERS

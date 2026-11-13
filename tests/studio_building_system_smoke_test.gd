@@ -39,7 +39,7 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 9
+		building_ids.size() == 10
 		and building_ids[0] == "cafeteria"
 		and building_ids[1] == "editing_suite"
 		and building_ids[2] == "fitness_center"
@@ -48,7 +48,8 @@ func _test_catalogue() -> void:
 		and building_ids[5] == "sound_stage"
 		and building_ids[6] == "staff_housing"
 		and building_ids[7] == "star_bungalow"
-		and building_ids[8] == "studio_lounge",
+		and building_ids[8] == "studio_lounge"
+		and building_ids[9] == "tv_studio",
 		"The building catalogue must expose all production and staff facility buildings."
 	)
 	_expect(
@@ -308,7 +309,7 @@ func _test_placement_validation() -> void:
 	)
 	var lounge_placement: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
 		"studio_lounge",
-		Vector3(30.0, 0.0, -20.0),
+		Vector3(40.0, 0.0, -20.0),
 		0.0,
 		[]
 	)
@@ -345,13 +346,34 @@ func _test_placement_validation() -> void:
 	)
 	var bounds_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
 		"sound_stage",
-		Vector3(50.0, 0.0, 50.0),
+		Vector3(90.0, 0.0, 90.0),
 		0.0,
 		[]
 	)
 	_expect(
 		not bool(bounds_result.get("valid", true)),
 		"Buildings must stay inside the studio plot."
+	)
+
+	var expanded_plot_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"script_department",
+		Vector3(-65.0, 0.0, 65.0),
+		0.0,
+		[]
+	)
+	_expect(
+		bool(expanded_plot_result.get("valid", false)),
+		"Newly expanded outer studio plots must accept buildings."
+	)
+	var release_dock_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(
+		"script_department",
+		Vector3(23.0, 0.0, -28.0),
+		0.0,
+		[]
+	)
+	_expect(
+		not bool(release_dock_result.get("valid", true)),
+		"Building placement must preserve access to the physical film release dock."
 	)
 
 	var road_result: Dictionary = PLACEMENT_RULES_SCRIPT.can_place(

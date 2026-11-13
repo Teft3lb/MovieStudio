@@ -86,6 +86,8 @@ func has_complete_production_assignments(
 func _get_latest_script() -> Variant:
 	if not is_instance_valid(_manager):
 		return null
+	if _manager.has_method("get_script_for_production"):
+		return _manager.call("get_script_for_production")
 	return _manager.call("get_latest_script")
 
 

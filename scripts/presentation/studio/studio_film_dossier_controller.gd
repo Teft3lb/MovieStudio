@@ -61,14 +61,14 @@ func get_dossier(script_id: String) -> Variant:
 
 func get_script_at_stage() -> Variant:
 	var dossier: Variant = _dossiers.get(_staged_script_id)
-	if dossier != null and str(dossier.phase) == dossier.AT_STAGE:
-		return dossier.script
+	if dossier != null and str(dossier.phase) == DOSSIER_SCRIPT.AT_STAGE:
+		return dossier.screenplay
 	return null
 
 
 func get_staged_stage_id() -> String:
 	var dossier: Variant = _dossiers.get(_staged_script_id)
-	if dossier != null and str(dossier.phase) == dossier.AT_STAGE:
+	if dossier != null and str(dossier.phase) == DOSSIER_SCRIPT.AT_STAGE:
 		return str(dossier.stage_building_id)
 	return ""
 
@@ -88,7 +88,7 @@ func is_script_at_stage(script_id: String, stage_building_id: String) -> bool:
 	var dossier: Variant = _dossiers.get(script_id)
 	return (
 		dossier != null
-		and str(dossier.phase) == dossier.AT_STAGE
+		and str(dossier.phase) == DOSSIER_SCRIPT.AT_STAGE
 		and str(dossier.stage_building_id) == stage_building_id
 	)
 
@@ -98,10 +98,10 @@ func is_footage_at_editing(script_id: String) -> bool:
 	if dossier == null:
 		return false
 	return str(dossier.phase) in [
-		dossier.AT_EDITING,
-		dossier.IN_EDITING,
-		dossier.MASTER_READY,
-		dossier.RELEASED,
+		DOSSIER_SCRIPT.AT_EDITING,
+		DOSSIER_SCRIPT.IN_EDITING,
+		DOSSIER_SCRIPT.MASTER_READY,
+		DOSSIER_SCRIPT.RELEASED,
 	]
 
 
@@ -115,12 +115,12 @@ func deliver_to_building(script_id: String, building_id: String) -> bool:
 		return false
 	var building_type: String = str(building.building_type_id)
 	if (
-		str(dossier.phase) == dossier.AT_WRITERS
+		str(dossier.phase) == DOSSIER_SCRIPT.AT_WRITERS
 		and building_type == "sound_stage"
 	):
 		var required_tier: int = int(_manager.call(
 			"get_required_stage_size_tier_for_script",
-			dossier.script
+			dossier.screenplay
 		))
 		if int(building.stage_size_tier) < required_tier:
 			_last_message = (
@@ -136,10 +136,10 @@ func deliver_to_building(script_id: String, building_id: String) -> bool:
 			dossier.get_destination_title()
 		)
 		return false
-	if str(dossier.phase) == dossier.AT_STAGE:
+	if str(dossier.phase) == DOSSIER_SCRIPT.AT_STAGE:
 		_staged_script_id = script_id
 		_last_message = "Сценарий доставлен. Назначь съёмочную группу и начинай съёмки."
-	elif str(dossier.phase) == dossier.AT_EDITING:
+	elif str(dossier.phase) == DOSSIER_SCRIPT.AT_EDITING:
 		_last_message = "Отснятый материал в монтажной. Подготовь проект и начни монтаж."
 	_place_visual(script_id)
 	return true
@@ -271,7 +271,7 @@ func release_drag(screen_position: Vector2) -> bool:
 		)
 	elif (
 		dossier != null
-		and str(dossier.phase) == dossier.MASTER_READY
+		and str(dossier.phase) == DOSSIER_SCRIPT.MASTER_READY
 		and _is_release_dock_hit(screen_position)
 	):
 		success = release_film(script_id)
@@ -300,7 +300,7 @@ func _place_visual(script_id: String) -> void:
 	var dossier: Variant = _dossiers.get(script_id)
 	if not is_instance_valid(actor) or dossier == null:
 		return
-	if str(dossier.phase) == dossier.RELEASED:
+	if str(dossier.phase) == DOSSIER_SCRIPT.RELEASED:
 		actor.global_position = DOCK_POSITION + Vector3(0.0, 0.05, 0.0)
 		return
 	var building: Variant = _manager.call(

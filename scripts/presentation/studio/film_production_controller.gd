@@ -126,6 +126,8 @@ func _reset_ui_references() -> void:
 func _get_latest_script() -> Variant:
 	if not is_instance_valid(_manager):
 		return null
+	if _manager.has_method("get_script_for_production"):
+		return _manager.call("get_script_for_production")
 	return _manager.call("get_latest_script")
 
 
@@ -156,6 +158,11 @@ func _get_sound_stage_building_id() -> String:
 func _get_required_stage_size_tier() -> int:
 	if not is_instance_valid(_manager):
 		return 1
+	if _manager.has_method("get_required_stage_size_tier_for_script"):
+		return int(_manager.call(
+			"get_required_stage_size_tier_for_script",
+			_get_latest_script()
+		))
 	return int(_manager.call("get_required_stage_size_tier"))
 
 
@@ -195,13 +202,29 @@ func _get_film_production_blocker() -> String:
 			return "Предыдущий фильм ещё снимается."
 		var editing_project: Variant = _get_active_editing_project()
 		if editing_project == null or str(editing_project.status) != "completed":
-			return "Сначала закончи монтаж предыдущего фильма."
+			return "Сначала доставь отснятый материал в монтажную и закончи предыдущий фильм."
 	var stage_id: String = _get_sound_stage_building_id()
 	if stage_id.is_empty():
 		return "Построй съёмочный павильон."
 	var stage_size_message: String = _get_stage_size_requirement_message()
 	if not stage_size_message.is_empty():
 		return stage_size_message
+	if (
+		_manager.has_method("is_film_script_staged")
+		and not bool(_manager.call(
+			"is_film_script_staged", str(script.id), stage_id
+		))
+	):
+		return (
+			"Доставь папку сценария «%s» из сценарного отдела "
+			+ "в выбранный съёмочный павильон (перетащи мышью по 3D-миру)."
+		) % str(script.title)
+	if (
+		_active_film_project != null
+		and _manager.has_method("is_prior_film_released")
+		and not bool(_manager.call("is_prior_film_released"))
+	):
+		return "Закончи выпуск предыдущего фильма: перенеси готовые катушки из монтажной в пункт «РЕЛИЗ»."
 	var assigned_staff: Array = _get_assigned_staff(stage_id)
 	var assignment_controller: RefCounted = _get_assignment_controller()
 	var crew_assignments: Dictionary = assignment_controller.call(
@@ -431,7 +454,9 @@ func _build_sound_stage_detail(assigned_staff: Array) -> void:
 		+ "съёмку и просмотр. Пока техник готовит площадку, актёры гуляют "
 		+ "по студии и возвращаются на репетицию по вызову. Покупки до начала "
 		+ "установки учитываются в текущей сцене; позднее — в следующих. "
-		+ "Реквизит переиспользуется, а его отсутствие снижает качество."
+		+ "Реквизит переиспользуется, а его отсутствие снижает качество. "
+		+ "Физическую папку сценария перетащи к павильону мышью, "
+		+ "а после съёмок отвези катушки в монтажную."
 	)
 	production_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	production_note.add_theme_font_size_override("font_size", 10)
@@ -521,6 +546,11 @@ func _has_complete_production_assignments(crew_assignments: Dictionary, cast_ass
 	))
 
 func _on_start_film_production_pressed() -> void:
+	var blocker: String = _get_film_production_blocker()
+	if not blocker.is_empty():
+		if is_instance_valid(_film_production_status_label):
+			_film_production_status_label.text = blocker
+		return
 	if _get_latest_script() == null:
 		return
 	var stage_id: String = _get_sound_stage_building_id()
@@ -615,6 +645,15 @@ func _on_start_film_production_pressed() -> void:
 	_manager.call("increment_script_sequence")
 	_active_film_project = project
 	_active_film_script = _get_latest_script()
+	if (
+		is_instance_valid(_manager)
+		and _manager.has_method("on_film_production_started")
+	):
+		_manager.call(
+			"on_film_production_started",
+			str(_active_film_script.id),
+			stage_id
+		)
 	_get_scene_performance_controller().call("clear_active_scene_performers")
 	_reset_set_logistics()
 	_last_scene_setup_refresh_key = ""
@@ -900,6 +939,14 @@ func _advance_film_production(hour: int = -1) -> void:
 		_sync_film_set_dressing()
 		_sync_film_scene_performance()
 	if bool(result.get("completed", false)):
+		if (
+			is_instance_valid(_manager)
+			and _manager.has_method("on_film_production_completed")
+		):
+			_manager.call(
+				"on_film_production_completed",
+				str(_active_film_script.id)
+			)
 		_sync_film_scene_performance()
 		_reset_film_crew_actions()
 		_active_production_technician_ids.clear()
@@ -1697,7 +1744,7 @@ func _update_film_production_ui() -> void:
 			],
 			"Сценарный потенциал: %d / 100" % int(project.script_potential_score),
 			"Съёмочный период: %.1f рабочих дней" % float(project.get_elapsed_work_days()),
-			"Следующий этап: монтаж в монтажном отделе.",
+			"Следующий этап: перенеси катушки со съёмочной площадки в монтажный отдел.",
 			"Результаты сцен:",
 		]
 		for scene_result in project.scene_results:

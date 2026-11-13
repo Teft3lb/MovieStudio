@@ -10,6 +10,8 @@ const DEFAULT_PLOT_HALF_SIZE: float = 84.0
 const ROAD_CENTER_X: float = 10.0
 const ROAD_HALF_WIDTH: float = 2.0
 const ROAD_CLEARANCE: float = 1.0
+const RELEASE_DOCK_CENTER: Vector2 = Vector2(23.0, -28.0)
+const RELEASE_DOCK_HALF_SIZE: Vector2 = Vector2(3.0, 2.6)
 
 
 static func get_footprint(
@@ -57,6 +59,16 @@ static func can_place(
 		and absf(world_position.z) < road_clearance_z
 	):
 		return {"valid": false, "reason": "Нельзя размещать здание на проезжей части или вплотную к ней."}
+	if (
+		absf(world_position.x - RELEASE_DOCK_CENTER.x)
+			< half_width + RELEASE_DOCK_HALF_SIZE.x + MIN_BUILDING_GAP
+		and absf(world_position.z - RELEASE_DOCK_CENTER.y)
+			< half_depth + RELEASE_DOCK_HALF_SIZE.y + MIN_BUILDING_GAP
+	):
+		return {
+			"valid": false,
+			"reason": "Место занято пунктом выпуска фильмов.",
+		}
 	for existing_building in existing_buildings:
 		if existing_building == null:
 			continue
