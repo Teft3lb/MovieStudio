@@ -167,9 +167,6 @@ var _next_script_sequence: int = 1
 var _latest_script: Variant
 
 
-
-
-
 func setup(game_clock: Node, character_manager: Node) -> void:
 	_game_clock = game_clock
 	_character_manager = character_manager
@@ -921,7 +918,6 @@ func _build_ui() -> void:
 	_build_decor_shop_panel(studio_hud)
 
 
-
 func _refresh_build_status() -> void:
 	_get_building_placement_controller().call(
 		"refresh_build_status",
@@ -1067,10 +1063,6 @@ func _refresh_building_detail() -> void:
 	_get_building_inspector_controller().call("refresh_selected_building")
 
 
-
-
-
-
 func _on_script_generation_requested(
 	writer_id: String,
 	genre_id: String,
@@ -1193,19 +1185,6 @@ func _show_script_generation_error(message: String) -> void:
 		message
 	)
 
-
-
-
-
-func build_film_production_detail(
-	detail_layout: VBoxContainer,
-	assigned_staff: Array
-) -> void:
-	_get_film_production_controller().call(
-		"build_detail",
-		detail_layout,
-		assigned_staff
-	)
 
 func _build_decor_shop_panel(studio_hud: Node) -> void:
 	var panel := PanelContainer.new()
@@ -1335,9 +1314,6 @@ func _refresh_decor_shop_panel() -> void:
 			)
 		row_layout.add_child(purchase_button)
 		_decor_shop_items.add_child(row)
-
-
-
 
 
 func _on_buy_set_prop_pressed(prop_id: String) -> void:
@@ -1496,17 +1472,6 @@ func _advance_film_editing() -> void:
 	_get_film_editing_controller().call("advance")
 
 
-func build_film_editing_detail(
-	detail_layout: VBoxContainer,
-	assigned_staff: Array
-) -> void:
-	_get_film_editing_controller().call(
-		"build_detail",
-		detail_layout,
-		assigned_staff
-	)
-
-
 func _format_set_prop_titles(prop_ids: Array) -> String:
 	return str(_get_film_production_controller().call("_format_set_prop_titles", prop_ids))
 
@@ -1564,8 +1529,6 @@ func get_completed_film_archive() -> Array:
 	return _completed_film_archive.duplicate(true)
 
 
-
-
 func _get_assigned_staff(building_id: String) -> Array:
 	if not is_instance_valid(_character_manager):
 		return []
@@ -1613,13 +1576,11 @@ func prepare_scene_set_dressing(
 	return bool(actor.call("prepare_scene_set_dressing", setup))
 
 
-
 func install_set_prop(building_id: String, prop_id: String) -> bool:
 	var actor: Variant = _building_actors.get(building_id)
 	if actor == null or not is_instance_valid(actor):
 		return false
 	return bool(actor.call("install_set_prop", prop_id))
-
 
 
 func remove_set_prop(building_id: String, prop_id: String) -> bool:
@@ -1629,13 +1590,11 @@ func remove_set_prop(building_id: String, prop_id: String) -> bool:
 	return bool(actor.call("remove_set_prop", prop_id))
 
 
-
 func clear_scene_set_dressing(building_id: String) -> void:
 	var actor: Variant = _building_actors.get(building_id)
 	if actor == null or not is_instance_valid(actor):
 		return
 	actor.call("clear_scene_set_dressing")
-
 
 
 func get_storage_mark(building_id: String, prop_index: int) -> Vector3:
@@ -1646,7 +1605,6 @@ func get_storage_mark(building_id: String, prop_index: int) -> Vector3:
 	if mark is Vector3:
 		return mark
 	return Vector3.ZERO
-
 
 
 func _refresh_warehouse_inventory_visuals() -> void:
@@ -1664,7 +1622,6 @@ func refresh_warehouse_inventory_visuals() -> void:
 	_refresh_warehouse_inventory_visuals()
 
 
-
 func _get_scene_setup_refresh_key() -> String:
 	return str(_get_film_production_controller().call("_get_scene_setup_refresh_key"))
 
@@ -1680,7 +1637,6 @@ func _get_prop_warehouse_building_id() -> String:
 
 func get_prop_warehouse_building_id() -> String:
 	return _get_prop_warehouse_building_id()
-
 
 
 func _get_stage_technician_ids(crew_assignments: Dictionary) -> Array[String]:
@@ -1724,7 +1680,6 @@ func _are_set_logistics_workers_ready() -> bool:
 
 func _reset_set_logistics() -> void:
 	_get_set_logistics_controller().call("reset")
-
 
 
 func get_set_logistics_phase() -> String:

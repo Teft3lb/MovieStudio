@@ -1102,7 +1102,7 @@ func _build_film_performance_snapshot() -> Dictionary:
 
 	var technical_total: float = 0.0
 	var technical_count: int = 0
-	for role_id in FILM_TECHNICIAN_ROLE_IDS:
+	for role_id in FILM_CREW_CATALOG_SCRIPT.FILM_TECHNICIAN_ROLE_IDS:
 		var technician_id: String = str(crew_assignments.get(role_id, ""))
 		var technician: Variant = _find_employee(technician_id)
 		if technician == null:
