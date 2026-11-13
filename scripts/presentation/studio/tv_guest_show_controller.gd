@@ -93,8 +93,18 @@ func invite_host(stage_id: String, guest_id: String, host_id: String) -> Diction
 	var host_route: Array[Vector3] = _manager.call(
 		"get_workplace_path", stage_id, 0
 	)
+	# The TV furniture sits directly on workplace slot 1. Target an open
+	# standing mark in front of the guest chair, never its collision shape.
+	var tv_actor: Node3D = _manager.call(
+		"get_building_actor_by_id", stage_id
+	) as Node3D
+	var guest_mark: Vector3 = tv_actor.to_global(
+		Vector3(-2.3, 0.0, 0.95)
+	)
 	var guest_route: Array[Vector3] = _manager.call(
-		"get_workplace_path_from", stage_id, 1, actor.global_position
+		"get_scene_recovery_path",
+		str(actor.call("get_workplace_building_id")),
+		actor.global_position, guest_mark
 	)
 	if host_route.size() < 2 or guest_route.size() < 2:
 		return _failure("Нет маршрута к телевизионной площадке.")
@@ -145,7 +155,6 @@ func invite_host(stage_id: String, guest_id: String, host_id: String) -> Diction
 	_external_host = VISITING_HOST_SCRIPT.new()
 	_manager.add_child(_external_host)
 	_external_host.call("setup", host, _clock, host_route)
-	var guest_mark: Vector3 = guest_route.back()
 	actor.call(
 		"start_scene_performance", guest_mark,
 		_manager.call("get_workplace_position", stage_id, 0),
