@@ -277,6 +277,23 @@ func _find_free_slot(
 			)
 			if is_instance_valid(visitor_actor):
 				occupied[int(visitor_actor.call("get_facility_slot_index"))] = true
+	# Rehearsal must not be staged on top of an idle employee already
+	# occupying their assigned workstation in the same pavilion.
+	if _characters.has_method("get_employees_assigned_to_building"):
+		for staff_member in _characters.call(
+			"get_employees_assigned_to_building", building_id
+		):
+			if str(staff_member.id) == employee_id:
+				continue
+			var staff_actor: Node = _characters.call(
+				"get_employee_actor", str(staff_member.id)
+			)
+			if (
+				is_instance_valid(staff_actor)
+				and bool(staff_actor.call("is_at_workplace"))
+				and str(staff_actor.call("get_workplace_building_id")) == building_id
+			):
+				occupied[int(staff_actor.get("_workplace_slot_index"))] = true
 	for index in range(capacity):
 		if not occupied.has(index):
 			return index
