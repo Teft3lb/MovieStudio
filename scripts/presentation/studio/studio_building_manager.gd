@@ -73,6 +73,9 @@ const TV_GUEST_SHOW_CONTROLLER_SCRIPT = preload(
 const CELEBRITY_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/celebrity_system.gd"
 )
+const PUBLICITY_EVENT_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_publicity_event_controller.gd"
+)
 
 const SCRIPT_DEPARTMENT_START_POSITION: Vector3 = Vector3(-16.0, 0.0, -16.0)
 const SOUND_STAGE_START_POSITION: Vector3 = Vector3(0.0, 0.0, 0.0)
@@ -101,6 +104,7 @@ var _building_placement_controller: RefCounted
 var _building_inspector_controller: RefCounted
 var _film_dossier_controller: RefCounted
 var _tv_guest_show_controller: RefCounted
+var _publicity_event_controller: RefCounted
 var _released_film_records: Array[Dictionary] = []
 
 var _set_logistics_phase: String:
@@ -317,6 +321,46 @@ func build_tv_guest_show_detail(
 
 func get_tv_guest_show_controller() -> RefCounted:
 	return _get_tv_guest_show_controller()
+
+
+func _get_publicity_event_controller() -> RefCounted:
+	if _publicity_event_controller == null:
+		_publicity_event_controller = PUBLICITY_EVENT_CONTROLLER_SCRIPT.new()
+		_publicity_event_controller.call(
+			"setup", self, _character_manager, _game_clock
+		)
+	return _publicity_event_controller
+
+
+func request_publicity_event(
+	employee_id: String, event_id: String
+) -> Dictionary:
+	return _get_publicity_event_controller().call(
+		"request_event", employee_id, event_id
+	)
+
+
+func is_employee_in_publicity_event(employee_id: String) -> bool:
+	return (
+		_publicity_event_controller != null
+		and bool(_publicity_event_controller.call("is_participant", employee_id))
+	)
+
+
+func get_publicity_event_status() -> String:
+	if _publicity_event_controller == null:
+		return ""
+	return str(_publicity_event_controller.call("get_status"))
+
+
+func has_publicity_staff_conflict(
+	crew: Dictionary, cast: Dictionary, background_ids: Array[String]
+) -> bool:
+	if _publicity_event_controller == null:
+		return false
+	return bool(_publicity_event_controller.call(
+		"has_staff_conflict", crew, cast, background_ids
+	))
 
 
 func has_tv_staff_conflict(
@@ -1427,6 +1471,10 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 	_advance_film_editing()
 	if _tv_guest_show_controller != null:
 		_tv_guest_show_controller.call(
+			"advance_minute", _day, hour, _minute
+		)
+	if _publicity_event_controller != null:
+		_publicity_event_controller.call(
 			"advance_minute", _day, hour, _minute
 		)
 
