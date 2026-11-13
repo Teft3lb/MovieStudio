@@ -179,6 +179,25 @@ func is_participant(employee_id: String) -> bool:
 	)
 
 
+func has_staff_conflict(
+	crew: Dictionary,
+	cast: Dictionary,
+	background_ids: Array[String]
+) -> bool:
+	if _active.is_empty():
+		return false
+	for employee_id_value in crew.values():
+		if is_participant(str(employee_id_value)):
+			return true
+	for employee_id_value in cast.values():
+		if is_participant(str(employee_id_value)):
+			return true
+	for employee_id in background_ids:
+		if is_participant(employee_id):
+			return true
+	return false
+
+
 func get_status() -> String:
 	return _last_status
 
