@@ -269,6 +269,11 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 	if _set_logistics_blocked:
 		return
 	var warehouse_id: String = str(_manager.call("get_prop_warehouse_building_id"))
+	var clock: Node = _manager.get("_game_clock") as Node
+	var manual_fast_forward: bool = (
+		is_instance_valid(clock)
+		and bool(clock.get("is_manual_fast_forward"))
+	)
 	for worker_id in _set_logistics_worker_ids:
 		if not _set_logistics_worker_tasks.has(worker_id):
 			continue
@@ -285,6 +290,16 @@ func _process_set_logistics_tasks(stage_id: String) -> void:
 			)
 			return
 		var state: String = str(task.get("state", ""))
+		# Manual clock advancement emits minutes without physics frames.
+		# Complete travel legs at their intended marks, as cast members do.
+		if manual_fast_forward:
+			match state:
+				"to_warehouse", "to_stage", "to_stage_prop", "returning_via_warehouse":
+					if bool(actor.call("is_in_scene_performance")):
+						actor.call("snap_to_scene_mark")
+				"returning":
+					if bool(actor.call("is_returning_to_workplace")):
+						actor.call("snap_to_workplace")
 		match state:
 			"waiting_for_stage":
 				var ready: bool = (
