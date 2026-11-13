@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 807 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
+| `studio_building_actor.gd` | 677 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -210,6 +210,23 @@ Owns authored spatial markers and orientation rules:
 
 The provider receives building data, the interior transform, workplace positions and warehouse storage positions as explicit setup dependencies. It owns no scene nodes and does not change production, inventory, sleeping or employee simulation state. `StudioBuildingActor` keeps its existing public methods as compatibility adapters. A focused smoke test checks every stage tier, phase offsets, alternating scene blocking, rotated facility facing and all eight warehouse marks.
 
+### StudioSetPropVisualBuilder
+
+Extracted from `StudioBuildingActor` into:
+
+`scripts/presentation/studio/studio_set_prop_visual_builder.gd`
+
+Owns the reusable primitive composition for every catalogued set prop:
+- city-street storefronts, lamps and benches;
+- home furniture;
+- forest trees, rocks and trail signs;
+- lighthouse console, beacon and rail;
+- industrial crates, pipes and work lights;
+- office desks, bookshelves and evidence boards;
+- science-fiction consoles, reactor and holographic display.
+
+The builder receives `StudioBuildingVisualFactory` as an explicit dependency and only creates mesh hierarchies under the supplied prop root. The actor continues to own prop placement, warehouse inventory, set-dressing visibility/progress and installation/return lifecycle. The focused smoke test instantiates every catalog entry and checks representative dimensions, transforms and fallback behavior.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -233,7 +250,7 @@ Do not move all UI and simulation code into one replacement manager. Each contro
 
 Keep the actor responsible for the placed building's scene identity, selection and cutaway state. Shared primitive construction is extracted into `StudioBuildingVisualFactory`; per-building indoor path construction is extracted into `StudioBuildingNavigationController`.
 
-Keep the actor's public workplace/scene methods as compatibility adapters. Authored production/facility marker data is extracted into `StudioBuildingMarkerProvider`. Next, split the interior smoke test by feature boundary. Type-specific visual builders already extracted:
+Keep the actor's public workplace/scene methods as compatibility adapters. Authored production/facility marker data is extracted into `StudioBuildingMarkerProvider`; reusable set-prop mesh composition is extracted into `StudioSetPropVisualBuilder`. Next, split the interior smoke test by feature boundary. Type-specific visual builders already extracted:
 - shared primitive/material construction;
 - sound-stage tier builders (small, medium and large remain distinct authored architectures);
 - TV Studio builder;
