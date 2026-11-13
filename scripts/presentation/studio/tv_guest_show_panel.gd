@@ -47,6 +47,8 @@ func build(
 	if candidates.is_empty():
 		_guest_option.add_item("Нет актёров или режиссёров с известностью 70%")
 		_guest_option.disabled = true
+	else:
+		_guest_option.select(0)
 	layout.add_child(_guest_option)
 	_host_option = OptionButton.new()
 	_host_option.fit_to_longest_item = false
@@ -59,6 +61,7 @@ func build(
 			]
 		)
 		_host_option.set_item_metadata(index, str(host.get("id", "")))
+	_host_option.select(0)
 	layout.add_child(_host_option)
 	_invite_button = Button.new()
 	_invite_button.text = "ПРИГЛАСИТЬ ВЕДУЩЕГО И СНЯТЬ ВЫПУСК"
