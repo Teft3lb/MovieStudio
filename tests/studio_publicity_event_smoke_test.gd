@@ -158,7 +158,7 @@ func _run_tests() -> void:
 		"Only one outdoor celebrity event may be hosted at once."
 	)
 	for minute in range(60):
-		controller.call("advance_minute", 1, 10 + minute / 60, minute % 60)
+		controller.call("advance_minute", 1, 10, minute)
 	var first_result: Dictionary = controller.call("get_last_result")
 	_expect(
 		controller.call("get_active_event").is_empty()
@@ -190,7 +190,7 @@ func _run_tests() -> void:
 		"A second event should run without security when none is available."
 	)
 	for minute in range(60):
-		controller.call("advance_minute", 3, 10 + minute / 60, minute % 60)
+		controller.call("advance_minute", 3, 10, minute)
 	var solo_result: Dictionary = controller.call("get_last_result")
 	_expect(
 		bool(solo_result.get("completed", false))
