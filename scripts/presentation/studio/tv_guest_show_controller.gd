@@ -10,6 +10,9 @@ const INVITATION_POLICY_SCRIPT = preload(
 const VISITING_HOST_SCRIPT = preload(
 	"res://scripts/presentation/studio/tv_guest_host_visitor.gd"
 )
+const TV_SHOW_PANEL_SCRIPT = preload(
+	"res://scripts/presentation/studio/tv_guest_show_panel.gd"
+)
 
 var _manager: Node3D
 var _characters: Node
@@ -27,10 +30,7 @@ var _guest_released: bool = false
 var _next_show_number: int = 1
 var _last_broadcast: Dictionary = {}
 var _feedback: String = ""
-var _guest_option: OptionButton
-var _host_option: OptionButton
-var _invite_button: Button
-var _status_label: Label
+var _view: RefCounted
 
 
 func setup(manager: Node3D, characters: Node, clock: Node) -> void:
@@ -43,71 +43,15 @@ func setup(manager: Node3D, characters: Node, clock: Node) -> void:
 
 
 func build_controls(layout: VBoxContainer, stage_id: String) -> void:
-	var heading := Label.new()
-	heading.text = "ТОК-ШОУ · ПРИГЛАШЁННЫЙ ВЕДУЩИЙ"
-	heading.add_theme_font_size_override("font_size", 13)
-	layout.add_child(heading)
-	var information := Label.new()
-	information.text = (
-		"Известные актёры и режиссёры (узнаваемость от 70%) могут стать "
-		+ "гостями ток-шоу. Ведущий приезжает извне, участвует в записи "
-		+ "и уезжает — не входит в штат киностудии."
-	)
-	information.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(information)
-	_guest_option = OptionButton.new()
-	_guest_option.fit_to_longest_item = false
-	_guest_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_view = TV_SHOW_PANEL_SCRIPT.new()
 	var candidates: Array = _invitation_policy.call(
 		"get_invitation_candidates", _get_employees()
 	)
-	for candidate in candidates:
-		var index: int = _guest_option.get_item_count()
-		_guest_option.add_item(
-			"%s · известность %.0f%%" % [
-				candidate.get_full_name(), float(candidate.recognition)
-			]
-		)
-		_guest_option.set_item_metadata(index, str(candidate.id))
-	if candidates.is_empty():
-		_guest_option.add_item("Нет актёров или режиссёров с известностью 70%")
-		_guest_option.disabled = true
-	layout.add_child(_guest_option)
-	_host_option = OptionButton.new()
-	_host_option.fit_to_longest_item = false
-	_host_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for host in INVITATION_POLICY_SCRIPT.EXTERNAL_HOSTS:
-		var index: int = _host_option.get_item_count()
-		_host_option.add_item(
-			"%s · мастерство ведущего %.0f" % [
-				str(host.get("name", "")), float(host.get("hosting", 0.0))
-			]
-		)
-		_host_option.set_item_metadata(index, str(host.get("id", "")))
-	layout.add_child(_host_option)
-	_invite_button = Button.new()
-	_invite_button.text = "ПРИГЛАСИТЬ ВЕДУЩЕГО И СНЯТЬ ВЫПУСК"
-	_invite_button.pressed.connect(_on_invite_pressed.bind(stage_id))
-	layout.add_child(_invite_button)
-	_status_label = Label.new()
-	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_status_label)
+	_view.call("build", layout, stage_id, self, candidates)
 	_refresh_ui()
 
 
-func _on_invite_pressed(stage_id: String) -> void:
-	if (
-		not is_instance_valid(_guest_option)
-		or not is_instance_valid(_host_option)
-		or _guest_option.disabled
-	):
-		return
-	var guest_id: String = str(_guest_option.get_item_metadata(
-		_guest_option.selected
-	))
-	var host_id: String = str(_host_option.get_item_metadata(
-		_host_option.selected
-	))
+func request_invitation(stage_id: String, guest_id: String, host_id: String) -> void:
 	var result: Dictionary = invite_host(stage_id, guest_id, host_id)
 	_feedback = str(result.get("message", ""))
 	_refresh_ui()
@@ -363,26 +307,14 @@ func _get_busy_employee_ids() -> Array[String]:
 
 
 func _refresh_ui() -> void:
-	if not is_instance_valid(_status_label):
+	if _view == null:
 		return
-	var episode: Variant = _television.call("get_active_episode")
-	var active: bool = episode != null
-	if active:
-		_status_label.text = (
-			"Выпуск %s · %s · %.0f%%\n%s" % [
-				str(episode.id), str(episode.get_phase_title()),
-				float(episode.get_progress_percent()),
-				str(episode.pause_reason),
-			]
-		)
-	else:
-		_status_label.text = _feedback
-	if is_instance_valid(_invite_button):
-		_invite_button.disabled = (
-			active or is_instance_valid(_external_host)
-			or not is_instance_valid(_guest_option)
-			or _guest_option.disabled
-		)
+	_view.call(
+		"refresh",
+		_television.call("get_active_episode"),
+		_feedback,
+		is_instance_valid(_external_host)
+	)
 
 
 func get_last_broadcast() -> Dictionary:
