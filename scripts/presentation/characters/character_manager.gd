@@ -112,7 +112,8 @@ func _ready() -> void:
 		Callable(self, "_on_dismiss_button_pressed"),
 		Callable(self, "_confirm_dismiss_employee"),
 		Callable(self, "_on_workplace_dispatch_button_pressed"),
-		Callable(self, "_on_workplace_assignment_selected")
+		Callable(self, "_on_workplace_assignment_selected"),
+		Callable(self, "_on_publicity_event_requested")
 	)
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
@@ -1228,6 +1229,21 @@ func developer_change_employee_stat(
 	return success
 
 
+func _on_publicity_event_requested(employee_id: String, event_id: String) -> void:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _studio_building_manager.has_method("request_publicity_event")
+	):
+		_show_employee_message("Публичные мероприятия пока недоступны.")
+		return
+	var result: Dictionary = _studio_building_manager.call(
+		"request_publicity_event", employee_id, event_id
+	)
+	if not bool(result.get("success", false)):
+		_show_employee_message(str(result.get("message", "")))
+	_refresh_detail_panel()
+
+
 func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
 
@@ -1571,6 +1587,18 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 		)
 
 		if actor == null or not is_instance_valid(actor):
+			continue
+		# Public appearances temporarily own the actor's route and task.
+		# Do not replace the invitation route with a lunch/housing/work call.
+		if (
+			is_instance_valid(_studio_building_manager)
+			and _studio_building_manager.has_method(
+				"is_employee_in_publicity_event"
+			)
+			and bool(_studio_building_manager.call(
+				"is_employee_in_publicity_event", employee_id
+			))
+		):
 			continue
 		if _is_active_production_participant(employee_id):
 			_manual_workplace_dispatches.erase(employee_id)
@@ -2248,6 +2276,14 @@ func _refresh_detail_panel() -> void:
 		"refresh",
 		{
 			"has_profile": true,
+			"employee_id": str(employee.id),
+			"is_employed": not is_market_candidate,
+			"publicity_status": (
+				str(_studio_building_manager.call("get_publicity_event_status"))
+				if is_instance_valid(_studio_building_manager)
+				and _studio_building_manager.has_method("get_publicity_event_status")
+				else ""
+			),
 			"name": employee.get_full_name().to_upper(),
 			"profession": profession_line,
 			"biography": employee.biography,
