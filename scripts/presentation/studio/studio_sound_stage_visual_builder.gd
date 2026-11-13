@@ -351,8 +351,7 @@ func _build_small_sound_stage_interior() -> void:
 			_camera_rigs.size(),
 			Vector3(3.15, 0.0, -0.15),
 			metal_color,
-			equipment_color,
-			_camera_rigs.size()
+			equipment_color
 		) as Node3D
 	)
 	_create_light_stand( Vector3(-3.5, 0.0, -3.0), metal_color)
@@ -433,8 +432,7 @@ func _build_medium_sound_stage_interior() -> void:
 			_camera_rigs.size(),
 			Vector3(-5.0, 0.0, -0.6),
 			metal_color,
-			equipment_color,
-			_camera_rigs.size()
+			equipment_color
 		) as Node3D
 	)
 	_camera_rigs.append(
@@ -444,8 +442,7 @@ func _build_medium_sound_stage_interior() -> void:
 			_camera_rigs.size(),
 			Vector3(5.0, 0.0, -0.6),
 			metal_color,
-			equipment_color,
-			_camera_rigs.size()
+			equipment_color
 		) as Node3D
 	)
 	_create_light_stand( Vector3(-5.6, 0.0, -4.1), metal_color)
@@ -534,8 +531,7 @@ func _build_large_sound_stage_interior() -> void:
 			_camera_rigs.size(),
 			Vector3(camera_x, 0.0, -1.5),
 			metal_color,
-			equipment_color,
-			_camera_rigs.size()
+			equipment_color
 		) as Node3D
 	)
 	for light_x in [-8.0, -2.7, 2.7, 8.0]:

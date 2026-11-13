@@ -109,8 +109,8 @@ func _test_sound_stage_tiers() -> void:
 
 func _test_tv_studio_routes() -> void:
 	var actor: Node3D = _create_building("tv_studio", 2, 180.0)
-	_assert_route_contract(actor, 0, "TV Studio")
-	_assert_route_contract(actor, 9, "TV Studio")
+	for slot_index in range(10):
+		_assert_route_contract(actor, slot_index, "TV Studio")
 	actor.queue_free()
 
 

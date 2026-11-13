@@ -78,6 +78,12 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 		var world_point: Vector3 = _interior_root.to_global(indoor_path[point_index])
 		if path.back().distance_to(world_point) > 0.2:
 			path.append(world_point)
+	# AStar can return a single point when a workstation is close to the
+	# corridor; do not drop the authored destination or turn a route into
+	# a three-point path that ends short of the actual workstation.
+	var workplace_world_position: Vector3 = _interior_root.to_global(workplace_point)
+	if path.size() == 3 or path.back().distance_to(workplace_world_position) > 0.01:
+		path.append(workplace_world_position)
 	return path
 
 func _resolve_exit_navigation_slot(

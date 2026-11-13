@@ -43,6 +43,18 @@ class FakeWorkplaceManager extends Node:
 		var route: Array[Vector3] = [start_position, workplace_position]
 		return route
 
+	func get_workplace_path(
+		_building_id: String,
+		_slot_index: int
+	) -> Array[Vector3]:
+		# This is the same entrance-to-workstation contract as the real
+		# StudioBuildingManager; CharacterActor uses its reversal to exit.
+		var route: Array[Vector3] = [
+			Vector3(0.0, 0.0, 3.0),
+			workplace_position,
+		]
+		return route
+
 	func get_workplace_position(
 		_building_id: String,
 		_slot_index: int
