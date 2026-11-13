@@ -51,6 +51,27 @@ godot --headless --path . --script res://tests/tv_production_system_smoke_test.g
 
 The TV production smoke test covers series and season generation, talk-show hosts and guests, weekly schedule conflicts and triggers, production phases and pause behavior, audience results, career progression, contract-offer profiles, and mid-production serialization recovery.
 
+## External-host celebrity talk shows (playable 3D session)
+
+Television guest shows now have an independent domain rule and presentation workflow without expanding the original 1,000-line television production system:
+
+- `TVShowInvitationPolicy` requires at least 70/100 *recognition* (public familiarity) for studio actors or directors; popularity remains a separate audience-interest metric. The policy lists three external host profiles and checks that existing TV personnel can staff direction, camera and technical operations. When a famous director is the guest, they may also direct their own interview, avoiding a mandatory extra hire.
+- `TVGuestShowPanel` provides the invitation UI in the selected TV Studio's building inspector. If no eligible guest exists, the selection control is visibly disabled. Employees assigned to the TV Studio fill the crew; guests may come from another building.
+- `TVGuestShowController` creates a one-time talk show and due schedule using the existing `TVProductionSystem`. It sends the guest actor along the real studio route, waits for the guest, presenter and crew, runs preparation/rehearsal/recording/postproduction, then broadcasts and publishes audience results. Film and TV assignments cannot use the same employees concurrently.
+- `TVGuestHostVisitor` reuses the existing 3D character visual, walks from outside the door to the presentation mark, speaks during the recording and leaves through the door after the shoot. It is never added to `CharacterManager.employees`, employee contracts, headcount or payroll. Manual clock advancement may snap travel endpoints consistently with the existing simulation's skip-time rules.
+
+The guest is routed to a free standing location near the interview chair (rather than inside the chair collider), and returns to their previous workplace after recording. The invitation is one-time, not a permanent employee-hosted TV series; the domain still retains its independent recurring-show and serialized catalog APIs.
+
+`CelebritySystem.apply_film_project_release` grants recognition and quality-sensitive popularity to credited actors and film directors when a completed film is released. A TV broadcast grants appearance-based recognition to invited actors and directors; `CharacterData` already persists both fields. Experienced actors and directors from the market can also join the studio with established recognition. The character inspector displays a 0–100 recognition progress bar and the 70% eligibility threshold.
+
+~~~powershell
+& $godot --headless --path . --script res://tests/tv_guest_show_smoke_test.gd
+& $godot --headless --path . --script res://tests/tv_production_system_smoke_test.gd
+& $godot --headless --path . --script res://tests/character_system_v2_smoke_test.gd
+~~~
+
+The invited-show smoke test covers the 69.9/70 eligibility boundary, directors, external non-employee hosts, occupied film cast, TV crew readiness, shooting, host departure, broadcast, and the guest's career benefits. End-to-end physical navigation, wardrobe, audience reactions and production budgeting still require in-game QA and follow-up work. UI/runtime state is not yet wired into the future global Save System.
+
 ## Current boundary and next work
 
-This milestone establishes the independent television domain and its serialization/scheduling contracts. The current system instance runs one active TV episode at a time, matching the first dedicated TV stage; multiple concurrent TV stages will require a session registry. The dedicated 3D TV Studio building now exists as a separate construction option, with its own broadcast set, audience seating, camera rigs, lighting grid and ten navigation/workplace marks. The production-floor controller, employee dispatch to TV workstations, television control panel, broadcast calendar UI, network/distribution deals and actual contract negotiation UI remain subsequent presentation/economy milestones. The film-production pipeline remains independent.
+This milestone establishes the independent television domain and its serialization/scheduling contracts. The current system instance runs one active TV episode at a time, matching the first dedicated TV stage; multiple concurrent TV stages will require a session registry. The dedicated 3D TV Studio building now exists as a separate construction option, with its own broadcast set, audience seating, camera rigs, lighting grid and ten navigation/workplace marks. An introductory production-floor guest-show controller, host NPC, and inspector UI are now available. Persistent recurring show programming UI, broadcast calendar, network/distribution deals, production fees, and contract negotiation UI remain subsequent presentation/economy milestones. The film-production pipeline remains independent.
