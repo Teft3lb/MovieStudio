@@ -46,7 +46,7 @@ func setup(host: Dictionary, game_clock: Node, arrival_route: Array[Vector3]) ->
 func _process(delta: float) -> void:
 	if not _travelling:
 		if _at_mark and is_instance_valid(_visual):
-			_visual.call("advance_animation", delta)
+			_visual.call("advance_simulation", delta)
 		return
 	if not is_instance_valid(_game_clock):
 		return
@@ -69,7 +69,7 @@ func _process(delta: float) -> void:
 		look_at(global_position + facing.normalized(), Vector3.UP)
 	if is_instance_valid(_visual):
 		_visual.call("set_walking", true)
-		_visual.call("advance_animation", game_delta)
+		_visual.call("advance_simulation", game_delta)
 	if global_position.distance_to(destination) <= 0.08:
 		_waypoint_index += 1
 		if _waypoint_index >= _path.size():
