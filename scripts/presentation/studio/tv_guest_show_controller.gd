@@ -103,10 +103,11 @@ func invite_host(stage_id: String, guest_id: String, host_id: String) -> Diction
 	if hour * 60 + minute + 60 > 1440:
 		return _failure("Для записи нужен час до полуночи. Пригласите ведущего утром.")
 	var show_id: String = "TV-VISIT-%04d" % _next_show_number
+	var guest_pool: Array[String] = [guest_id]
 	var show_result: Dictionary = _television.call(
 		"create_talk_show", show_id,
 		"Разговор с %s" % guest.get_full_name(),
-		"interview", host_id, [guest_id], crew, 30,
+		"interview", host_id, guest_pool, crew, 30,
 		int(_clock.current_day)
 	)
 	if not bool(show_result.get("success", false)):
