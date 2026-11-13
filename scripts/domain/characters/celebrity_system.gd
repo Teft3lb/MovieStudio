@@ -127,6 +127,34 @@ func apply_film_release(
 	}
 
 
+func apply_film_project_release(project: Variant, employees: Array) -> Array[Dictionary]:
+	var results: Array[Dictionary] = []
+	if project == null:
+		return results
+	var participant_roles: Dictionary = {}
+	for employee_id_value in project.cast_assignments.values():
+		var employee_id: String = str(employee_id_value)
+		if not employee_id.is_empty():
+			participant_roles[employee_id] = false
+	var director_id: String = str(project.crew_assignments.get("director", ""))
+	if not director_id.is_empty():
+		participant_roles[director_id] = true
+	for employee_id_value in participant_roles.keys():
+		var employee_id: String = str(employee_id_value)
+		for employee in employees:
+			if str(employee.id) != employee_id:
+				continue
+			var update: Dictionary = apply_film_release(
+				employee,
+				bool(participant_roles[employee_id]),
+				float(project.final_quality)
+			)
+			if bool(update.get("applied", false)):
+				results.append({"employee_id": employee_id, "update": update})
+			break
+	return results
+
+
 func get_contract_offer_profile(employee: Variant) -> Dictionary:
 	if employee == null:
 		return {}
