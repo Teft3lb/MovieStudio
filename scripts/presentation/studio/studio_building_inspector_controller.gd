@@ -798,6 +798,12 @@ func _build_tv_studio_detail(eligible_staff: Array) -> void:
 	workflow_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	workflow_label.add_theme_font_size_override("font_size", 11)
 	_detail_layout.add_child(workflow_label)
+	if is_instance_valid(_manager) and _manager.has_method(
+		"build_tv_guest_show_detail"
+	):
+		_manager.call(
+			"build_tv_guest_show_detail", _detail_layout, _selected_building_id
+		)
 
 
 
