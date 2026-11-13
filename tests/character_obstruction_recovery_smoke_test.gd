@@ -56,6 +56,17 @@ func _run_tests() -> void:
 		"A side step that no longer changes position must report a blockage and permit route recovery."
 	)
 
+	# Fast simulation can advance farther than a wall's thickness in one frame.
+	# A sweep must reject tunnelling even when the final position is clear.
+	actor.global_position = Vector3(0.0, 0.0, -2.0)
+	var through_wall: bool = bool(actor.call(
+		"_try_move_to_position", Vector3(0.0, 0.0, 2.0)
+	))
+	_expect(
+		not through_wall and actor.global_position.z < -1.9,
+		"Moving a long step across a wall must fail even when the destination is clear."
+	)
+
 	actor.free()
 	barrier.free()
 	_finish_test("CharacterObstructionRecoverySmokeTest")
