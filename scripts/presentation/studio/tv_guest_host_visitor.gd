@@ -40,6 +40,17 @@ func setup(host: Dictionary, game_clock: Node, arrival_route: Array[Vector3]) ->
 	_visual.name = "ExternalPresenterVisual"
 	add_child(_visual)
 	_visual.call("setup", {"appearance": appearance})
+	var name_tag := Label3D.new()
+	name_tag.name = "VisitingHostNameTag"
+	name_tag.text = "%s · приглашённый ведущий" % str(
+		host.get("name", "Ведущий")
+	)
+	name_tag.position = Vector3(0.0, 2.65, 0.0)
+	name_tag.font_size = 19
+	name_tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	name_tag.outline_size = 5
+	name_tag.no_depth_test = true
+	add_child(name_tag)
 	_assign_path(arrival_route)
 
 
