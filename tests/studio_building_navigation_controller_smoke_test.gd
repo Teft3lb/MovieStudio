@@ -94,7 +94,8 @@ func _test_rotated_office_routes() -> void:
 
 func _test_sound_stage_tiers() -> void:
 	var expected_slots: Array[int] = [6, 8, 12]
-	for stage_tier in [1, 2, 3]:
+	var stage_tiers: Array[int] = [1, 2, 3]
+	for stage_tier in stage_tiers:
 		var actor: Node3D = _create_building(
 			"sound_stage",
 			stage_tier,
@@ -120,9 +121,17 @@ func _test_facility_routes() -> void:
 		"studio_lounge": 6,
 		"staff_housing": 8,
 		"star_bungalow": 1,
-		"prop_warehouse": 4,
+		"prop_warehouse": 8,
 	}
-	for building_type_id in facility_slots:
+	var facility_types: Array[String] = [
+		"cafeteria",
+		"fitness_center",
+		"studio_lounge",
+		"staff_housing",
+		"star_bungalow",
+		"prop_warehouse",
+	]
+	for building_type_id in facility_types:
 		var actor: Node3D = _create_building(building_type_id, 2, 270.0)
 		var slot_count: int = int(facility_slots[building_type_id])
 		_assert_route_contract(actor, 0, building_type_id)

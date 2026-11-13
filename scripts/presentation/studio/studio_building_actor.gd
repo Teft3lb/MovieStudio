@@ -10,6 +10,9 @@ const NAVIGATION_SYSTEM_SCRIPT = preload(
 const BUILDING_NAVIGATION_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_navigation_controller.gd"
 )
+const BUILDING_MARKER_PROVIDER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_building_marker_provider.gd"
+)
 const VISUAL_FACTORY_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_building_visual_factory.gd"
 )
@@ -47,6 +50,7 @@ var _warehouse_inventory_root: Node3D
 var _warehouse_storage_positions: Array[Vector3] = []
 var _navigation_system: RefCounted
 var _navigation_controller: RefCounted
+var _marker_provider: RefCounted
 var _visual_factory: RefCounted
 
 func setup(data: Variant) -> void:
@@ -68,6 +72,14 @@ func setup(data: Variant) -> void:
 		_entrance_inside,
 		_entrance_outside,
 		_set_dressing_root
+	)
+	_marker_provider = BUILDING_MARKER_PROVIDER_SCRIPT.new()
+	_marker_provider.call(
+		"setup",
+		building_data,
+		_interior_root,
+		_workplace_points,
+		_warehouse_storage_positions
 	)
 	_create_hitbox()
 	_create_selection_marker()
@@ -109,50 +121,56 @@ func get_workplace_position(slot_index: int) -> Vector3:
 		return global_position
 	return _navigation_controller.call("get_workplace_position", slot_index)
 
+
 func get_workplace_facing_direction(slot_index: int) -> Vector3:
-	if _workplace_points.is_empty():
+	if _marker_provider == null:
 		return Vector3.ZERO
-	var normalized_slot: int = clampi(
+	return _marker_provider.call("get_workplace_facing_direction", slot_index)
+
+
+func get_scene_mark(
+	slot_index: int,
+	phase_id: String = "preparation",
+	scene_index: int = 0
+) -> Vector3:
+	if _marker_provider == null:
+		return Vector3.ZERO
+	return _marker_provider.call(
+		"get_scene_mark",
 		slot_index,
-		0,
-		_workplace_points.size() - 1
+		phase_id,
+		scene_index
 	)
-	var building_type_id: String = str(building_data.building_type_id)
-	var target_position: Vector3 = Vector3.ZERO
-	match building_type_id:
-		"cafeteria":
-			var seat_position: Vector3 = _workplace_points[normalized_slot]
-			var table_center_x: float = roundf(seat_position.x / 4.0) * 4.0
-			target_position = Vector3(table_center_x, 0.0, 0.35)
-		"studio_lounge":
-			target_position = Vector3(0.0, 0.0, 0.15)
-		"fitness_center":
-			var equipment_position: Vector3 = _workplace_points[normalized_slot]
-			target_position = equipment_position + Vector3(0.0, 0.0, -1.4)
-		"staff_housing", "star_bungalow":
-			target_position = (
-				_workplace_points[normalized_slot]
-				+ Vector3(0.0, 0.0, -1.0)
-			)
-		"tv_studio":
-			if normalized_slot <= 2:
-				target_position = (
-					_workplace_points[normalized_slot]
-					+ Vector3(0.0, 0.0, 1.8)
-				)
-			elif normalized_slot in [4, 5]:
-				target_position = Vector3(0.0, 0.0, -3.0)
-			else:
-				target_position = Vector3(0.0, 0.0, -2.0)
-		_:
-			return Vector3.ZERO
-	var local_direction: Vector3 = (
-		target_position - _workplace_points[normalized_slot]
-	)
-	local_direction.y = 0.0
-	if local_direction.length_squared() <= 0.001:
+
+
+func get_scene_hold_mark(slot_index: int) -> Vector3:
+	if _marker_provider == null:
 		return Vector3.ZERO
-	return (global_basis * local_direction).normalized()
+	return _marker_provider.call("get_scene_hold_mark", slot_index)
+
+
+func get_scene_focus_point() -> Vector3:
+	if _marker_provider == null:
+		return Vector3.ZERO
+	return _marker_provider.call("get_scene_focus_point")
+
+
+func get_set_dressing_mark(prop_index: int) -> Vector3:
+	if _marker_provider == null:
+		return Vector3.ZERO
+	return _marker_provider.call("get_set_dressing_mark", prop_index)
+
+
+func _get_set_dressing_positions() -> Array[Vector3]:
+	if _marker_provider == null:
+		return []
+	return _marker_provider.call("get_set_dressing_positions")
+
+
+func get_storage_mark(prop_index: int) -> Vector3:
+	if _marker_provider == null:
+		return global_position
+	return _marker_provider.call("get_storage_mark", prop_index)
 
 func get_scene_path(
 	start_world_position: Vector3,
@@ -170,37 +188,6 @@ func get_set_dressing_prop_count() -> int:
 	if not is_instance_valid(_set_dressing_root):
 		return 0
 	return _set_dressing_root.get_child_count()
-
-func get_set_dressing_mark(prop_index: int) -> Vector3:
-	var positions: Array[Vector3] = _get_set_dressing_positions()
-	var index: int = clampi(prop_index, 0, positions.size() - 1)
-	return _interior_root.to_global(positions[index])
-
-func _get_set_dressing_positions() -> Array[Vector3]:
-	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
-		int(building_data.stage_size_tier)
-	):
-		1:
-			return [
-				Vector3(-1.55, 0.0, -3.1),
-				Vector3(0.0, 0.0, -3.1),
-				Vector3(1.55, 0.0, -3.1),
-				Vector3(0.0, 0.0, -1.5),
-			]
-		3:
-			return [
-				Vector3(-5.2, 0.0, -6.6),
-				Vector3(0.0, 0.0, -6.6),
-				Vector3(5.2, 0.0, -6.6),
-				Vector3(0.0, 0.0, -3.8),
-			]
-		_:
-			return [
-				Vector3(-2.65, 0.0, -4.0),
-				Vector3(0.0, 0.0, -4.0),
-				Vector3(2.65, 0.0, -4.0),
-				Vector3(0.0, 0.0, -2.0),
-			]
 
 func prepare_scene_set_dressing(setup: Dictionary) -> bool:
 	if not is_instance_valid(_set_dressing_root):
@@ -284,12 +271,6 @@ func set_scene_set_dressing(setup: Dictionary, progress: float) -> void:
 			prop_index
 		) as Node3D
 		prop_node.visible = prop_index < visible_count
-
-func get_storage_mark(prop_index: int) -> Vector3:
-	if _warehouse_storage_positions.is_empty():
-		return global_position
-	var index: int = posmod(prop_index, _warehouse_storage_positions.size())
-	return to_global(_warehouse_storage_positions[index])
 
 func set_warehouse_inventory(prop_ids: Array) -> void:
 	if not is_instance_valid(_warehouse_inventory_root):
@@ -414,122 +395,6 @@ func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
 			_create_box(parent, "HoloImage", Vector3(0.9, 0.75, 0.08), Color(0.15, 0.63, 0.75), Vector3(0.0, 1.48, 0.0))
 		_:
 			_create_box(parent, "NeutralProp", Vector3(0.8, 0.8, 0.8), wood, Vector3(0.0, 0.4, 0.0))
-
-func get_scene_mark(
-	slot_index: int,
-	phase_id: String = "preparation",
-	scene_index: int = 0
-) -> Vector3:
-	var stage_tier: int = BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
-		int(building_data.stage_size_tier)
-	)
-	var scene_marks: Array[Vector3] = []
-	match stage_tier:
-		1:
-			scene_marks = [
-				Vector3(-1.8, 0.0, -2.65),
-				Vector3(-0.6, 0.0, -2.65),
-				Vector3(0.6, 0.0, -2.65),
-				Vector3(1.8, 0.0, -2.65),
-				Vector3(-1.35, 0.0, -1.65),
-				Vector3(0.0, 0.0, -1.65),
-				Vector3(1.35, 0.0, -1.65),
-				Vector3(0.0, 0.0, -0.9),
-			]
-		3:
-			scene_marks = [
-				Vector3(-5.0, 0.0, -5.3),
-				Vector3(-2.5, 0.0, -5.3),
-				Vector3(0.0, 0.0, -5.3),
-				Vector3(2.5, 0.0, -5.3),
-				Vector3(5.0, 0.0, -5.3),
-				Vector3(-3.8, 0.0, -4.0),
-				Vector3(0.0, 0.0, -4.0),
-				Vector3(3.8, 0.0, -4.0),
-			]
-		_:
-			scene_marks = [
-				Vector3(-3.0, 0.0, -2.3),
-				Vector3(-1.0, 0.0, -2.3),
-				Vector3(1.0, 0.0, -2.3),
-				Vector3(3.0, 0.0, -2.3),
-				Vector3(-2.2, 0.0, -1.65),
-				Vector3(0.0, 0.0, -1.65),
-				Vector3(2.2, 0.0, -1.65),
-				Vector3(3.4, 0.0, -1.65),
-			]
-	var normalized_index: int = clampi(slot_index, 0, scene_marks.size() - 1)
-	var mark: Vector3 = scene_marks[normalized_index]
-	if posmod(scene_index, 2) == 1:
-		mark.x = -mark.x
-	match phase_id:
-		"rehearsal":
-			mark.x += 0.22 if mark.x < 0.0 else -0.22
-			mark.z += 0.28
-		"shooting":
-			mark.x += 0.38 if mark.x < 0.0 else -0.38
-			mark.z += 0.52 if normalized_index % 2 == 0 else -0.18
-		"review":
-			mark.z += 0.12
-	return _interior_root.to_global(mark)
-
-func get_scene_hold_mark(slot_index: int) -> Vector3:
-	var hold_marks: Array[Vector3] = []
-	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
-		int(building_data.stage_size_tier)
-	):
-		1:
-			hold_marks = [
-				Vector3(-3.6, 0.0, 2.8),
-				Vector3(-2.2, 0.0, 3.0),
-				Vector3(-0.8, 0.0, 3.1),
-				Vector3(0.8, 0.0, 3.1),
-				Vector3(2.2, 0.0, 3.0),
-				Vector3(3.6, 0.0, 2.8),
-			]
-		3:
-			hold_marks = [
-				Vector3(-9.0, 0.0, 7.0),
-				Vector3(-6.0, 0.0, 7.2),
-				Vector3(-3.0, 0.0, 7.4),
-				Vector3(0.0, 0.0, 7.5),
-				Vector3(3.0, 0.0, 7.4),
-				Vector3(6.0, 0.0, 7.2),
-				Vector3(9.0, 0.0, 7.0),
-				Vector3(-7.5, 0.0, 5.8),
-				Vector3(-2.5, 0.0, 5.8),
-				Vector3(2.5, 0.0, 5.8),
-				Vector3(7.5, 0.0, 5.8),
-				Vector3(0.0, 0.0, 6.6),
-			]
-		_:
-			hold_marks = [
-				Vector3(-4.8, 0.0, 4.3),
-				Vector3(-3.5, 0.0, 4.5),
-				Vector3(-2.2, 0.0, 4.7),
-				Vector3(-0.9, 0.0, 4.8),
-				Vector3(0.9, 0.0, 4.8),
-				Vector3(2.2, 0.0, 4.7),
-				Vector3(3.5, 0.0, 4.5),
-				Vector3(4.8, 0.0, 4.3),
-				Vector3(-3.2, 0.0, 5.0),
-				Vector3(-1.0, 0.0, 5.2),
-				Vector3(1.0, 0.0, 5.2),
-				Vector3(3.2, 0.0, 5.0),
-			]
-	var normalized_index: int = posmod(slot_index, hold_marks.size())
-	return _interior_root.to_global(hold_marks[normalized_index])
-
-func get_scene_focus_point() -> Vector3:
-	var focus_point: Vector3 = Vector3(0.0, 1.45, -4.35)
-	match BUILDING_CATALOG_SCRIPT.get_stage_size_tier(
-		int(building_data.stage_size_tier)
-	):
-		1:
-			focus_point = Vector3(0.0, 1.25, -2.75)
-		3:
-			focus_point = Vector3(0.0, 1.8, -6.0)
-	return _interior_root.to_global(focus_point)
 
 func set_production_scene(
 	scene_number: int,
