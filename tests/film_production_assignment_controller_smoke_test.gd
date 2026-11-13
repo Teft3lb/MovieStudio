@@ -180,6 +180,51 @@ func _run_tests() -> void:
 		"Assignment changes must refresh production readiness through the manager adapter."
 	)
 
+	var cast_options: Dictionary = controller.get("_film_cast_options")
+	var lead_option: OptionButton = cast_options.get("ROLE-LEAD") as OptionButton
+	var swap_index: int = -1
+	for index in range(lead_option.get_item_count()):
+		if str(lead_option.get_item_metadata(index)) == "EMP-ACTOR-02":
+			swap_index = index
+	if swap_index >= 0:
+		controller.call(
+			"_on_film_cast_role_selected", swap_index, "ROLE-LEAD", lead_option
+		)
+	cast_assignments = controller.call("get_cast_assignments")
+	_expect(
+		cast_assignments.get("ROLE-LEAD") == "EMP-ACTOR-02"
+		and cast_assignments.get("ROLE-SUPPORT") == "EMP-ACTOR-01",
+		"Choosing an actor already cast elsewhere must swap roles without double-booking."
+	)
+
+	var shortage_layout := VBoxContainer.new()
+	root.add_child(shortage_layout)
+	script.cast.append({
+		"role_id": "ROLE-THIRD",
+		"role_title": "Третья роль",
+		"character_name": "Вера",
+	})
+	script.id = "SCRIPT-ASSIGNMENT-02"
+	var limited_staff: Array = assigned_staff.slice(0, 5)
+	var shortage_controller: RefCounted = ASSIGNMENT_CONTROLLER_SCRIPT.new()
+	shortage_controller.call("setup", manager, production_system)
+	shortage_controller.call(
+		"build_controls", shortage_layout, limited_staff
+	)
+	var shortage_cast: Dictionary = shortage_controller.call(
+		"get_cast_assignments"
+	)
+	_expect(
+		str(shortage_cast.get("ROLE-THIRD", "")).is_empty()
+		and not bool(shortage_controller.call(
+			"has_complete_production_assignments",
+			shortage_controller.call("get_film_crew_assignments", limited_staff),
+			shortage_cast,
+			limited_staff
+		)),
+		"Insufficient actors must leave an explicit unassigned role rather than duplicate an actor and silently disable filming."
+	)
+	shortage_layout.free()
 	detail_layout.free()
 	manager.free()
 	_finish_test("FilmProductionAssignmentControllerSmokeTest")

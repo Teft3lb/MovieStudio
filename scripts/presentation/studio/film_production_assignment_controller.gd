@@ -317,22 +317,17 @@ func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 
 	var actor_candidates: Array = []
 	for employee in assigned_staff:
-		var profession_id: String = str(employee.profession_id)
-		if profession_id == "actor" or profession_id == "extra":
+		if str(employee.profession_id) in ["actor", "extra"]:
 			actor_candidates.append(employee)
 
 	_film_cast_options.clear()
-	if actor_candidates.is_empty():
-		var missing_label := Label.new()
-		missing_label.text = "Для съёмок нужен хотя бы один актёр или актёр массовки."
-		missing_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_detail_layout.add_child(missing_label)
+	if _get_latest_script() == null:
 		return
-
 	if _cast_assignment_script_id != str(_get_latest_script().id):
 		_film_cast_assignments.clear()
 		_cast_assignment_script_id = str(_get_latest_script().id)
 
+	var used_actor_ids: Dictionary = {}
 	for role_index in range(_get_latest_script().cast.size()):
 		var cast_member: Dictionary = _get_latest_script().cast[role_index]
 		var role_id: String = str(cast_member.get("role_id", ""))
@@ -346,40 +341,62 @@ func _build_film_cast_assignment_controls(assigned_staff: Array) -> void:
 		_detail_layout.add_child(role_label)
 
 		var role_option := OptionButton.new()
+		role_option.add_item("— Не назначен —")
+		role_option.set_item_metadata(0, "")
 		var selected_index: int = -1
 		var saved_employee_id: String = str(
 			_film_cast_assignments.get(role_id, "")
 		)
-		for actor_index in range(actor_candidates.size()):
-			var actor_employee: Variant = actor_candidates[actor_index]
+		for actor_employee in actor_candidates:
+			var actor_id: String = str(actor_employee.id)
+			var item_index: int = role_option.get_item_count()
 			role_option.add_item(
 				"%s · %s" % [
 					actor_employee.get_full_name(),
 					actor_employee.get_profession_title(),
 				]
 			)
-			role_option.set_item_metadata(
-				actor_index,
-				str(actor_employee.id)
-			)
-			if str(actor_employee.id) == saved_employee_id:
-				selected_index = actor_index
+			role_option.set_item_metadata(item_index, actor_id)
+			if actor_id == saved_employee_id and not used_actor_ids.has(actor_id):
+				selected_index = item_index
 
 		if selected_index < 0:
-			selected_index = posmod(role_index, actor_candidates.size())
+			for option_index in range(1, role_option.get_item_count()):
+				var candidate_id: String = str(
+					role_option.get_item_metadata(option_index)
+				)
+				if not used_actor_ids.has(candidate_id):
+					selected_index = option_index
+					break
+		if selected_index < 0:
+			selected_index = 0
+
 		role_option.select(selected_index)
 		role_option.disabled = (
 			_get_active_film_project() != null
 			and str(_get_active_film_project().status) == "in_production"
 		)
-		_film_cast_assignments[role_id] = str(
+		var assigned_actor_id: String = str(
 			role_option.get_item_metadata(selected_index)
 		)
+		_film_cast_assignments[role_id] = assigned_actor_id
+		if not assigned_actor_id.is_empty():
+			used_actor_ids[assigned_actor_id] = true
 		role_option.item_selected.connect(
 			_on_film_cast_role_selected.bind(role_id, role_option)
 		)
 		_film_cast_options[role_id] = role_option
 		_detail_layout.add_child(role_option)
+
+	if actor_candidates.size() < _get_latest_script().cast.size():
+		var shortage_label := Label.new()
+		shortage_label.text = (
+			"Не хватает исполнителей для всех ролей: %d из %d."
+			% [actor_candidates.size(), _get_latest_script().cast.size()]
+		)
+		shortage_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_detail_layout.add_child(shortage_label)
+
 
 func _on_film_cast_role_selected(
 	selected_index: int,
@@ -391,8 +408,31 @@ func _on_film_cast_role_selected(
 	var selected_employee_id: String = str(
 		role_option.get_item_metadata(selected_index)
 	)
+	var previous_employee_id: String = str(
+		_film_cast_assignments.get(role_id, "")
+	)
+	if not selected_employee_id.is_empty():
+		for other_role in _film_cast_assignments.keys():
+			var other_role_id: String = str(other_role)
+			if other_role_id == role_id:
+				continue
+			if str(_film_cast_assignments[other_role_id]) != selected_employee_id:
+				continue
+			_film_cast_assignments[other_role_id] = previous_employee_id
+			var other_option: OptionButton = (
+				_film_cast_options.get(other_role_id) as OptionButton
+			)
+			if is_instance_valid(other_option):
+				for index in range(other_option.get_item_count()):
+					if str(other_option.get_item_metadata(index)) == previous_employee_id:
+						other_option.select(index)
+						break
+			break
 	_film_cast_assignments[role_id] = selected_employee_id
-	if _film_background_performer_ids.has(selected_employee_id):
+	if (
+		not selected_employee_id.is_empty()
+		and _film_background_performer_ids.has(selected_employee_id)
+	):
 		_film_background_performer_ids.erase(selected_employee_id)
 		var background_option: CheckBox = (
 			_film_background_options.get(selected_employee_id) as CheckBox
@@ -400,6 +440,7 @@ func _on_film_cast_role_selected(
 		if is_instance_valid(background_option):
 			background_option.set_pressed_no_signal(false)
 	_refresh_production_ui()
+
 
 func get_assignment_blocker(
 	crew_assignments: Dictionary,
