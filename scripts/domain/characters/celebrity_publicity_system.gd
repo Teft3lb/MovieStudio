@@ -30,7 +30,8 @@ var _last_event_days: Dictionary = {}
 
 
 func get_event_title(event_id: String) -> String:
-	return str(EVENT_CONFIG.get(event_id, {}).get("title", event_id))
+	var settings: Dictionary = EVENT_CONFIG.get(event_id, {})
+	return str(settings.get("title", event_id))
 
 
 func get_visitor_count(event_id: String, recognition: float) -> int:
