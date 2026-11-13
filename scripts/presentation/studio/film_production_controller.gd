@@ -809,6 +809,62 @@ func _pause_film_scene_for_off_hours() -> void:
 		return
 	_get_scene_performance_controller().call("pause_for_off_hours", stage_id)
 
+func _apply_staged_film_assignments() -> bool:
+	if (
+		_active_film_project == null
+		or str(_active_film_project.status) != "in_production"
+		or str(_active_film_project.current_phase) != "preparation"
+		or int(_active_film_project.phase_minutes_elapsed) != 0
+	):
+		return false
+	var stage_id: String = _get_sound_stage_building_id()
+	if stage_id.is_empty():
+		return false
+	var assigned_staff: Array = _get_assigned_staff(stage_id)
+	var editor: RefCounted = _get_assignment_controller()
+	var proposed_crew: Dictionary = editor.call(
+		"get_film_crew_assignments", assigned_staff
+	)
+	var proposed_cast: Dictionary = editor.call("get_cast_assignments")
+	var proposed_background: Array[String] = editor.call(
+		"get_background_performer_ids"
+	)
+	if (
+		proposed_crew == _active_film_project.crew_assignments
+		and proposed_cast == _active_film_project.cast_assignments
+		and proposed_background == _active_film_project.background_performer_ids
+	):
+		return false
+	if not bool(editor.call(
+		"has_complete_production_assignments",
+		proposed_crew,
+		proposed_cast,
+		assigned_staff
+	)):
+		return false
+	# Only commit complete substitutions between scenes. Never interrupt a
+	# live take or a technician carrying a physical set piece.
+	_reset_film_crew_actions()
+	_pause_film_scene_for_off_hours()
+	_active_film_project.crew_assignments = proposed_crew.duplicate(true)
+	_active_film_project.cast_assignments = proposed_cast.duplicate(true)
+	_active_film_project.background_performer_ids = proposed_background.duplicate()
+	_active_production_technician_ids = editor.call(
+		"get_stage_technician_ids", proposed_crew
+	)
+	var shift: Vector2i = _get_film_production_shift_for_assignments(
+		proposed_crew, proposed_cast, proposed_background
+	)
+	_active_film_project.production_shift_minutes_per_day = maxi(
+		(shift.y - shift.x) * 60, 60
+	)
+	_film_phase_actions_pending = true
+	_active_film_project.last_activity_message = (
+		"Состав съёмочной группы обновлён перед новой сценой."
+	)
+	return true
+
+
 func _advance_film_production(hour: int = -1) -> void:
 	if (
 		_active_film_project == null
@@ -861,6 +917,7 @@ func _advance_film_production(hour: int = -1) -> void:
 		_update_film_production_ui()
 		return
 
+	_apply_staged_film_assignments()
 	if _film_phase_actions_pending:
 		_apply_film_crew_actions()
 		_film_phase_actions_pending = false
