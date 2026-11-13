@@ -1148,6 +1148,24 @@ func begin_character_drag(employee_id: String, screen_position: Vector2) -> void
 
 func _input(event: InputEvent) -> void:
 	if _character_drag_controller != null:
+		if (
+			event is InputEventKey
+			and (event as InputEventKey).pressed
+			and (event as InputEventKey).keycode == KEY_ESCAPE
+			and bool(_character_drag_controller.call("is_pending"))
+		):
+			_character_drag_controller.call("cancel")
+			get_viewport().set_input_as_handled()
+			return
+		if (
+			event is InputEventMouseButton
+			and (event as InputEventMouseButton).pressed
+			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT
+			and bool(_character_drag_controller.call("is_dragging"))
+		):
+			_character_drag_controller.call("cancel")
+			get_viewport().set_input_as_handled()
+			return
 		if event is InputEventMouseMotion:
 			if bool(_character_drag_controller.call(
 				"on_motion", (event as InputEventMouseMotion).position
