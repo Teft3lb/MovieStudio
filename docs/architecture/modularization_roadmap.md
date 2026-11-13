@@ -17,7 +17,7 @@ Current approximate source line counts after the production, editing and logisti
 | File | Lines | Main responsibilities currently mixed |
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
-| `studio_building_actor.gd` | 1,246 | Building identity, navigation, cutaway state, shared building shell and gameplay interfaces |
+| `studio_building_actor.gd` | 942 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
 | `character_manager.gd` | 2,790 | Employee simulation coordination, workplace routing, facilities, relationships, roster UI, employee market and profile |
 | `studio_building_interior_smoke_test.gd` | 1,122 | Building geometry, workplace routes, facilities, production interiors and regression cases |
 
@@ -180,6 +180,21 @@ Owns six non-office building compositions:
 
 The builder receives the shared visual factory and uses the actor only for the common perimeter-wall shell and wall-group access. It returns roof/workplace metadata plus the warehouse inventory root and storage positions. The actor remains responsible for warehouse inventory updates, set-prop visuals, navigation, sleeping/facility simulation and building identity. A focused smoke test covers all six layouts, storage updates, seating/bed alignment and workplace routes.
 
+### StudioBuildingNavigationController
+
+Extracted from `StudioBuildingActor` into:
+
+`scripts/presentation/studio/studio_building_navigation_controller.gd`
+
+Owns the per-building navigation layer:
+- workplace entry routes, including the doorway, indoor corridor and obstacle-aware path;
+- reverse exit routes from the employee's live world position;
+- nearest occupied-bed resolution when a housing exit request has no explicit slot;
+- per-building interior bounds and authored obstacle layouts for offices, stages, TV Studio and facilities;
+- sound-stage scene-to-scene routes that account for visible set-dressing props.
+
+The controller receives building data, the interior transform, the existing Domain `StudioNavigationSystem`, workplace points, entrance marks and the live set-dressing root as explicit setup dependencies. `StudioBuildingActor` retains its public navigation API as thin compatibility adapters. Outdoor building-to-building routing remains in `StudioBuildingManager`; the Domain pathfinding algorithm is unchanged. A focused smoke test covers rotated buildings, all three stage tiers, TV Studio, facility endpoints and live housing exits.
+
 ## Target module boundaries
 
 ### 1. StudioBuildingManager
@@ -201,9 +216,9 @@ Do not move all UI and simulation code into one replacement manager. Each contro
 
 ### 2. StudioBuildingActor
 
-Keep the actor responsible for the placed building's scene identity, selection, cutaway state and public workplace/scene navigation API. Shared primitive construction has been extracted into `StudioBuildingVisualFactory`.
+Keep the actor responsible for the placed building's scene identity, selection and cutaway state. Shared primitive construction is extracted into `StudioBuildingVisualFactory`; per-building indoor path construction is extracted into `StudioBuildingNavigationController`.
 
-Continue extracting procedural visuals into type-specific builders:
+Keep the actor's public workplace/scene methods as compatibility adapters. Next, extract authored production/facility marker data into a dedicated marker provider, then split the interior smoke test by feature boundary. Type-specific visual builders already extracted:
 - shared primitive/material construction;
 - sound-stage tier builders (small, medium and large remain distinct authored architectures);
 - TV Studio builder;
@@ -251,8 +266,8 @@ Keep a small top-level runner that invokes the focused suites.
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the set-logistics, film-editing, film-production, building-placement and building-inspector controller group.
-2. Separate navigation metadata and production/facility markers from StudioBuildingActor, then split the large interior smoke test by feature boundary.
+2. Extract production/facility marker data from StudioBuildingActor, then split the large interior smoke test by feature boundary.
 3. Split CharacterManager presentation from employee simulation coordination.
 4. Split the interior smoke test into focused suites.
 
-The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated. The next actor boundary is navigation metadata and production/facility marker presentation; then split the large interior smoke test by feature boundary.
+The building-manager UI extractions and the first building-visual extraction are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated, and per-building indoor navigation is now delegated to StudioBuildingNavigationController. The next actor boundary is authored production/facility marker data; then split the large interior smoke test by feature boundary.
