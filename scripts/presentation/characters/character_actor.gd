@@ -987,7 +987,13 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 	if _blocked_movement_seconds < 1.2:
 		return
 	_blocked_movement_seconds = 0.0
-	var navigation_manager: Node = get_node_or_null("../StudioBuildingManager")
+	# Actors are children of CharacterManager, while StudioBuildingManager is
+	# its sibling. The old ../ path resolved below CharacterManager and never
+	# found the navigation service, silently disabling recovery.
+	var navigation_manager: Node = get_node_or_null("../../StudioBuildingManager")
+	if navigation_manager == null:
+		# Preserve support for tests and scenes that parent actors directly.
+		navigation_manager = get_node_or_null("../StudioBuildingManager")
 	if navigation_manager == null:
 		return
 	var route: Array[Vector3] = []
