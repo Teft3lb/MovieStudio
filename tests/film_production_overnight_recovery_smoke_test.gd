@@ -199,7 +199,8 @@ func _test_manual_advance_finishes_logistics_travel() -> void:
 	var logistics: RefCounted = SET_LOGISTICS_SCRIPT.new()
 	logistics.call("setup", manager, characters, null, null)
 	logistics.set("_set_logistics_phase", "set_dressing")
-	logistics.set("_set_logistics_worker_ids", ["EMP-TECH"])
+	var worker_ids: Array[String] = ["EMP-TECH"]
+	logistics.set("_set_logistics_worker_ids", worker_ids)
 	logistics.set("_set_logistics_worker_tasks", {
 		"EMP-TECH": {
 			"state": "returning_via_warehouse",
