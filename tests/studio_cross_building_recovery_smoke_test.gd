@@ -27,6 +27,11 @@ class LogisticsCharacters extends Node:
 		return worker
 
 
+class PatrolClock extends Node:
+	func get_simulation_delta(delta: float) -> float:
+		return delta
+
+
 func _initialize() -> void:
 	call_deferred("_run_tests")
 
@@ -134,6 +139,14 @@ func _run_tests() -> void:
 		roaming_outside_index > 0
 		and indoor_to_roaming.front().distance_to(start) < 0.1,
 		"Leaving for free time must first reach the building exit, never traverse a wall."
+	)
+	var patrol_loop_index: int = studio.call(
+		"get_roaming_loop_start_index", indoor_to_roaming, roam_targets
+	)
+	_expect(
+		patrol_loop_index > roaming_outside_index
+		and patrol_loop_index < indoor_to_roaming.size() - 1,
+		"Roaming loop must start at the outdoor patrol, skipping the one-time interior exit."
 	)
 
 	var route: Array[Vector3] = studio.call(
@@ -250,6 +263,22 @@ func _run_tests() -> void:
 		int(actor.get("_workplace_path_index")) == 1,
 		"Workplace route must not skip a corner that is still thirty centimeters away."
 	)
+	var patrol_clock := PatrolClock.new()
+	root.add_child(patrol_clock)
+	actor.set("_game_clock", patrol_clock)
+	actor.set("_has_workplace_destination", false)
+	actor.set("_scene_performance_active", false)
+	actor.call(
+		"set_roaming_route", indoor_to_roaming, patrol_loop_index
+	)
+	actor.set("_route_index", indoor_to_roaming.size() - 1)
+	actor.global_position = indoor_to_roaming.back()
+	actor.call("_process", 0.1)
+	_expect(
+		int(actor.get("_route_index")) == patrol_loop_index,
+		"Finishing the patrol loop must never send an employee back to an indoor spawn point."
+	)
+	patrol_clock.free()
 	parent.free()
 	studio.free()
 	_finish_test("StudioCrossBuildingRecoverySmokeTest")
