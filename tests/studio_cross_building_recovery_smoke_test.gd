@@ -105,6 +105,21 @@ func _run_tests() -> void:
 		"CharacterActor must request cross-building recovery rather than a stage-only indoor path."
 	)
 
+	# Free-roaming employees must also replan when a newly placed wall blocks a waypoint.
+	actor.global_position = Vector3(40.0, 0.0, 30.0)
+	var roaming_targets: Array[Vector3] = [
+		Vector3(35.0, 0.0, 30.0), Vector3(35.0, 0.0, 35.0),
+	]
+	actor.set("_route", roaming_targets)
+	actor.set("_route_index", 1)
+	actor.call("_recover_blocked_route", 1.3, "roaming")
+	var roaming_replan: Array[Vector3] = actor.get("_route")
+	_expect(
+		roaming_replan.size() >= 3
+		and roaming_replan.front().distance_to(actor.global_position) < 0.1,
+		"An outdoor collision must trigger fresh pathfinding instead of endless wall pressing."
+	)
+
 	# Half-meter waypoint skipping previously discarded mandatory turns.
 	var corner_path: Array[Vector3] = [
 		Vector3(2.0, 0.0, 0.0),
