@@ -2022,6 +2022,16 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
 	if try_select_employee_from_screen(mouse_event.position):
+		# Both selection handlers may receive the click first depending
+		# on scene-tree input ordering. Start drag from either one.
+		if (
+			is_instance_valid(building_manager)
+			and building_manager.has_method("begin_character_drag")
+		):
+			building_manager.call(
+				"begin_character_drag", _selected_employee_id,
+				mouse_event.position
+			)
 		get_viewport().set_input_as_handled()
 	else:
 		_select_employee("")
