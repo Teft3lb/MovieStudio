@@ -104,26 +104,36 @@ func apply_film_release(
 	if str(employee.profession_id) not in ["actor", "extra", "director"]:
 		return {"applied": false}
 	var quality: float = clampf(film_quality, 0.0, 100.0)
-	var exposure: float = 0.6 if str(employee.profession_id) == "extra" else 1.0
-	var recognition_gain: float = (
-		1.4 + quality * 0.036
-	) * exposure * (0.9 if is_director else 1.0)
-	var popularity_gain: float = (
-		-0.8 + quality * 0.035
-	) * exposure
-	var before: float = float(employee.recognition)
+	# Recognition measures career reputation, not TV eligibility. A bad film
+	# damages it while excellent credits build fame over a long career.
+	var credit_weight: float = 0.55 if str(employee.profession_id) == "extra" else 1.0
+	var role_weight: float = 1.15 if is_director else 1.0
+	var before_recognition: float = clampf(float(employee.recognition), 0.0, 100.0)
+	var before_popularity: float = clampf(float(employee.popularity), 0.0, 100.0)
+	var quality_signal: float = (quality - 55.0) / 12.0
+	var recognition_delta: float = quality_signal * credit_weight * role_weight
+	var popularity_delta: float = (
+		(quality - 52.0) / 17.0
+	) * credit_weight
+	# Fame is harder to grow near 100, but a famous star is not insulated
+	# from a disastrous movie.
+	if recognition_delta > 0.0:
+		recognition_delta *= 1.0 - 0.60 * before_recognition / 100.0
 	employee.recognition = clampf(
-		before + recognition_gain, 0.0, 100.0
+		before_recognition + recognition_delta, 0.0, 100.0
 	)
 	employee.popularity = clampf(
-		float(employee.popularity) + popularity_gain, 0.0, 100.0
+		before_popularity + popularity_delta, 0.0, 100.0
 	)
 	return {
 		"applied": true,
-		"recognition_before": before,
+		"film_quality": quality,
+		"recognition_before": before_recognition,
 		"recognition_after": employee.recognition,
-		"recognition_delta": employee.recognition - before,
-		"popularity_delta": popularity_gain,
+		"recognition_delta": employee.recognition - before_recognition,
+		"popularity_before": before_popularity,
+		"popularity_after": employee.popularity,
+		"popularity_delta": employee.popularity - before_popularity,
 	}
 
 
