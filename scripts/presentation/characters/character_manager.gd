@@ -1323,6 +1323,17 @@ func _leave_actor_from_workplace(actor: Variant) -> void:
 		actor.call("leave_workplace")
 	else:
 		actor.call("leave_workplace", exit_route)
+	# The real-time game walks the door route. During explicit manual
+	# fast-forward there are no rendered movement frames between minutes;
+	# complete the same route immediately so lunch and overnight schedules
+	# can make their next decision using the actor's actual state.
+	if (
+		is_instance_valid(_game_clock)
+		and bool(_game_clock.is_manual_fast_forward)
+		and bool(actor.call("is_leaving_workplace"))
+	):
+		actor.call("snap_outside_workplace")
+
 
 func _release_employee_to_free_roam(actor: Variant) -> void:
 	if bool(actor.call("is_in_facility")):
