@@ -27,12 +27,16 @@ const EMPLOYEE_WORK_SYSTEM_SCRIPT = preload(
 class StubFacilityManager extends Node:
 	var buildings: Array = []
 	var active_production_employee_id: String = ""
+	var release_production_for_lunch: bool = false
 
 	func get_buildings() -> Array:
 		return buildings
 
 	func is_employee_in_active_production(employee_id: String) -> bool:
 		return employee_id == active_production_employee_id
+
+	func should_release_production_employee_for_off_hours(hour: int) -> bool:
+		return release_production_for_lunch and hour == 12
 
 	func get_total_facility_capacity(building_type_id: String) -> int:
 		match building_type_id:
@@ -318,6 +322,21 @@ func _run_tests() -> void:
 		and str(employee.current_task) == "Возвращается на рабочее место",
 		"Employees must return to their assigned workstation when lunch ends."
 	)
+	studio_manager.active_production_employee_id = str(employee.id)
+	studio_manager.release_production_for_lunch = true
+	character_manager.call("_on_game_minute_advanced", 2, 12, 0)
+	_expect(
+		bool(actor.call("is_at_facility", "cafeteria"))
+		and str(employee.current_task) == "Обедает в столовой",
+		"Active film participants must be allowed into the cafeteria during production lunch."
+	)
+	studio_manager.release_production_for_lunch = false
+	character_manager.call("dispatch_employee_to_workplace", employee.id)
+	_expect(
+		bool(actor.call("is_at_workplace")),
+		"Film controller must be able to recall a lunching actor when the break ends."
+	)
+	studio_manager.active_production_employee_id = ""
 	character_manager.call("_on_game_minute_advanced", 1, 17, 0)
 	_expect(
 		str(employee.work_state) == "free_time"
