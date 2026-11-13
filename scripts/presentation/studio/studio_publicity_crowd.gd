@@ -50,6 +50,17 @@ func setup(
 				"head_scale": 1.0,
 			}
 		})
+		if event_id == "paparazzi":
+			var camera_body := MeshInstance3D.new()
+			camera_body.name = "PressCamera"
+			var camera_mesh := BoxMesh.new()
+			camera_mesh.size = Vector3(0.38, 0.22, 0.20)
+			camera_body.mesh = camera_mesh
+			camera_body.position = Vector3(0.0, 1.65, -0.36)
+			var camera_material := StandardMaterial3D.new()
+			camera_material.albedo_color = Color(0.08, 0.10, 0.12)
+			camera_body.material_override = camera_material
+			visitor.add_child(camera_body)
 		var entrance: Vector3 = (
 			door_position + lateral * fraction * 2.4
 			+ direction * (1.0 + float(index % 3) * 0.5)
