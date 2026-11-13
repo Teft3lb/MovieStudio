@@ -30,6 +30,8 @@ var _morale_label: Label
 var _morale_bar: ProgressBar
 var _stress_label: Label
 var _stress_bar: ProgressBar
+var _recognition_label: Label
+var _recognition_bar: ProgressBar
 var _skill_container: VBoxContainer
 
 
@@ -105,6 +107,12 @@ func build(studio_hud: Node) -> void:
 	_detail_stats_label = Label.new()
 	_detail_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(_detail_stats_label)
+	_recognition_label = Label.new()
+	_recognition_label.text = "ИЗВЕСТНОСТЬ"
+	layout.add_child(_recognition_label)
+	_recognition_bar = _create_progress_bar(
+		layout, Color(0.88, 0.70, 0.30, 1.0)
+	)
 
 	_detail_task_label = Label.new()
 	_detail_task_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -346,6 +354,8 @@ func clear() -> void:
 	_workplace_dispatch_button.visible = false
 	_workplace_assignment_label.visible = false
 	_workplace_assignment_option.visible = false
+	_recognition_label.visible = false
+	_recognition_bar.visible = false
 
 
 func refresh(profile_data: Dictionary) -> void:
@@ -359,6 +369,15 @@ func refresh(profile_data: Dictionary) -> void:
 	_detail_profession_label.text = str(profile_data.get("profession", ""))
 	_detail_biography_label.text = str(profile_data.get("biography", ""))
 	_detail_stats_label.text = str(profile_data.get("stats", ""))
+	var fame_visible: bool = bool(profile_data.get("show_recognition", false))
+	_recognition_label.visible = fame_visible
+	_recognition_bar.visible = fame_visible
+	if fame_visible:
+		var recognition: float = clampf(
+			float(profile_data.get("recognition", 0.0)), 0.0, 100.0
+		)
+		_recognition_label.text = "ИЗВЕСТНОСТЬ · %.0f%% / 70%% для ток-шоу" % recognition
+		_recognition_bar.value = recognition
 	_detail_task_label.text = str(profile_data.get("task", ""))
 	_detail_schedule_label.text = str(profile_data.get("schedule", ""))
 	_detail_contract_label.text = str(profile_data.get("contract", ""))
