@@ -23,6 +23,7 @@ var _clock_label: Label
 var _speed_label: Label
 var _fast_forward_status_label: Label
 var _developer_funds_status_label: Label
+var _developer_tools_layout: VBoxContainer
 
 var _workspace_panels: Dictionary = {}
 var _workspace_titles: Dictionary = {}
@@ -274,6 +275,7 @@ func _build_developer_panel() -> void:
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 8)
 	panel.add_child(layout)
+	_developer_tools_layout = layout
 
 	var heading := Label.new()
 	heading.text = "ИНСТРУМЕНТЫ РАЗРАБОТЧИКА"
@@ -321,6 +323,10 @@ func _build_developer_panel() -> void:
 		"Инструменты разработчика",
 		panel
 	)
+
+
+func get_developer_tools_layout() -> VBoxContainer:
+	return _developer_tools_layout
 
 
 func register_workspace_panel(
