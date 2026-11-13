@@ -304,6 +304,39 @@ func _run_tests() -> void:
 		and characters.employees.size() == roster_size,
 		"The guest must be routed home and the external host must never become an employee."
 	)
+	var original_show: Variant = invitation_system.call(
+		"get_talk_show", "TV-VISIT-0001"
+	)
+	_expect(
+		original_show != null
+		and original_show.episodes.size() == 1
+		and str(original_show.episodes[0].status) == "broadcasted",
+		"One-time external-host shows must remain archived in the TV domain."
+	)
+	# The only director is now the celebrity guest. Camera and technical
+	# staff remain unchanged; no new director should be hired or generated.
+	guest_actor.global_position = Vector3(12.0, 0.0, 0.0)
+	var second_guest_before: float = float(director.recognition)
+	var second_invite: Dictionary = production.call(
+		"invite_host", "TV-STAGE", str(director.id), "EXT-TV-HOST-VALE"
+	)
+	_expect(
+		bool(second_invite.get("success", false))
+		and characters.employees.size() == roster_size,
+		"A known film director must be able to guest-star with the existing crew."
+	)
+	for minute_index in range(45):
+		production.call("advance_minute", 1, 11, minute_index % 60)
+	var second_show: Variant = invitation_system.call(
+		"get_talk_show", "TV-VISIT-0002"
+	)
+	_expect(
+		second_show != null
+		and second_show.episodes.size() == 1
+		and str(second_show.episodes[0].status) == "broadcasted"
+		and float(director.recognition) > second_guest_before,
+		"The director's interview must air, improve their fame and remain in the TV archive."
+	)
 	layout.free()
 	characters.free()
 	studio.free()
