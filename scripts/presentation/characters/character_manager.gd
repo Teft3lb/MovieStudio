@@ -920,6 +920,13 @@ func _refresh_workplace_assignments() -> void:
 		if _is_active_production_participant(employee_id):
 			_manual_workplace_dispatches.erase(employee_id)
 			continue
+		# Reassignments may be recalculated on a new day or after constructing
+		# a building. They must not steal an actor from a player drag order.
+		if (
+			_manual_activity_controller != null
+			and bool(_manual_activity_controller.call("has_order", employee_id))
+		):
+			continue
 		if _manual_workplace_dispatches.has(employee_id):
 			if (
 				assignment.is_empty()
