@@ -55,16 +55,16 @@ func setup(host: Dictionary, game_clock: Node, arrival_route: Array[Vector3]) ->
 
 
 func _process(delta: float) -> void:
-	if not _travelling:
-		if _at_mark and is_instance_valid(_visual):
-			_visual.call("advance_simulation", delta)
-		return
 	if not is_instance_valid(_game_clock):
 		return
 	var game_delta: float = float(
 		_game_clock.call("get_simulation_delta", delta)
 	)
 	if game_delta <= 0.0:
+		return
+	if not _travelling:
+		if _at_mark and is_instance_valid(_visual):
+			_visual.call("advance_simulation", game_delta)
 		return
 	if _waypoint_index >= _path.size():
 		_finish_path()
