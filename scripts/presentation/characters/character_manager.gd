@@ -42,6 +42,9 @@ const EMPLOYEE_ROSTER_PANEL_CONTROLLER_SCRIPT = preload(
 const EMPLOYEE_SKILL_PROGRESS_VIEW_SCRIPT = preload(
 	"res://scripts/presentation/characters/employee_skill_progress_view.gd"
 )
+const EMPLOYEE_PROFILE_PANEL_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/characters/employee_profile_panel_controller.gd"
+)
 const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_skill_progression_system.gd"
 )
@@ -73,31 +76,12 @@ var _manual_workplace_dispatches: Dictionary = {}
 var _employee_actors: Dictionary = {}
 var _employee_roster_view: RefCounted
 var _employee_skill_progress_view: RefCounted
+var _employee_profile_view: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
 
-var _detail_contract_label: Label
-var _contract_type_option: OptionButton
-var _hire_button: Button
-var _dismiss_button: Button
-var _workplace_dispatch_button: Button
-var _dismiss_dialog: ConfirmationDialog
 
-var _detail_name_label: Label
-var _detail_profession_label: Label
-var _detail_biography_label: Label
-var _detail_stats_label: Label
-var _detail_task_label: Label
-var _detail_schedule_label: Label
 var _detail_skills_container: VBoxContainer
-var _detail_personality_label: Label
-
-var _energy_label: Label
-var _morale_label: Label
-var _stress_label: Label
-var _energy_bar: ProgressBar
-var _morale_bar: ProgressBar
-var _stress_bar: ProgressBar
 
 func _ready() -> void:
 	_game_clock = get_node("../GameClock")
@@ -111,6 +95,15 @@ func _ready() -> void:
 		Callable(self, "_close_market_panel"),
 		Callable(self, "_on_market_candidate_pressed"),
 		Callable(self, "_get_roster_work_state_title")
+	)
+	_employee_profile_view = EMPLOYEE_PROFILE_PANEL_CONTROLLER_SCRIPT.new()
+	_employee_profile_view.call(
+		"setup",
+		Callable(self, "_on_contract_type_selected"),
+		Callable(self, "_on_hire_button_pressed"),
+		Callable(self, "_on_dismiss_button_pressed"),
+		Callable(self, "_confirm_dismiss_employee"),
+		Callable(self, "_on_workplace_dispatch_button_pressed")
 	)
 	_needs_system = CHARACTER_NEEDS_SYSTEM_SCRIPT.new()
 	_aging_system = CHARACTER_AGING_SYSTEM_SCRIPT.new()
@@ -1059,195 +1052,13 @@ func _get_market_days_until_refresh() -> int:
 	)
 
 func _build_detail_panel() -> void:
-	var panel := PanelContainer.new()
-	panel.name = "EmployeeDetailPanel"
-	panel.custom_minimum_size = Vector2(0.0, 0.0)
-	if _studio_hud == null:
-		push_error("CharacterManager: StudioHUD node is missing.")
+	if _employee_profile_view == null:
 		return
-	_studio_hud.call(
-		"register_inspector_panel",
-		"employee",
-		"Карточка сотрудника",
-		panel
-	)
-
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_studio_hud.call("configure_scroll_container", scroll)
-	panel.add_child(scroll)
-
-	var layout := VBoxContainer.new()
-	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	layout.add_theme_constant_override("separation", 9)
-	scroll.add_child(layout)
-
-	_detail_name_label = Label.new()
-	_detail_name_label.add_theme_font_size_override("font_size", 20)
-	_detail_name_label.add_theme_color_override(
-		"font_color",
-		Color(0.80, 0.95, 0.91, 1.0)
-	)
-	layout.add_child(_detail_name_label)
-
-	_detail_profession_label = Label.new()
-	_detail_profession_label.add_theme_font_size_override("font_size", 13)
-	_detail_profession_label.add_theme_color_override(
-		"font_color",
-		Color(0.62, 0.79, 0.82, 1.0)
-	)
-	layout.add_child(_detail_profession_label)
-
-	_detail_biography_label = Label.new()
-	_detail_biography_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail_biography_label.add_theme_color_override(
-		"font_color",
-		Color(0.74, 0.77, 0.76, 1.0)
-	)
-	layout.add_child(_detail_biography_label)
-
-	layout.add_child(HSeparator.new())
-
-	_detail_stats_label = Label.new()
-	_detail_stats_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_stats_label)
-
-	_detail_task_label = Label.new()
-	_detail_task_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_task_label)
-
-	_workplace_dispatch_button = Button.new()
-	_workplace_dispatch_button.text = "ВЫЗВАТЬ НА ПЛОЩАДКУ"
-	_workplace_dispatch_button.pressed.connect(
-		_on_workplace_dispatch_button_pressed
-	)
-	_workplace_dispatch_button.visible = false
-	layout.add_child(_workplace_dispatch_button)
-
-	_detail_schedule_label = Label.new()
-	_detail_schedule_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_schedule_label)
-
-	_detail_contract_label = Label.new()
-	_detail_contract_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_contract_label)
-
-	_contract_type_option = OptionButton.new()
-	_contract_type_option.fit_to_longest_item = false
-	_contract_type_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_contract_type_option.add_item("Бессрочный")
-	_contract_type_option.set_item_metadata(0, "permanent")
-	_contract_type_option.add_item("Срочный · 30 дней")
-	_contract_type_option.set_item_metadata(1, "fixed_30_days")
-	_contract_type_option.add_item("Срочный · 90 дней")
-	_contract_type_option.set_item_metadata(2, "fixed_90_days")
-	_contract_type_option.select(0)
-	_contract_type_option.item_selected.connect(_on_contract_type_selected)
-	_contract_type_option.visible = false
-	layout.add_child(_contract_type_option)
-
-	_hire_button = Button.new()
-	_hire_button.text = "НАНЯТЬ СОТРУДНИКА"
-	_hire_button.pressed.connect(_on_hire_button_pressed)
-	_hire_button.visible = false
-	layout.add_child(_hire_button)
-
-	_dismiss_button = Button.new()
-	_dismiss_button.text = "УВОЛИТЬ СОТРУДНИКА"
-	_dismiss_button.pressed.connect(_on_dismiss_button_pressed)
-	_dismiss_button.visible = false
-	layout.add_child(_dismiss_button)
-
-	_dismiss_dialog = ConfirmationDialog.new()
-	_dismiss_dialog.title = "Подтверждение увольнения"
-	_dismiss_dialog.confirmed.connect(_confirm_dismiss_employee)
-	var overlay_root: Node = _studio_hud.call("get_overlay_root")
-	overlay_root.add_child(_dismiss_dialog)
-
-	layout.add_child(HSeparator.new())
-
-	var needs_heading := Label.new()
-	needs_heading.text = "СОСТОЯНИЕ"
-	needs_heading.add_theme_font_size_override("font_size", 12)
-	needs_heading.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	layout.add_child(needs_heading)
-
-	_energy_label = Label.new()
-	layout.add_child(_energy_label)
-	_energy_bar = _create_progress_bar(
-		layout,
-		Color(0.39, 0.68, 0.60, 1.0)
-	)
-
-	_morale_label = Label.new()
-	layout.add_child(_morale_label)
-	_morale_bar = _create_progress_bar(
-		layout,
-		Color(0.42, 0.69, 0.84, 1.0)
-	)
-
-	_stress_label = Label.new()
-	layout.add_child(_stress_label)
-	_stress_bar = _create_progress_bar(
-		layout,
-		Color(0.72, 0.39, 0.34, 1.0)
-	)
-
-	layout.add_child(HSeparator.new())
-
-	var skills_heading := Label.new()
-	skills_heading.text = "ПРОФЕССИОНАЛЬНЫЕ НАВЫКИ"
-	skills_heading.add_theme_font_size_override("font_size", 12)
-	skills_heading.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	layout.add_child(skills_heading)
-
-	_detail_skills_container = VBoxContainer.new()
-	_detail_skills_container.name = "SkillProgressList"
-	_detail_skills_container.add_theme_constant_override("separation", 5)
-	layout.add_child(_detail_skills_container)
+	_employee_profile_view.call("build", _studio_hud)
+	_detail_skills_container = _employee_profile_view.call(
+		"get_skill_container"
+	) as VBoxContainer
 	_ensure_skill_progress_view()
-
-	layout.add_child(HSeparator.new())
-
-	var personality_heading := Label.new()
-	personality_heading.text = "ЛИЧНОСТЬ"
-	personality_heading.add_theme_font_size_override("font_size", 12)
-	personality_heading.add_theme_color_override(
-		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
-	)
-	layout.add_child(personality_heading)
-
-	_detail_personality_label = Label.new()
-	_detail_personality_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	layout.add_child(_detail_personality_label)
-
-func _create_progress_bar(
-	parent: VBoxContainer,
-	fill_color: Color
-) -> ProgressBar:
-	var progress := ProgressBar.new()
-	progress.min_value = 0.0
-	progress.max_value = 100.0
-	progress.show_percentage = false
-	progress.custom_minimum_size = Vector2(0.0, 10.0)
-	var background_style := StyleBoxFlat.new()
-	background_style.bg_color = Color(0.12, 0.15, 0.17, 1.0)
-	background_style.set_corner_radius_all(5)
-	progress.add_theme_stylebox_override("background", background_style)
-	var fill_style := StyleBoxFlat.new()
-	fill_style.bg_color = fill_color
-	fill_style.set_corner_radius_all(5)
-	progress.add_theme_stylebox_override("fill", fill_style)
-	parent.add_child(progress)
-	return progress
 
 func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
@@ -2116,7 +1927,10 @@ func _get_roster_work_state_title(employee: Variant) -> String:
 	return employee.get_work_state_title()
 
 func _refresh_detail_panel() -> void:
-	if not is_instance_valid(_detail_name_label):
+	if (
+		_employee_profile_view == null
+		or not bool(_employee_profile_view.call("is_built"))
+	):
 		return
 
 	var is_market_candidate: bool = not _selected_market_candidate_id.is_empty()
@@ -2125,71 +1939,55 @@ func _refresh_detail_panel() -> void:
 		if is_market_candidate
 		else _find_employee(_selected_employee_id)
 	)
-
 	if employee == null:
 		_selected_market_candidate_id = ""
 		_selected_employee_id = ""
-		_detail_name_label.text = "ВЫБЕРИ СОТРУДНИКА"
-		_detail_profession_label.text = (
-			"Выбери сотрудника в списке или открой кадровый рынок."
-		)
-		_detail_biography_label.text = ""
-		_detail_stats_label.text = ""
-		_detail_task_label.text = ""
-		_detail_schedule_label.text = ""
-		_detail_contract_label.text = ""
+		_employee_profile_view.call("clear")
 		_clear_skill_progress_bars()
-		_detail_personality_label.text = ""
-		_energy_label.text = "Энергия"
-		_morale_label.text = "Настроение"
-		_stress_label.text = "Стресс"
-		_energy_bar.value = 0.0
-		_morale_bar.value = 0.0
-		_stress_bar.value = 0.0
-		_contract_type_option.visible = false
-		_hire_button.visible = false
-		_dismiss_button.visible = false
-		if is_instance_valid(_workplace_dispatch_button):
-			_workplace_dispatch_button.visible = false
 		return
 
 	var needs: Dictionary = employee.needs
 	var skills: Dictionary = employee.skills
 	var personality: Dictionary = employee.personality
-
-	_detail_name_label.text = employee.get_full_name().to_upper()
 	var employee_role_title: String = employee.get_profession_title()
 	var employee_specialization: String = employee.get_specialization_title()
 	if not employee_specialization.is_empty():
 		employee_role_title += " · " + employee_specialization
-	_detail_profession_label.text = "%s  ·  %s  ·  Возраст: %d" % [
+	var profession_line: String = "%s  ·  %s  ·  Возраст: %d" % [
 		employee_role_title,
 		employee.get_department_title(),
 		employee.age,
 	]
-	_detail_biography_label.text = employee.biography
+	var physical_fitness_line: String = (
+		"\nФизическая форма: %.0f / 100" % employee.physical_fitness
+		if str(employee.profession_id) == "actor"
+		else ""
+	)
+
+	var stats_text: String
+	var task_text: String
+	var schedule_text: String
+	var contract_text: String
+	var show_contract_options: bool = false
+	var show_hire_button: bool = false
+	var show_dismiss_button: bool = false
 
 	if is_market_candidate:
-		var market_physical_fitness_line: String = (
-			"\nФизическая форма: %.0f / 100" % employee.physical_fitness
-			if str(employee.profession_id) == "actor"
-			else ""
-		)
-		_detail_stats_label.text = (
+		stats_text = (
 			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОжидание: %d усл. ед. / день\nПотенциал развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
 				employee.recognition,
-				market_physical_fitness_line,
+				physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
 				employee.growth_points_total,
 				employee.career_goal,
 			]
 		)
-		_detail_task_label.text = "СТАТУС: Кандидат открыт к предложениям"
-		_detail_schedule_label.text = "График работы согласуется при найме."
+		task_text = "СТАТУС: Кандидат открыт к предложениям"
+		schedule_text = "График работы согласуется при найме."
 		var contract_type: String = _get_selected_contract_type()
 		var offer_salary: int = int(
 			_employment_system.call(
@@ -2198,45 +1996,36 @@ func _refresh_detail_panel() -> void:
 				contract_type
 			)
 		)
-		_detail_contract_label.text = (
+		contract_text = (
 			"ПРЕДЛАГАЕМЫЙ КОНТРАКТ\nТип: %s\nСтавка: %d усл. ед. / день"
 			% [
 				_get_contract_type_title(contract_type),
 				offer_salary,
 			]
 		)
-		_contract_type_option.visible = true
-		_hire_button.visible = true
-		_dismiss_button.visible = false
-		_workplace_dispatch_button.visible = false
+		show_contract_options = true
+		show_hire_button = true
 	else:
-		var employee_physical_fitness_line: String = (
-			"\nФизическая форма: %.0f / 100" % employee.physical_fitness
-			if str(employee.profession_id) == "actor"
-			else ""
-		)
-		_detail_stats_label.text = (
+		stats_text = (
 			"Опыт: %.1f лет\nПопулярность: %.0f / 100\nУзнаваемость: %.0f / 100%s\nОплата: %d усл. ед. / день\nРезерв развития: %.0f / %.0f очков\nЦель: %s"
 			% [
 				employee.experience,
 				employee.popularity,
 				employee.recognition,
-				employee_physical_fitness_line,
+				physical_fitness_line,
 				employee.daily_salary,
 				employee.growth_points_remaining,
 				employee.growth_points_total,
 				employee.career_goal,
 			]
 		)
-		var workplace_title: String = _get_workplace_title(
-			str(employee.id)
-		)
+		var workplace_title: String = _get_workplace_title(str(employee.id))
 		var employee_work_state_title: String = (
 			"На съёмках"
 			if _is_active_production_participant(str(employee.id))
 			else employee.get_work_state_title()
 		)
-		_detail_task_label.text = (
+		task_text = (
 			"СЕЙЧАС: %s\nСтатус: %s\nРабочее место: %s"
 			% [
 				employee.current_task,
@@ -2244,25 +2033,25 @@ func _refresh_detail_panel() -> void:
 				workplace_title,
 			]
 		)
-		_detail_schedule_label.text = "Смена: %02d:00–%02d:00  ·  Перерыв: %02d:00–%02d:00" % [
+		schedule_text = "Смена: %02d:00–%02d:00  ·  Перерыв: %02d:00–%02d:00" % [
 			employee.shift_start_hour,
 			employee.shift_end_hour,
 			employee.break_start_hour,
 			employee.break_end_hour,
 		]
-
 		var contract: Variant = _employment_system.call(
-			"get_contract", str(employee.id)
+			"get_contract",
+			str(employee.id)
 		)
 		if contract == null:
-			_detail_contract_label.text = "КОНТРАКТ: данные отсутствуют"
+			contract_text = "КОНТРАКТ: данные отсутствуют"
 		else:
 			var end_text: String = (
 				"Бессрочный"
 				if int(contract.end_day) == 0
 				else "до дня %d" % int(contract.end_day)
 			)
-			_detail_contract_label.text = (
+			contract_text = (
 				"ТРУДОВОЙ ДОГОВОР\n%s\nСтавка: %d усл. ед. / день\nНачало: день %d · %s"
 				% [
 					contract.get_type_title(),
@@ -2271,25 +2060,12 @@ func _refresh_detail_panel() -> void:
 					end_text,
 				]
 			)
-		_contract_type_option.visible = false
-		_hire_button.visible = false
-		_dismiss_button.visible = true
-		_refresh_workplace_dispatch_button(str(employee.id))
+		show_dismiss_button = true
 
 	var energy: float = float(needs.get("energy", 1.0)) * 100.0
 	var morale: float = float(needs.get("morale", 0.75)) * 100.0
 	var stress: float = float(needs.get("stress", 0.1)) * 100.0
-	_energy_label.text = "Энергия  ·  %d%%" % roundi(energy)
-	_morale_label.text = "Настроение  ·  %d%%" % roundi(morale)
-	_stress_label.text = "Стресс  ·  %d%%" % roundi(stress)
-	_energy_bar.value = energy
-	_morale_bar.value = morale
-	_stress_bar.value = stress
-
-	_refresh_skill_progress_bars(employee, skills)
-
-
-	_detail_personality_label.text = (
+	var personality_text: String = (
 		"Амбиции: %d%%\nОбщительность: %d%%\nДисциплина: %d%%\nКреативность: %d%%\n%s"
 		% [
 			roundi(float(personality.get("ambition", 0.5)) * 100.0),
@@ -2299,6 +2075,31 @@ func _refresh_detail_panel() -> void:
 			_get_relationship_summary(employee),
 		]
 	)
+	_employee_profile_view.call(
+		"refresh",
+		{
+			"has_profile": true,
+			"name": employee.get_full_name().to_upper(),
+			"profession": profession_line,
+			"biography": employee.biography,
+			"stats": stats_text,
+			"task": task_text,
+			"schedule": schedule_text,
+			"contract": contract_text,
+			"personality": personality_text,
+			"needs": {
+				"energy": energy,
+				"morale": morale,
+				"stress": stress,
+			},
+			"show_contract_type": show_contract_options,
+			"show_hire_button": show_hire_button,
+			"show_dismiss_button": show_dismiss_button,
+		}
+	)
+	_refresh_skill_progress_bars(employee, skills)
+	if not is_market_candidate:
+		_refresh_workplace_dispatch_button(str(employee.id))
 
 func _clear_skill_progress_bars() -> void:
 	_ensure_skill_progress_view()
@@ -2328,7 +2129,7 @@ func _ensure_skill_progress_view() -> void:
 	)
 
 func _refresh_workplace_dispatch_button(employee_id: String) -> void:
-	if not is_instance_valid(_workplace_dispatch_button):
+	if _employee_profile_view == null:
 		return
 	var assignment: Dictionary = _workplace_assignments.get(
 		employee_id,
@@ -2343,23 +2144,28 @@ func _refresh_workplace_dispatch_button(employee_id: String) -> void:
 		or _is_active_production_participant(employee_id)
 		or _is_active_editing_participant(employee_id)
 	):
-		_workplace_dispatch_button.visible = false
+		_employee_profile_view.call("set_workplace_dispatch_state", false)
 		return
 
-	_workplace_dispatch_button.visible = true
 	var is_manual: bool = _manual_workplace_dispatches.has(employee_id)
+	var button_text: String
 	if building_type_id == "sound_stage":
-		_workplace_dispatch_button.text = (
+		button_text = (
 			"ОТПУСТИТЬ С ПЛОЩАДКИ"
 			if is_manual
 			else "ВЫЗВАТЬ НА ПЛОЩАДКУ"
 		)
 	else:
-		_workplace_dispatch_button.text = (
+		button_text = (
 			"ОТПУСТИТЬ ИЗ МОНТАЖНОЙ"
 			if is_manual
 			else "ОТПРАВИТЬ В МОНТАЖНУЮ"
 		)
+	_employee_profile_view.call(
+		"set_workplace_dispatch_state",
+		true,
+		button_text
+	)
 
 func _on_workplace_dispatch_button_pressed() -> void:
 	var employee_id: String = _selected_employee_id
@@ -2378,12 +2184,9 @@ func _on_contract_type_selected(_index: int) -> void:
 	_refresh_detail_panel()
 
 func _get_selected_contract_type() -> String:
-	if not is_instance_valid(_contract_type_option):
+	if _employee_profile_view == null:
 		return "permanent"
-	var selected_index: int = _contract_type_option.selected
-	if selected_index < 0:
-		return "permanent"
-	return str(_contract_type_option.get_item_metadata(selected_index))
+	return str(_employee_profile_view.call("get_selected_contract_type"))
 
 func _get_contract_type_title(contract_type: String) -> String:
 	match contract_type:
@@ -2426,15 +2229,15 @@ func _on_hire_button_pressed() -> void:
 	employees_changed.emit()
 
 func _on_dismiss_button_pressed() -> void:
+	if _employee_profile_view == null:
+		return
 	var employee: Variant = _find_employee(_selected_employee_id)
 	if employee == null:
 		return
-
-	_dismiss_dialog.dialog_text = (
-		"Уволить %s?\nКонтракт будет расторгнут, персонаж покинет активный штат."
-		% employee.get_full_name()
+	_employee_profile_view.call(
+		"show_dismiss_confirmation",
+		employee.get_full_name()
 	)
-	_dismiss_dialog.popup_centered()
 
 func _confirm_dismiss_employee() -> void:
 	var employee_id: String = _selected_employee_id

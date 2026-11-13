@@ -18,7 +18,7 @@ Current approximate source line counts after the production, editing and logisti
 |---|---:|---|
 | `studio_building_manager.gd` | 1,771 | Building lifecycle, script-writing simulation, inventory and module composition |
 | `studio_building_actor.gd` | 677 | Building identity, selection, cutaway state, shared building shell and gameplay interfaces |
-| `character_manager.gd` | 2,495 | Employee simulation coordination, workplace routing, facilities, relationships, employee market and profile |
+| `character_manager.gd` | 2,298 | Employee simulation coordination, workplace routing, facilities, relationships and employment orchestration |
 | `studio_building_interior_smoke_test.gd` | 34 | Single SceneTree runner for focused geometry, sound-stage, facility and employee integration suites |
 
 The line counts are a warning signal, not a target in themselves. A module should own one cohesive responsibility and have a small, explicit dependency surface.
@@ -268,9 +268,9 @@ Extract presentation and coordination by responsibility.
 Completed:
 - `EmployeeRosterPanelController` owns roster rows and recruitment-market workspace rendering; manager-owned selection, hiring and dismissal remain unchanged.
 - `EmployeeSkillProgressView` owns skill-row/progress-bar construction and in-place refresh; the Domain skill progression system and manager compatibility methods remain unchanged.
+- `EmployeeProfilePanelController` owns biography, stats, needs bars, contract selection, hire/dismiss controls and employee/candidate profile rendering; manager-owned employment and workplace decisions remain outside the view.
 
 Remaining:
-- `EmployeeProfilePanelController` for biography, stats, needs bars, contracts and employee/candidate profile rendering;
 - workplace/facility dispatch coordinator;
 - relationship/social interaction coordinator.
 
@@ -301,7 +301,7 @@ All suites inherit a shared RefCounted test base that forwards assertions to the
 ## Recommended order
 
 1. Run Godot 4.7.2 parse and smoke tests for the building visual/navigation/marker/set-prop builders and the new interior test suites.
-2. Continue CharacterManager presentation extraction by moving the remaining employee detail inspector into EmployeeProfilePanelController.
-3. Extract workplace/facility dispatch and relationship/social coordination from CharacterManager.
+2. Extract workplace/facility dispatch coordination from CharacterManager while preserving the existing workplace assignment and manual-dispatch contracts.
+3. Extract relationship/social interaction coordination without moving relationship rules out of their Domain systems.
 
-The building-manager UI and visual extractions are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider; reusable prop meshes are delegated to StudioSetPropVisualBuilder. The former interior test monolith is now a small runner over four focused suites. CharacterManager presentation extraction is underway: roster/recruitment rendering and skill-progress rows are delegated to dedicated views while hiring, dismissal, employee state and Domain skill progression remain unchanged.
+The building-manager UI and visual extractions are complete. Sound Stage, TV Studio, office and staff/social facility geometry are isolated; per-building indoor navigation is delegated to StudioBuildingNavigationController; authored production/facility markers are delegated to StudioBuildingMarkerProvider; reusable prop meshes are delegated to StudioSetPropVisualBuilder. The former interior test monolith is now a small runner over four focused suites. CharacterManager presentation extraction now delegates roster/recruitment rendering, skill-progress rows and the employee/candidate profile inspector to dedicated views. Hiring, dismissal, employee state, contract offers, workplace assignment and Domain skill progression remain unchanged.

@@ -123,3 +123,8 @@ The employee inspector displays each profession skill as a progress bar matching
 ## Employee skill progression presentation
 
 `EmployeeSkillProgressView` owns the reusable skill-row and progress-bar hierarchy, including individual mastery caps, progress-to-next-point tooltips and in-place refreshes. `CharacterManager` retains the Domain skill progression service and provides compatibility methods for profile refresh and clearing. The view does not change skill values, caps, growth points or progression balance.
+
+
+## Employee profile presentation
+
+`EmployeeProfilePanelController` owns the employee inspector hierarchy, profile text/needs rendering, contract selector, hire/dismiss controls and workplace-dispatch button presentation. `CharacterManager` prepares profile data and remains responsible for candidate selection, contract offers, hiring, dismissal, work assignments and dispatch eligibility. The view emits user actions through Callables and exposes the skill container to the separate `EmployeeSkillProgressView`.
