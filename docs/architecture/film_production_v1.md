@@ -123,6 +123,7 @@ Run with Godot 4.7.2 from the project root:
 & $godot --headless --path . --script res://tests/studio_navigation_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_set_inventory_smoke_test.gd
 & $godot --headless --path . --script res://tests/film_production_session_smoke_test.gd
+& $godot --headless --path . --script res://tests/film_production_overnight_recovery_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_interior_smoke_test.gd
 & $godot --headless --path . --script res://tests/studio_building_system_smoke_test.gd
 & $godot --headless --path . --script res://tests/script_generator_smoke_test.gd
@@ -158,8 +159,8 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 13. After the scene is accepted, observe Set Strike: technicians remove the pieces, carry them back to the warehouse and place them on the shelves. Confirm the stage is not cleared before the last prop is returned.
 14. Confirm the next scene does not begin until the previous set is cleared and the technicians return to their workstations.
 15. Confirm assigned participants remain available through lunch and normal shift boundaries; actors are called only for scenes in which they participate.
-16. Let the clock pass the end of the normal shift and reach 00:15 while a film is in progress. Confirm active crew at their production marks remain ready and the phase clock continues.
-17. Let the clock reach the next workday without restarting the film. Confirm the same scene, phase and set-logistics task continue, with no duplicated props or reset progress.
+16. Let the clock pass the end of the shared production shift and reach 00:15. Confirm production phase minutes stop, performers leave the active marks, and outstanding prop logistics can finish safely.
+17. Advance to the next shared work shift without restarting the film, including via the +1 day button. Confirm the same scene and phase resume after the crew returns, without duplicated props, reset progress, or indefinitely travelling technicians.
 18. Confirm low-quality takes request no more than two retakes.
 19. Confirm final completion shows the film quality and all scene results, returns active performers to workstations and changes the slate to ФИЛЬМ ГОТОВ.
 20. Recheck normal workplace routing around building footprints and stage walls, employee needs, script writing, manual fast-forward, building selection and camera controls.
@@ -183,7 +184,7 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 
 ## Working hours and overnight pause
 
-Every production phase advances only during the shared shift window of the assigned cast and crew. The effective window is the intersection of their individual shifts, and its duration is stored on the project so the estimate is expressed in working days rather than assuming a fixed nine-hour day. When the window closes, phase clocks stop. Set Dressing and Set Strike may finish outstanding prop delivery, installation, removal and warehouse-return tasks after the phase clock stops, but they do not consume production phase minutes outside the shift. Once logistics are safe, the team is released to normal free-time and staff-housing behavior; active performers return to their marks on the next shift. The camera is idled while production is paused.
+Every production phase advances only during the shared shift window of the assigned cast and crew. The effective window is the intersection of their individual shifts, and its duration is stored on the project so the estimate is expressed in working days rather than assuming a fixed nine-hour day. When the window closes, phase clocks stop. Set Dressing and Set Strike may finish outstanding prop delivery, installation, removal and warehouse-return tasks after the phase clock stops, but they do not consume production phase minutes outside the shift. Once logistics are safe, the team is released to normal free-time and staff-housing behavior; active performers return to their marks on the next shift. The camera is idled while production is paused. A morning work call may interrupt an employee still walking to staff housing and replan the journey directly back to their assigned workstation. During manual fast-forward, no physics frames are generated between minute events; logistics workers therefore finish each scripted travel leg at its destination mark before its task state advances, matching the existing fast-forward behavior of scene performers. Normal-time navigation still uses physical movement. The dedicated overnight-recovery smoke test covers both behaviors; full live-scene movement and collision recovery still require visual verification.
 
 ## Background performers, professional progression and lifecycle
 
