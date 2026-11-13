@@ -611,6 +611,17 @@ func _on_start_film_production_pressed() -> void:
 			"Нельзя начать фильм: участник сейчас общается с прессой или фанатами."
 		)
 		return
+	if (
+		_manager.has_method("has_manual_staff_conflict")
+		and bool(_manager.call(
+			"has_manual_staff_conflict",
+			crew_assignments, cast_assignments, background_performer_ids
+		))
+	):
+		_film_production_status_label.text = (
+			"Нельзя начать фильм: сначала завершите вручную назначенные занятия."
+		)
+		return
 
 	var project_id: String = "FILM-%04d" % _get_next_script_sequence()
 	var seed: int = (
