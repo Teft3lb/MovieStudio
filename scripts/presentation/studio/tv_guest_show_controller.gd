@@ -302,8 +302,13 @@ func _find_employee(employee_id: String) -> Variant:
 
 
 func _is_busy(employee_id: String) -> bool:
+	var feature_film_busy: bool = (
+		bool(_manager.call("is_employee_in_active_film_production", employee_id))
+		if _manager.has_method("is_employee_in_active_film_production")
+		else bool(_manager.call("is_employee_in_active_production", employee_id))
+	)
 	return (
-		bool(_manager.call("is_employee_in_active_production", employee_id))
+		feature_film_busy
 		or bool(_manager.call("is_employee_in_active_editing", employee_id))
 	)
 
@@ -333,6 +338,14 @@ func get_last_broadcast() -> Dictionary:
 
 func get_tv_system() -> RefCounted:
 	return _television
+
+
+func is_participant(employee_id: String) -> bool:
+	if _television.call("get_active_episode") == null:
+		return false
+	if employee_id == _active_guest_id:
+		return true
+	return _active_crew.values().has(employee_id)
 
 
 func is_host_present() -> bool:
