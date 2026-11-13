@@ -45,6 +45,12 @@ func request_event(employee_id: String, event_id: String) -> Dictionary:
 	if (
 		bool(_manager.call("is_employee_in_active_production", employee_id))
 		or bool(_manager.call("is_employee_in_active_editing", employee_id))
+		or (
+			_manager.has_method("is_employee_in_manual_activity")
+			and bool(_manager.call(
+				"is_employee_in_manual_activity", employee_id
+			))
+		)
 	):
 		return _fail("Сейчас артист занят на съёмках или монтаже.")
 	var actor: Node3D = _characters.call("get_employee_actor", employee_id) as Node3D
@@ -235,6 +241,12 @@ func _assign_available_guards(celebrity_id: String) -> void:
 			or id == celebrity_id
 			or bool(_manager.call("is_employee_in_active_production", id))
 			or bool(_manager.call("is_employee_in_active_editing", id))
+			or (
+				_manager.has_method("is_employee_in_manual_activity")
+				and bool(_manager.call(
+					"is_employee_in_manual_activity", id
+				))
+			)
 		):
 			continue
 		var actor: Node3D = _characters.call("get_employee_actor", id) as Node3D
