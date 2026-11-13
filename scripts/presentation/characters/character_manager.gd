@@ -45,6 +45,12 @@ const EMPLOYEE_SKILL_PROGRESS_VIEW_SCRIPT = preload(
 const EMPLOYEE_PROFILE_PANEL_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/characters/employee_profile_panel_controller.gd"
 )
+const DEVELOPER_EMPLOYEE_PANEL_SCRIPT = preload(
+	"res://scripts/presentation/ui/developer_employee_panel.gd"
+)
+const CHARACTER_DEV_TUNING_SCRIPT = preload(
+	"res://scripts/domain/characters/character_dev_tuning.gd"
+)
 const SKILL_PROGRESSION_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_skill_progression_system.gd"
 )
@@ -78,6 +84,7 @@ var _employee_actors: Dictionary = {}
 var _employee_roster_view: RefCounted
 var _employee_skill_progress_view: RefCounted
 var _employee_profile_view: RefCounted
+var _developer_employee_panel: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
 
@@ -117,6 +124,7 @@ func _ready() -> void:
 	_spawn_initial_roster()
 	_build_roster_panel()
 	_build_detail_panel()
+	_build_developer_employee_panel()
 
 	for employee in employees:
 		_needs_system.call(
@@ -1183,6 +1191,42 @@ func _build_detail_panel() -> void:
 		"get_skill_container"
 	) as VBoxContainer
 	_ensure_skill_progress_view()
+
+func _build_developer_employee_panel() -> void:
+	if (
+		not is_instance_valid(_studio_hud)
+		or not _studio_hud.has_method("get_developer_tools_layout")
+	):
+		return
+	var layout: VBoxContainer = _studio_hud.call(
+		"get_developer_tools_layout"
+	) as VBoxContainer
+	if not is_instance_valid(layout):
+		return
+	_developer_employee_panel = DEVELOPER_EMPLOYEE_PANEL_SCRIPT.new()
+	_developer_employee_panel.call("build", layout, self)
+
+
+func developer_change_employee_stat(
+	employee_id: String,
+	stat_id: String,
+	amount: float,
+	is_absolute: bool = false
+) -> bool:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return false
+	var tuning: RefCounted = CHARACTER_DEV_TUNING_SCRIPT.new()
+	var success: bool = bool(
+		tuning.call("set_stat", employee, stat_id, amount)
+		if is_absolute
+		else tuning.call("adjust_stat", employee, stat_id, amount)
+	)
+	if success:
+		_refresh_detail_panel()
+		_refresh_roster()
+	return success
+
 
 func _on_roster_employee_pressed(employee_id: String) -> void:
 	_select_employee(employee_id)
