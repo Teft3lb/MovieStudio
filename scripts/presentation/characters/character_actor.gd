@@ -1010,7 +1010,10 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 		if navigation_manager.has_method("get_roaming_route") and _route.size() >= 2:
 			var target_index: int = mini(_route_index, _route.size() - 1)
 			var waypoint: Vector3 = _route[target_index]
-			var following: Vector3 = _route[(target_index + 1) % _route.size()]
+			var following_index: int = target_index + 1
+			if following_index >= _route.size():
+				following_index = _roaming_loop_start_index
+			var following: Vector3 = _route[following_index]
 			route_targets = [waypoint, following]
 			route = navigation_manager.call(
 				"get_roaming_route", global_position, route_targets
