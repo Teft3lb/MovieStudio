@@ -15,6 +15,16 @@ const NAVIGATION = preload(
 const CHARACTER_ACTOR = preload(
 	"res://scripts/presentation/characters/character_actor.gd"
 )
+const SET_LOGISTICS = preload(
+	"res://scripts/presentation/studio/studio_set_logistics_controller.gd"
+)
+
+
+class LogisticsCharacters extends Node:
+	var worker: Node3D
+
+	func get_employee_actor(_worker_id: String) -> Node:
+		return worker
 
 
 func _initialize() -> void:
@@ -149,6 +159,51 @@ func _run_tests() -> void:
 		and reversed_route.back().distance_to(start) < 0.1,
 		"Technicians must also be able to recover the return route from warehouse to stage."
 	)
+
+	# Prop technicians must share the same door-first routes in both
+	# directions instead of using the obsolete direct-to-exterior builder.
+	var worker := Node3D.new()
+	root.add_child(worker)
+	worker.global_position = start
+	var characters := LogisticsCharacters.new()
+	characters.worker = worker
+	root.add_child(characters)
+	var logistics: RefCounted = SET_LOGISTICS.new()
+	logistics.call("setup", studio, characters, NAVIGATION.new(), null)
+	var storage_mark: Vector3 = warehouse_actor.call("get_storage_mark", 0)
+	var to_warehouse: Array[Vector3] = logistics.call(
+		"_build_route_stage_to_warehouse",
+		"TECHNICIAN", stage.id, warehouse.id, 0, start
+	)
+	var to_warehouse_uses_exit: bool = false
+	for point in to_warehouse:
+		if point.distance_to(stage_workplace.front()) < 0.1:
+			to_warehouse_uses_exit = true
+	_expect(
+		to_warehouse.size() >= 5
+		and to_warehouse_uses_exit
+		and to_warehouse.back().distance_to(storage_mark) < 0.1,
+		"Prop delivery must leave through the stage door before crossing the outdoor lot."
+	)
+	worker.global_position = storage_mark
+	var set_mark: Vector3 = stage_actor.call("get_set_dressing_mark", 0)
+	var to_stage: Array[Vector3] = logistics.call(
+		"_build_route_warehouse_to_stage",
+		"TECHNICIAN", stage.id, warehouse.id, 0, set_mark
+	)
+	var to_stage_uses_exit: bool = false
+	for point in to_stage:
+		if point.distance_to(warehouse_workplace.front()) < 0.1:
+			to_stage_uses_exit = true
+	_expect(
+		to_stage.size() >= 5
+		and to_stage_uses_exit
+		and to_stage.front().distance_to(storage_mark) < 0.1
+		and to_stage.back().distance_to(set_mark) < 0.1,
+		"Warehouse returns must first exit through the warehouse door before entering the stage."
+	)
+	characters.free()
+	worker.free()
 
 	var parent := Node3D.new()
 	parent.name = "CharacterManager"
