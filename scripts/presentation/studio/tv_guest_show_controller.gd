@@ -85,6 +85,7 @@ func invite_host(stage_id: String, guest_id: String, host_id: String) -> Diction
 	var crew: Dictionary = _invitation_policy.call(
 		"choose_crew", tv_staff, guest_id, unavailable_ids
 	)
+	crew = _invitation_policy.call("allow_guest_director", crew, guest)
 	if not bool(_invitation_policy.call("has_complete_crew", crew)):
 		return _failure(
 			"Назначьте в ТВ-павильон режиссёра, оператора и техника "
@@ -184,6 +185,10 @@ func advance_minute(day: int, _hour: int, _minute: int) -> void:
 	var crew_ready: bool = true
 	for employee_id_value in _active_crew.values():
 		var employee_id: String = str(employee_id_value)
+		if employee_id == _active_guest_id:
+			# A famous director can both host-direct their segment and
+			# appear as the invited guest, without employing a second director.
+			continue
 		if _is_busy(employee_id):
 			crew_ready = false
 			break
