@@ -1040,6 +1040,7 @@ func _spawn_employee_actor(employee: Variant, index: int) -> void:
 func _remove_employee_actor(employee_id: String) -> void:
 	_employee_task_overrides.erase(employee_id)
 	_manual_workplace_dispatches.erase(employee_id)
+	_manual_workplace_assignments.erase(employee_id)
 	var actor: Variant = _employee_actors.get(employee_id)
 	if actor != null and is_instance_valid(actor):
 		actor.queue_free()

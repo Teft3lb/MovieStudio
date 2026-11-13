@@ -180,7 +180,7 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 	if direction.length_squared() <= 0.25:
 		if _workplace_path_index < _workplace_path.size() - 1:
 			_workplace_path_index += 1
-			_recover_blocked_route(simulation_delta, "workplace")
+			_blocked_movement_seconds = 0.0
 			_set_walking(false)
 			_advance_visual(simulation_delta)
 			return
@@ -198,6 +198,7 @@ func _process_workplace_movement(simulation_delta: float) -> void:
 		_move_speed * simulation_delta
 	)
 	if not _try_move_to_position(next_position):
+		_recover_blocked_route(simulation_delta, "workplace")
 		_set_walking(false)
 		_advance_visual(simulation_delta)
 		return

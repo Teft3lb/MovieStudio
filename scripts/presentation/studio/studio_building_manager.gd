@@ -555,8 +555,8 @@ func get_roaming_route(
 			obstacles,
 			0.75,
 			_get_outdoor_navigation_bounds(
-			current_position, target_position
-		)
+				current_position, target_position
+			)
 		)
 		if segment.is_empty():
 			return []
@@ -741,8 +741,8 @@ func get_workplace_path_from(
 		_get_building_navigation_obstacles(),
 		0.75,
 		_get_outdoor_navigation_bounds(
-		path_start, workplace_path[0]
-	)
+			path_start, workplace_path[0]
+		)
 	)
 	if travel_path.is_empty():
 		return []
