@@ -219,6 +219,15 @@ func _run_tests() -> void:
 		float(director.recognition) > before_film,
 		"Film credits must raise directors' public recognition."
 	)
+	var before_tv_director: float = float(director.recognition)
+	var director_tv_update: Dictionary = celebrity.call(
+		"apply_tv_appearance", director, "guest", 75.0, 85.0, 120000
+	)
+	_expect(
+		bool(director_tv_update.get("applied", false))
+		and float(director.recognition) > before_tv_director,
+		"Guest TV appearances must increase directors' recognition, not only actors'."
+	)
 
 	var clock := FakeClock.new()
 	root.add_child(clock)
