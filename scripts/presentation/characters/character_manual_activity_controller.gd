@@ -230,6 +230,23 @@ func forget_employee(employee_id: String) -> void:
 	_orders.erase(employee_id)
 
 
+func cancel(employee_id: String) -> Dictionary:
+	if not _orders.has(employee_id):
+		return _reject("У сотрудника нет активного поручения.")
+	var employee: Variant = _find_employee(employee_id)
+	var actor: Node3D = _characters.call(
+		"get_employee_actor", employee_id
+	) as Node3D
+	if employee == null or not is_instance_valid(actor):
+		_orders.erase(employee_id)
+		return _reject("Поручение снято: персонаж больше недоступен.")
+	_finish_order(employee, actor)
+	if _orders.has(employee_id):
+		return _reject("Поручение завершится, когда появится безопасный маршрут обратно.")
+	_last_message = "%s возвращается к обычному распорядку." % employee.get_full_name()
+	return {"success": true, "message": _last_message}
+
+
 func _finish_order(employee: Variant, actor: Node3D) -> void:
 	var employee_id: String = str(employee.id)
 	if not _orders.has(employee_id):

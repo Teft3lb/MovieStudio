@@ -66,13 +66,13 @@ func build(
 	_roster_header.add_theme_font_size_override("font_size", 12)
 	_roster_header.add_theme_color_override(
 		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
+		Color(0.88, 0.67, 0.35, 1.0)
 	)
 	roster_header_row.add_child(_roster_header)
 
 	_market_toggle_button = Button.new()
-	_market_toggle_button.text = "РЫНОК"
-	_market_toggle_button.custom_minimum_size = Vector2(94.0, 32.0)
+	_market_toggle_button.text = "★  РЫНОК"
+	_market_toggle_button.custom_minimum_size = Vector2(112.0, 38.0)
 	if _on_market_toggled.is_valid():
 		_market_toggle_button.pressed.connect(_on_market_toggled)
 	roster_header_row.add_child(_market_toggle_button)
@@ -107,10 +107,11 @@ func add_employee(employee: Variant) -> void:
 
 	var button := Button.new()
 	button.name = "Roster_%s" % employee_id
-	button.custom_minimum_size = Vector2(0.0, 60.0)
+	button.custom_minimum_size = Vector2(0.0, 78.0)
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
+	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_constant_override("h_separation", 8)
 	button.add_theme_font_size_override("font_size", 12)
 	if _on_employee_selected.is_valid():
@@ -149,10 +150,13 @@ func refresh_roster(
 			work_state_title = str(_employee_status_provider.call(employee))
 		var energy: int = roundi(float(needs.get("energy", 1.0)) * 100.0)
 		var morale: int = roundi(float(needs.get("morale", 0.75)) * 100.0)
-		button.text = "%s\n%s · %s" % [
+		button.text = "%s  %s\n%s  ·  %s\nЭнергия %d%%  ·  Настроение %d%%" % [
+			_get_profession_symbol(str(employee.profession_id)),
 			employee.get_full_name(),
 			employee.get_profession_title(),
 			work_state_title,
+			energy,
+			morale,
 		]
 		button.tooltip_text = (
 			"Энергия: %d%% · Настроение: %d%%\nЗадача: %s"
@@ -179,15 +183,16 @@ func refresh_market_panel(
 		var candidate_id: String = str(candidate.id)
 		var button := Button.new()
 		button.name = "Candidate_%s" % candidate_id
-		button.custom_minimum_size = Vector2(0.0, 60.0)
+		button.custom_minimum_size = Vector2(0.0, 72.0)
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_size_override("font_size", 12)
 		var candidate_role_title: String = candidate.get_profession_title()
 		var candidate_specialization: String = candidate.get_specialization_title()
 		if not candidate_specialization.is_empty():
 			candidate_role_title += " · " + candidate_specialization
-		button.text = "%s\n%s · %d ед. / день" % [
+		button.text = "★  %s\n%s\nСтавка · %d ед. / день" % [
 			candidate.get_full_name(),
 			candidate_role_title,
 			candidate.daily_salary,
@@ -207,7 +212,27 @@ func refresh_market_panel(
 		_market_list.add_child(button)
 
 	if is_instance_valid(_market_toggle_button):
-		_market_toggle_button.text = "РЫНОК · %d" % market_candidates.size()
+		_market_toggle_button.text = "★  РЫНОК · %d" % market_candidates.size()
+
+
+func _get_profession_symbol(profession_id: String) -> String:
+	match profession_id:
+		"actor", "extra":
+			return "★"
+		"director":
+			return "◆"
+		"screenwriter":
+			return "✎"
+		"camera_operator":
+			return "◉"
+		"film_editor":
+			return "▤"
+		"technician", "maintenance_worker":
+			return "⚒"
+		"producer":
+			return "✦"
+		_:
+			return "◇"
 
 
 func _build_market_panel() -> void:

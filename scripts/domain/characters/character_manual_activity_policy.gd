@@ -93,25 +93,72 @@ func get_activity(building_type: String, profession_id: String) -> Dictionary:
 	if not ACTIVITY_CONFIG.has(building_type):
 		return {}
 	if building_type in ["sound_stage", "tv_studio"]:
-		if profession_id not in ["actor", "extra", "director"]:
+		if profession_id not in ["actor", "extra", "director", "camera_operator"]:
 			return {}
 	elif building_type in ["script_department", "editing_suite"]:
 		if not BUILDING_CATALOG.accepts_profession(building_type, profession_id):
 			return {}
-	elif building_type == "prop_warehouse" and profession_id != "technician":
-		return {}
+	elif building_type == "prop_warehouse":
+		if profession_id not in ["technician", "production_designer", "maintenance_worker"]:
+			return {}
 	var result: Dictionary = ACTIVITY_CONFIG[building_type].duplicate(true)
 	result["building_type"] = building_type
 	result["skill"] = ""
 	match building_type:
 		"sound_stage", "tv_studio":
-			result["skill"] = "directing" if profession_id == "director" else "acting"
+			if profession_id == "director":
+				result["skill"] = "directing"
+			elif profession_id == "camera_operator":
+				result["skill"] = "camera_work"
+			else:
+				result["skill"] = "acting"
 		"script_department":
 			result["skill"] = "writing" if profession_id == "screenwriter" else "management"
 		"editing_suite":
 			result["skill"] = "editing"
 		"prop_warehouse":
-			result["skill"] = "technical"
+			if profession_id == "production_designer":
+				result["skill"] = "set_design"
+			elif profession_id == "maintenance_worker":
+				result["skill"] = "maintenance"
+			else:
+				result["skill"] = "technical"
+	return result
+
+
+func get_preferred_activity_building_types(
+	profession_id: String
+) -> Array[String]:
+	var result: Array[String] = []
+	match profession_id:
+		"actor", "extra":
+			result.append("sound_stage")
+			result.append("fitness_center")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		"director":
+			result.append("sound_stage")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		"screenwriter", "producer", "casting_director":
+			result.append("script_department")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		"camera_operator":
+			result.append("sound_stage")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		"film_editor":
+			result.append("editing_suite")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		"technician", "production_designer", "maintenance_worker":
+			result.append("prop_warehouse")
+			result.append("studio_lounge")
+			result.append("cafeteria")
+		_:
+			result.append("studio_lounge")
+			result.append("cafeteria")
 	return result
 
 

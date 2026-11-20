@@ -77,6 +77,11 @@ func on_motion(screen_position: Vector2) -> bool:
 		if screen_position.distance_to(_pressed_at) < START_THRESHOLD_PX:
 			return false
 		_dragging = true
+		if (
+			is_instance_valid(_characters)
+			and _characters.has_method("close_character_context_menu")
+		):
+			_characters.call("close_character_context_menu")
 	if not is_instance_valid(_studio) or not is_instance_valid(_characters):
 		cancel()
 		return false

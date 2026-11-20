@@ -54,7 +54,7 @@ func refresh(employee: Variant, skills: Dictionary) -> void:
 			row.add_child(title_label)
 			var progress_bar: ProgressBar = _create_progress_bar(
 				row,
-				Color(0.48, 0.82, 0.72, 1.0)
+				Color(0.78, 0.59, 0.29, 1.0)
 			)
 			progress_bar.custom_minimum_size = Vector2(0.0, 10.0)
 			_container.add_child(row)
@@ -121,7 +121,7 @@ func _create_progress_bar(
 	progress.show_percentage = false
 	progress.custom_minimum_size = Vector2(0.0, 10.0)
 	var background_style := StyleBoxFlat.new()
-	background_style.bg_color = Color(0.12, 0.15, 0.17, 1.0)
+	background_style.bg_color = Color(0.12, 0.085, 0.09, 1.0)
 	background_style.set_corner_radius_all(5)
 	progress.add_theme_stylebox_override("background", background_style)
 	var fill_style := StyleBoxFlat.new()

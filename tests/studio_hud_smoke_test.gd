@@ -109,7 +109,7 @@ func _run_tests() -> void:
 	var decor_button: Button = navigation_buttons.get("decor_shop") as Button
 	_expect(
 		decor_button != null
-		and decor_button.text == "ДЕКОРАЦИИ",
+		and decor_button.text == "▧  РЕКВИЗИТ",
 		"Decor shop must have a dedicated bottom-navigation button."
 	)
 	hud.call("show_workspace_panel", "decor_shop")
@@ -120,6 +120,17 @@ func _run_tests() -> void:
 	_expect(
 		hud.get("_root").theme != null,
 		"StudioHUD must provide a unified visual theme."
+	)
+	var overlay_root: Control = hud.call("get_overlay_control_root") as Control
+	_expect(
+		overlay_root != null and overlay_root == hud.get("_root"),
+		"Character popups must share the HUD's themed overlay layer."
+	)
+	hud.call("show_notification", "Сотрудник отправлен на репетицию.", true)
+	var notification_stack: VBoxContainer = hud.get("_notification_stack") as VBoxContainer
+	_expect(
+		notification_stack != null and notification_stack.get_child_count() == 1,
+		"Employee actions must be able to surface non-blocking HUD notifications."
 	)
 	var scroll_test := ScrollContainer.new()
 	hud.call("configure_scroll_container", scroll_test)

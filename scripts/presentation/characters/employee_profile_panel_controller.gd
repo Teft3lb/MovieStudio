@@ -90,7 +90,7 @@ func build(studio_hud: Node) -> void:
 	_detail_name_label.add_theme_font_size_override("font_size", 20)
 	_detail_name_label.add_theme_color_override(
 		"font_color",
-		Color(0.80, 0.95, 0.91, 1.0)
+		Color(0.96, 0.86, 0.68, 1.0)
 	)
 	layout.add_child(_detail_name_label)
 
@@ -98,7 +98,7 @@ func build(studio_hud: Node) -> void:
 	_detail_profession_label.add_theme_font_size_override("font_size", 13)
 	_detail_profession_label.add_theme_color_override(
 		"font_color",
-		Color(0.62, 0.79, 0.82, 1.0)
+		Color(0.79, 0.68, 0.56, 1.0)
 	)
 	layout.add_child(_detail_profession_label)
 
@@ -106,7 +106,7 @@ func build(studio_hud: Node) -> void:
 	_detail_biography_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail_biography_label.add_theme_color_override(
 		"font_color",
-		Color(0.74, 0.77, 0.76, 1.0)
+		Color(0.83, 0.78, 0.69, 1.0)
 	)
 	layout.add_child(_detail_biography_label)
 
@@ -205,7 +205,7 @@ func build(studio_hud: Node) -> void:
 	needs_heading.add_theme_font_size_override("font_size", 12)
 	needs_heading.add_theme_color_override(
 		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
+		Color(0.88, 0.68, 0.36, 1.0)
 	)
 	layout.add_child(needs_heading)
 
@@ -237,7 +237,7 @@ func build(studio_hud: Node) -> void:
 	skills_heading.add_theme_font_size_override("font_size", 12)
 	skills_heading.add_theme_color_override(
 		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
+		Color(0.88, 0.68, 0.36, 1.0)
 	)
 	layout.add_child(skills_heading)
 
@@ -253,7 +253,7 @@ func build(studio_hud: Node) -> void:
 	personality_heading.add_theme_font_size_override("font_size", 12)
 	personality_heading.add_theme_color_override(
 		"font_color",
-		Color(0.48, 0.82, 0.72, 1.0)
+		Color(0.88, 0.68, 0.36, 1.0)
 	)
 	layout.add_child(personality_heading)
 
@@ -428,7 +428,7 @@ func _create_progress_bar(
 	progress.show_percentage = false
 	progress.custom_minimum_size = Vector2(0.0, 10.0)
 	var background_style := StyleBoxFlat.new()
-	background_style.bg_color = Color(0.12, 0.15, 0.17, 1.0)
+	background_style.bg_color = Color(0.12, 0.085, 0.09, 1.0)
 	background_style.set_corner_radius_all(5)
 	progress.add_theme_stylebox_override("background", background_style)
 	var fill_style := StyleBoxFlat.new()

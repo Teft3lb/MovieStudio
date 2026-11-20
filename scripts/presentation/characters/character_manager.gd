@@ -24,6 +24,12 @@ const CHARACTER_ACTOR_SCRIPT = preload(
 const MANUAL_ACTIVITY_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_manual_activity_controller.gd"
 )
+const MANUAL_ACTIVITY_POLICY_SCRIPT = preload(
+	"res://scripts/domain/characters/character_manual_activity_policy.gd"
+)
+const CHARACTER_CONTEXT_MENU_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/characters/character_context_menu_controller.gd"
+)
 const CHARACTER_NEEDS_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/characters/character_needs_system.gd"
 )
@@ -88,6 +94,8 @@ var _employee_roster_view: RefCounted
 var _employee_skill_progress_view: RefCounted
 var _employee_profile_view: RefCounted
 var _manual_activity_controller: RefCounted
+var _manual_activity_policy: RefCounted
+var _character_context_controller: RefCounted
 var _developer_employee_panel: RefCounted
 var _selected_employee_id: String = ""
 var _selected_market_candidate_id: String = ""
@@ -126,6 +134,7 @@ func _ready() -> void:
 	_manual_activity_controller.call(
 		"setup", self, _game_clock, _skill_progression_system
 	)
+	_manual_activity_policy = MANUAL_ACTIVITY_POLICY_SCRIPT.new()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 	_game_clock.day_advanced.connect(_on_game_day_advanced)
 	_game_clock.manual_advance_finished.connect(_on_manual_advance_finished)
@@ -134,6 +143,7 @@ func _ready() -> void:
 	_build_roster_panel()
 	_build_detail_panel()
 	_build_developer_employee_panel()
+	_setup_character_context_ui()
 
 	for employee in employees:
 		_needs_system.call(
@@ -1154,6 +1164,124 @@ func _route_for(index: int) -> Array[Vector3]:
 
 	return route
 
+func close_character_context_menu() -> void:
+	if _character_context_controller != null:
+		_character_context_controller.call("close_menu")
+
+
+func _setup_character_context_ui() -> void:
+	if not is_instance_valid(_studio_hud):
+		return
+	var overlay_root: Control = _studio_hud.call(
+		"get_overlay_control_root"
+	) as Control
+	if not is_instance_valid(overlay_root):
+		return
+	_character_context_controller = CHARACTER_CONTEXT_MENU_CONTROLLER_SCRIPT.new()
+	_character_context_controller.call("setup", self, overlay_root)
+
+
+func _get_employee_screen_position(employee_id: String) -> Vector2:
+	var viewport_size: Vector2 = get_viewport().get_visible_rect().size
+	var fallback_position: Vector2 = viewport_size * 0.5
+	var actor: Node3D = get_employee_actor(employee_id) as Node3D
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if not is_instance_valid(actor) or not is_instance_valid(camera):
+		return fallback_position
+	return camera.unproject_position(
+		actor.global_position + Vector3.UP * 1.8
+	)
+
+
+func _open_character_context_menu(
+	employee: Variant,
+	screen_position: Vector2
+) -> void:
+	if _character_context_controller == null:
+		return
+	_character_context_controller.call(
+		"open_employee", employee, screen_position
+	)
+
+
+func get_character_details_data(employee_id: String) -> Dictionary:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null:
+		return {}
+	return _build_character_details_data(employee)
+
+
+func _build_character_details_data(employee: Variant) -> Dictionary:
+	var employee_id: String = str(employee.id)
+	var personality: Dictionary = employee.personality
+	var needs: Dictionary = employee.needs
+	var contract_text: String = "Контракт: данные отсутствуют"
+	if _employment_system != null:
+		var contract: Variant = _employment_system.call(
+			"get_contract", employee_id
+		)
+		if contract != null:
+			contract_text = "%s · %d ед. / день" % [
+				contract.get_type_title(),
+				int(contract.daily_salary),
+			]
+	var status_text: String = str(employee.current_task)
+	if status_text.is_empty():
+		status_text = employee.get_work_state_title()
+	if _is_active_production_participant(employee_id):
+		status_text = "На съёмках · " + status_text
+	var profession_title: String = employee.get_profession_title()
+	var specialization: String = employee.get_specialization_title()
+	if not specialization.is_empty():
+		profession_title += " · " + specialization
+	var initials: String = ""
+	for name_part in employee.get_full_name().split(" ", false):
+		if not str(name_part).is_empty():
+			initials += str(name_part).left(1).to_upper()
+	var personality_text: String = (
+		"Амбиции %d%%  ·  Общительность %d%%\nДисциплина %d%%  ·  Креативность %d%%\n%s"
+		% [
+			roundi(float(personality.get("ambition", 0.5)) * 100.0),
+			roundi(float(personality.get("sociability", 0.5)) * 100.0),
+			roundi(float(personality.get("discipline", 0.5)) * 100.0),
+			roundi(float(personality.get("creativity", 0.5)) * 100.0),
+			_get_relationship_summary(employee),
+		]
+	)
+	return {
+		"name": employee.get_full_name(),
+		"initials": initials,
+		"profession": "%s · %s · %d лет" % [
+			profession_title,
+			employee.get_department_title(),
+			int(employee.age),
+		],
+		"profession_id": str(employee.profession_id),
+		"specialization_id": str(employee.specialization_id),
+		"status": status_text,
+		"age": int(employee.age),
+		"experience": float(employee.experience),
+		"popularity": float(employee.popularity),
+		"recognition": float(employee.recognition),
+		"salary": int(employee.daily_salary),
+		"growth_remaining": float(employee.growth_points_remaining),
+		"growth_total": float(employee.growth_points_total),
+		"needs": {
+			"energy": float(needs.get("energy", 1.0)) * 100.0,
+			"morale": float(needs.get("morale", 0.75)) * 100.0,
+			"stress": float(needs.get("stress", 0.1)) * 100.0,
+		},
+		"fitness": float(employee.physical_fitness),
+		"show_fitness": str(employee.profession_id) in ["actor", "extra"],
+		"skills": employee.skills.duplicate(true),
+		"skill_caps": employee.skill_caps.duplicate(true),
+		"biography": str(employee.biography),
+		"career_goal": str(employee.career_goal),
+		"personality": personality_text,
+		"contract": contract_text,
+	}
+
+
 func _build_roster_panel() -> void:
 	if _employee_roster_view == null:
 		return
@@ -1269,6 +1397,140 @@ func request_manual_activity(employee_id: String, building_id: String) -> Dictio
 	return result
 
 
+func get_profession_activity_preview(employee_id: String) -> Dictionary:
+	var employee: Variant = _find_employee(employee_id)
+	if employee == null or _manual_activity_policy == null:
+		return {"success": false, "message": "Сотрудник или система занятий недоступны."}
+	var preferred_types: Array = _manual_activity_policy.call(
+		"get_preferred_activity_building_types",
+		str(employee.profession_id)
+	)
+	return get_manual_activity_preview_for_types(employee_id, preferred_types)
+
+
+func request_profession_activity(employee_id: String) -> Dictionary:
+	var preview: Dictionary = get_profession_activity_preview(employee_id)
+	if not bool(preview.get("success", false)):
+		return preview
+	return request_manual_activity(
+		employee_id,
+		str(preview.get("building_id", ""))
+	)
+
+
+func get_manual_activity_preview_for_types(
+	employee_id: String,
+	building_types: Array
+) -> Dictionary:
+	if (
+		_manual_activity_controller == null
+		or not is_instance_valid(_studio_building_manager)
+	):
+		return {"success": false, "message": "Здания студии ещё не готовы."}
+	var buildings: Array = _studio_building_manager.call("get_buildings")
+	for building_type_value in building_types:
+		var building_type: String = str(building_type_value)
+		for building in buildings:
+			if (
+				str(building.building_type_id) != building_type
+				or not bool(building.is_operational)
+			):
+				continue
+			var result: Dictionary = _manual_activity_controller.call(
+				"preview", employee_id, str(building.id)
+			)
+			if bool(result.get("success", false)):
+				result["building_id"] = str(building.id)
+				result["building_name"] = str(building.display_name)
+				return result
+	return {
+		"success": false,
+		"message": "Нет подходящего свободного здания для этого занятия."
+	}
+
+
+func request_activity_for_types(
+	employee_id: String,
+	building_types: Array
+) -> Dictionary:
+	var preview: Dictionary = get_manual_activity_preview_for_types(
+		employee_id, building_types
+	)
+	if not bool(preview.get("success", false)):
+		return preview
+	return request_manual_activity(
+		employee_id,
+		str(preview.get("building_id", ""))
+	)
+
+
+func has_manual_activity_order(employee_id: String) -> bool:
+	return (
+		_manual_activity_controller != null
+		and bool(_manual_activity_controller.call("has_order", employee_id))
+	)
+
+
+func is_employee_manually_dispatched(employee_id: String) -> bool:
+	return _manual_workplace_dispatches.has(employee_id)
+
+
+func get_employee_workplace_assignment(employee_id: String) -> Dictionary:
+	return _workplace_assignments.get(employee_id, {}).duplicate(true)
+
+
+func is_employee_busy_in_production_or_editing(employee_id: String) -> bool:
+	return (
+		_is_active_production_participant(employee_id)
+		or _is_active_editing_participant(employee_id)
+	)
+
+
+func is_employee_in_publicity_event(employee_id: String) -> bool:
+	return (
+		is_instance_valid(_studio_building_manager)
+		and _studio_building_manager.has_method("is_employee_in_publicity_event")
+		and bool(_studio_building_manager.call(
+			"is_employee_in_publicity_event", employee_id
+		))
+	)
+
+
+func request_fan_meeting(employee_id: String) -> Dictionary:
+	if (
+		not is_instance_valid(_studio_building_manager)
+		or not _studio_building_manager.has_method("request_publicity_event")
+	):
+		return {"success": false, "message": "Публичные мероприятия недоступны."}
+	return _studio_building_manager.call(
+		"request_publicity_event", employee_id, "fan_meet"
+	)
+
+
+func cancel_employee_activity(employee_id: String) -> Dictionary:
+	if has_manual_activity_order(employee_id):
+		return _manual_activity_controller.call("cancel", employee_id)
+	if is_employee_manually_dispatched(employee_id):
+		release_employee_from_workplace_manually(employee_id)
+		return {
+			"success": true,
+			"message": "Сотрудник возвращается к обычному распорядку.",
+		}
+	return {"success": false, "message": "Нет активного поручения для отмены."}
+
+
+func refresh_character_context_ui() -> void:
+	_refresh_roster()
+	_refresh_detail_panel()
+
+
+func show_character_context_notification(
+	message: String,
+	is_success: bool
+) -> void:
+	_show_employee_message(message, is_success)
+
+
 func is_employee_on_manual_activity(employee_id: String) -> bool:
 	return (
 		_manual_activity_controller != null
@@ -1281,18 +1543,18 @@ func _on_publicity_event_requested(employee_id: String, event_id: String) -> voi
 		not is_instance_valid(_studio_building_manager)
 		or not _studio_building_manager.has_method("request_publicity_event")
 	):
-		_show_employee_message("Публичные мероприятия пока недоступны.")
+		_show_employee_message("Публичные мероприятия пока недоступны.", false)
 		return
 	var result: Dictionary = _studio_building_manager.call(
 		"request_publicity_event", employee_id, event_id
 	)
 	if not bool(result.get("success", false)):
-		_show_employee_message(str(result.get("message", "")))
+		_show_employee_message(str(result.get("message", "")), false)
 	_refresh_detail_panel()
 
 
 func _on_roster_employee_pressed(employee_id: String) -> void:
-	_select_employee(employee_id)
+	_select_employee(employee_id, true)
 
 func _leave_actor_from_workplace(actor: Variant) -> void:
 	if actor == null or not is_instance_valid(actor):
@@ -2077,10 +2339,14 @@ func try_select_employee_from_screen(screen_position: Vector2) -> bool:
 	var employee_id: String = str(candidate.call("get_character_id"))
 	if employee_id.is_empty():
 		return false
-	_select_employee(employee_id)
+	_select_employee(employee_id, true, screen_position)
 	return true
 
-func _select_employee(employee_id: String) -> void:
+func _select_employee(
+	employee_id: String,
+	open_context_menu: bool = false,
+	screen_position: Vector2 = Vector2(-1.0, -1.0)
+) -> void:
 	var previous_actor: Variant = _employee_actors.get(_selected_employee_id)
 	if previous_actor != null and is_instance_valid(previous_actor):
 		previous_actor.call("set_selected", false)
@@ -2089,6 +2355,9 @@ func _select_employee(employee_id: String) -> void:
 	var employee: Variant = _find_employee(employee_id)
 	if employee == null:
 		_selected_employee_id = ""
+		if _character_context_controller != null:
+			_character_context_controller.call("close_menu")
+			_character_context_controller.call("close_details")
 	else:
 		_selected_employee_id = str(employee.id)
 		var selected_actor: Variant = _employee_actors.get(_selected_employee_id)
@@ -2098,11 +2367,15 @@ func _select_employee(employee_id: String) -> void:
 	_refresh_roster()
 	_refresh_detail_panel()
 	if _studio_hud != null:
-		if employee == null:
-			_studio_hud.call("show_inspector_panel", "employee", false)
-		else:
-			_studio_hud.call("show_workspace_panel", "employees")
-			_studio_hud.call("show_inspector_panel", "employee", true)
+		_studio_hud.call("show_inspector_panel", "employee", false)
+	if employee != null and open_context_menu:
+		var menu_position: Vector2 = screen_position
+		if menu_position.x < 0.0 or menu_position.y < 0.0:
+			menu_position = _get_employee_screen_position(_selected_employee_id)
+		_open_character_context_menu(employee, menu_position)
+	elif _character_context_controller != null:
+		_character_context_controller.call("close_menu")
+		_character_context_controller.call("close_details")
 
 func _select_market_candidate(candidate_id: String) -> void:
 	var previous_actor: Variant = _employee_actors.get(_selected_employee_id)
@@ -2110,6 +2383,9 @@ func _select_market_candidate(candidate_id: String) -> void:
 		previous_actor.call("set_selected", false)
 
 	_selected_employee_id = ""
+	if _character_context_controller != null:
+		_character_context_controller.call("close_menu")
+		_character_context_controller.call("close_details")
 	var candidate: Variant = _find_market_candidate(candidate_id)
 	_selected_market_candidate_id = (
 		str(candidate.id) if candidate != null else ""
@@ -2218,6 +2494,8 @@ func _refresh_detail_panel() -> void:
 		_selected_employee_id = ""
 		_employee_profile_view.call("clear")
 		_clear_skill_progress_bars()
+		if _character_context_controller != null:
+			_character_context_controller.call("close_details")
 		return
 
 	var needs: Dictionary = employee.needs
@@ -2385,6 +2663,10 @@ func _refresh_detail_panel() -> void:
 	if not is_market_candidate:
 		_refresh_workplace_dispatch_button(str(employee.id))
 		_refresh_employee_workplace_options(str(employee.id))
+		if _character_context_controller != null:
+			_character_context_controller.call(
+				"refresh_details", str(employee.id)
+			)
 
 func _clear_skill_progress_bars() -> void:
 	_ensure_skill_progress_view()
@@ -2460,7 +2742,8 @@ func _on_workplace_dispatch_button_pressed() -> void:
 		release_employee_from_workplace_manually(employee_id)
 	elif not dispatch_employee_to_workplace_manually(employee_id):
 		_show_employee_message(
-			"Не удалось направить сотрудника на выбранное рабочее место."
+			"Не удалось направить сотрудника на выбранное рабочее место.",
+			false
 		)
 	_refresh_detail_panel()
 	_refresh_roster()
@@ -2493,7 +2776,7 @@ func _on_hire_button_pressed() -> void:
 		int(_game_clock.current_day)
 	)
 	if not bool(result.get("success", false)):
-		_show_employee_message(str(result.get("message", "Не удалось оформить найм.")))
+		_show_employee_message(str(result.get("message", "Не удалось оформить найм.")), false)
 		return
 
 	var employee: Variant = result.get("employee")
@@ -2535,7 +2818,7 @@ func _confirm_dismiss_employee() -> void:
 		int(_game_clock.current_day)
 	)
 	if not bool(result.get("success", false)):
-		_show_employee_message(str(result.get("message", "Не удалось уволить сотрудника.")))
+		_show_employee_message(str(result.get("message", "Не удалось уволить сотрудника.")), false)
 		return
 
 	_remove_employee_actor(employee_id)
@@ -2549,7 +2832,16 @@ func _confirm_dismiss_employee() -> void:
 	_show_employee_message(str(result.get("message", "Сотрудник уволен.")))
 	employees_changed.emit()
 
-func _show_employee_message(message: String) -> void:
+func _show_employee_message(
+	message: String,
+	is_success: bool = true
+) -> void:
+	if (
+		is_instance_valid(_studio_hud)
+		and _studio_hud.has_method("show_notification")
+	):
+		_studio_hud.call("show_notification", message, is_success)
+		return
 	var dialog := AcceptDialog.new()
 	dialog.title = "Управление персоналом"
 	dialog.dialog_text = message

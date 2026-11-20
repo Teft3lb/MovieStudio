@@ -2,6 +2,10 @@ extends CanvasLayer
 
 signal developer_funds_requested(amount: int)
 
+const STUDIO_UI_THEME_SCRIPT = preload(
+	"res://scripts/presentation/ui/studio_ui_theme.gd"
+)
+
 const DEVELOPER_FUNDS_GRANT: int = 10000
 const SECTION_ORDER: Array[String] = [
 	"studio",
@@ -24,6 +28,7 @@ var _speed_label: Label
 var _fast_forward_status_label: Label
 var _developer_funds_status_label: Label
 var _developer_tools_layout: VBoxContainer
+var _notification_stack: VBoxContainer
 
 var _workspace_panels: Dictionary = {}
 var _workspace_titles: Dictionary = {}
@@ -97,7 +102,7 @@ func _build_shell() -> void:
 
 	var top_bar := PanelContainer.new()
 	top_bar.name = "TopBar"
-	top_bar.custom_minimum_size = Vector2(0.0, 58.0)
+	top_bar.custom_minimum_size = Vector2(0.0, 66.0)
 	_apply_panel_style(top_bar, 0.96)
 	shell.add_child(top_bar)
 
@@ -108,14 +113,14 @@ func _build_shell() -> void:
 
 	var brand := Label.new()
 	brand.text = "MOVIESTUDIO"
-	brand.add_theme_font_size_override("font_size", 19)
-	brand.add_theme_color_override("font_color", Color(0.72, 0.91, 0.86, 1.0))
+	brand.add_theme_font_size_override("font_size", 22)
+	brand.add_theme_color_override("font_color", Color(0.94, 0.72, 0.37, 1.0))
 	top_row.add_child(brand)
 
 	var edition := Label.new()
 	edition.text = "УПРАВЛЕНИЕ КИНОСТУДИЕЙ"
 	edition.add_theme_font_size_override("font_size", 10)
-	edition.modulate = Color(0.68, 0.72, 0.76, 1.0)
+	edition.modulate = Color(0.78, 0.70, 0.60, 1.0)
 	top_row.add_child(edition)
 
 	var spacer := Control.new()
@@ -128,7 +133,7 @@ func _build_shell() -> void:
 
 	_speed_label = Label.new()
 	_speed_label.add_theme_font_size_override("font_size", 11)
-	_speed_label.modulate = Color(0.72, 0.76, 0.79, 1.0)
+	_speed_label.modulate = Color(0.72, 0.63, 0.53, 1.0)
 	top_row.add_child(_speed_label)
 
 	var speed_buttons := HBoxContainer.new()
@@ -149,7 +154,7 @@ func _build_shell() -> void:
 
 	var workspace_frame := PanelContainer.new()
 	workspace_frame.name = "WorkspacePanel"
-	workspace_frame.custom_minimum_size = Vector2(320.0, 0.0)
+	workspace_frame.custom_minimum_size = Vector2(350.0, 0.0)
 	workspace_frame.size_flags_horizontal = Control.SIZE_FILL
 	_apply_panel_style(workspace_frame, 0.93)
 	body.add_child(workspace_frame)
@@ -161,7 +166,7 @@ func _build_shell() -> void:
 
 	_workspace_heading = Label.new()
 	_workspace_heading.add_theme_font_size_override("font_size", 17)
-	_workspace_heading.add_theme_color_override("font_color", Color(0.82, 0.94, 0.92, 1.0))
+	_workspace_heading.add_theme_color_override("font_color", Color(0.94, 0.74, 0.41, 1.0))
 	workspace_layout.add_child(_workspace_heading)
 
 	var workspace_separator := HSeparator.new()
@@ -180,7 +185,7 @@ func _build_shell() -> void:
 	body_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(body_spacer)
 
-	_inspector_frame.custom_minimum_size = Vector2(330.0, 0.0)
+	_inspector_frame.custom_minimum_size = Vector2(350.0, 0.0)
 	_inspector_frame.size_flags_horizontal = Control.SIZE_FILL
 	_inspector_frame.visible = false
 	_apply_panel_style(_inspector_frame, 0.95)
@@ -198,7 +203,7 @@ func _build_shell() -> void:
 	_inspector_heading = Label.new()
 	_inspector_heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspector_heading.add_theme_font_size_override("font_size", 17)
-	_inspector_heading.add_theme_color_override("font_color", Color(0.82, 0.94, 0.92, 1.0))
+	_inspector_heading.add_theme_color_override("font_color", Color(0.94, 0.74, 0.41, 1.0))
 	inspector_header_row.add_child(_inspector_heading)
 
 	var close_inspector_button := Button.new()
@@ -217,12 +222,66 @@ func _build_shell() -> void:
 	inspector_layout.add_child(_inspector_content)
 
 	_build_bottom_navigation(shell)
+	_build_notification_stack()
+
+
+func _build_notification_stack() -> void:
+	_notification_stack = VBoxContainer.new()
+	_notification_stack.name = "NotificationStack"
+	_notification_stack.anchor_left = 1.0
+	_notification_stack.anchor_right = 1.0
+	_notification_stack.anchor_top = 0.0
+	_notification_stack.anchor_bottom = 0.0
+	_notification_stack.offset_left = -380.0
+	_notification_stack.offset_right = -14.0
+	_notification_stack.offset_top = 78.0
+	_notification_stack.offset_bottom = 430.0
+	_notification_stack.add_theme_constant_override("separation", 7)
+	_notification_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_notification_stack.z_index = 60
+	_root.add_child(_notification_stack)
+
+
+func show_notification(message: String, is_success: bool = true) -> void:
+	if not is_instance_valid(_notification_stack) or message.is_empty():
+		return
+	var toast := PanelContainer.new()
+	toast.custom_minimum_size = Vector2(0.0, 52.0)
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.add_theme_stylebox_override(
+		"panel",
+		STUDIO_UI_THEME_SCRIPT.notification_style(is_success)
+	)
+	_notification_stack.add_child(toast)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 9)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.add_child(row)
+	var icon_label := Label.new()
+	icon_label.text = "✓" if is_success else "!"
+	icon_label.add_theme_font_size_override("font_size", 18)
+	icon_label.add_theme_color_override(
+		"font_color",
+		Color(0.48, 0.78, 0.57, 1.0)
+		if is_success
+		else Color(0.88, 0.43, 0.36, 1.0)
+	)
+	icon_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(icon_label)
+	var text_label := Label.new()
+	text_label.text = message
+	text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	text_label.add_theme_font_size_override("font_size", 12)
+	text_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(text_label)
+	get_tree().create_timer(4.5).timeout.connect(toast.queue_free)
 
 
 func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	var navigation_panel := PanelContainer.new()
 	navigation_panel.name = "BottomNavigationPanel"
-	navigation_panel.custom_minimum_size = Vector2(0.0, 52.0)
+	navigation_panel.custom_minimum_size = Vector2(0.0, 60.0)
 	_apply_panel_style(navigation_panel, 0.98)
 	var navigation_style := navigation_panel.get_theme_stylebox(
 		"panel"
@@ -237,11 +296,11 @@ func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	navigation_panel.add_child(navigation_layout)
 
 	var navigation_heading := Label.new()
-	navigation_heading.text = "РАЗДЕЛЫ"
+	navigation_heading.text = "КИНОСТУДИЯ"
 	navigation_heading.add_theme_font_size_override("font_size", 10)
 	navigation_heading.add_theme_color_override(
 		"font_color",
-		Color(0.58, 0.76, 0.79, 1.0)
+		Color(0.73, 0.59, 0.40, 1.0)
 	)
 	navigation_layout.add_child(navigation_heading)
 
@@ -264,7 +323,7 @@ func _build_bottom_navigation(shell: VBoxContainer) -> void:
 	footer_label.add_theme_font_size_override("font_size", 9)
 	footer_label.add_theme_color_override(
 		"font_color",
-		Color(0.43, 0.61, 0.65, 1.0)
+		Color(0.53, 0.43, 0.34, 1.0)
 	)
 	navigation_layout.add_child(footer_label)
 
@@ -315,7 +374,7 @@ func _build_developer_panel() -> void:
 
 	_fast_forward_status_label = Label.new()
 	_fast_forward_status_label.add_theme_font_size_override("font_size", 11)
-	_fast_forward_status_label.modulate = Color(0.72, 0.76, 0.79, 1.0)
+	_fast_forward_status_label.modulate = Color(0.72, 0.63, 0.53, 1.0)
 	layout.add_child(_fast_forward_status_label)
 
 	register_workspace_panel(
@@ -358,9 +417,10 @@ func register_workspace_panel(
 	navigation_button.text = _get_navigation_label(section_id, title)
 	navigation_button.tooltip_text = title
 	navigation_button.custom_minimum_size = Vector2(
-		64.0 if section_id == "developer" else 112.0,
-		34.0
+		72.0 if section_id == "developer" else 122.0,
+		42.0
 	)
+	navigation_button.add_theme_font_size_override("font_size", 12)
 	navigation_button.toggle_mode = true
 	navigation_button.pressed.connect(
 		_on_navigation_button_pressed.bind(section_id)
@@ -435,18 +495,22 @@ func get_overlay_root() -> Node:
 	return self
 
 
+func get_overlay_control_root() -> Control:
+	return _root
+
+
 func _get_navigation_label(section_id: String, fallback_title: String) -> String:
 	match section_id:
 		"studio":
-			return "СТУДИЯ"
+			return "✦  СТУДИЯ"
 		"decor_shop":
-			return "ДЕКОРАЦИИ"
+			return "▧  РЕКВИЗИТ"
 		"employees":
-			return "ПЕРСОНАЛ"
+			return "♟  ПЕРСОНАЛ"
 		"market":
-			return "РЫНОК"
+			return "★  КАСТИНГ"
 		"developer":
-			return "DEV"
+			return "⚙ DEV"
 		_:
 			return fallback_title.to_upper()
 
@@ -553,219 +617,14 @@ func _refresh_clock() -> void:
 
 
 func _build_ui_theme() -> Theme:
-	var ui_theme := Theme.new()
-	ui_theme.default_font_size = 14
-
-	ui_theme.set_color("font_color", "Label", Color(0.86, 0.94, 0.93, 1.0))
-	ui_theme.set_color("font_color", "Button", Color(0.84, 0.94, 0.92, 1.0))
-	ui_theme.set_color("font_hover_color", "Button", Color(0.98, 1.0, 0.98, 1.0))
-	ui_theme.set_color("font_pressed_color", "Button", Color(0.92, 1.0, 0.96, 1.0))
-	ui_theme.set_color("font_disabled_color", "Button", Color(0.48, 0.62, 0.64, 1.0))
-	ui_theme.set_color("font_color", "OptionButton", Color(0.84, 0.94, 0.92, 1.0))
-	ui_theme.set_color("font_color", "SpinBox", Color(0.84, 0.94, 0.92, 1.0))
-	ui_theme.set_font_size("font_size", "Button", 12)
-	ui_theme.set_font_size("font_size", "OptionButton", 12)
-
-	_apply_button_theme(ui_theme, "Button")
-	_apply_button_theme(ui_theme, "OptionButton")
-
-	ui_theme.set_stylebox(
-		"normal",
-		"LineEdit",
-		_make_flat_style(
-			Color(0.055, 0.12, 0.14, 1.0),
-			Color(0.16, 0.35, 0.38, 1.0),
-			8,
-			0
-		)
-	)
-	ui_theme.set_stylebox(
-		"focus",
-		"LineEdit",
-		_make_flat_style(
-			Color(0.06, 0.14, 0.16, 1.0),
-			Color(0.34, 0.72, 0.66, 1.0),
-			8,
-			0
-		)
-	)
-	ui_theme.set_stylebox(
-		"panel",
-		"PanelContainer",
-		_make_flat_style(
-			Color(0.045, 0.095, 0.11, 0.97),
-			Color(0.15, 0.32, 0.36, 0.98),
-			12,
-			7
-		)
-	)
-	ui_theme.set_stylebox(
-		"panel",
-		"PopupPanel",
-		_make_flat_style(
-			Color(0.055, 0.12, 0.14, 1.0),
-			Color(0.22, 0.47, 0.49, 1.0),
-			9,
-			8
-		)
-	)
-	ui_theme.set_stylebox(
-		"panel",
-		"PopupMenu",
-		_make_flat_style(
-			Color(0.055, 0.12, 0.14, 1.0),
-			Color(0.22, 0.47, 0.49, 1.0),
-			9,
-			8
-		)
-	)
-	ui_theme.set_stylebox(
-		"background",
-		"ProgressBar",
-		_make_flat_style(
-			Color(0.075, 0.16, 0.18, 1.0),
-			Color(0.12, 0.28, 0.31, 1.0),
-			6,
-			0
-		)
-	)
-	ui_theme.set_stylebox(
-		"fill",
-		"ProgressBar",
-		_make_flat_style(
-			Color(0.36, 0.78, 0.65, 1.0),
-			Color(0.36, 0.78, 0.65, 1.0),
-			6,
-			0
-		)
-	)
-
-	var separator_style := StyleBoxLine.new()
-	separator_style.color = Color(0.18, 0.38, 0.41, 0.85)
-	separator_style.thickness = 1
-	ui_theme.set_stylebox("separator", "HSeparator", separator_style)
-	ui_theme.set_stylebox("separator", "VSeparator", separator_style)
-
-	var scroll_track := _make_flat_style(
-		Color(0.035, 0.09, 0.105, 0.8),
-		Color(0.035, 0.09, 0.105, 0.0),
-		5,
-		0
-	)
-	var scroll_grabber := _make_flat_style(
-		Color(0.22, 0.48, 0.49, 0.95),
-		Color(0.28, 0.60, 0.57, 0.95),
-		5,
-		0
-	)
-	var scroll_grabber_hover := _make_flat_style(
-		Color(0.34, 0.70, 0.62, 1.0),
-		Color(0.48, 0.82, 0.70, 1.0),
-		5,
-		0
-	)
-	for scrollbar_type in ["VScrollBar", "HScrollBar"]:
-		ui_theme.set_stylebox("scroll", scrollbar_type, scroll_track)
-		ui_theme.set_stylebox("grabber", scrollbar_type, scroll_grabber)
-		ui_theme.set_stylebox("grabber_highlight", scrollbar_type, scroll_grabber_hover)
-		ui_theme.set_stylebox("grabber_pressed", scrollbar_type, scroll_grabber_hover)
-	ui_theme.set_constant("scrollbar_width", "VScrollBar", 7)
-	ui_theme.set_constant("grabber_min_size", "VScrollBar", 24)
-	return ui_theme
-
-
-func _apply_button_theme(ui_theme: Theme, theme_type: String) -> void:
-	ui_theme.set_stylebox(
-		"normal",
-		theme_type,
-		_make_button_style(
-			Color(0.075, 0.16, 0.18, 1.0),
-			Color(0.16, 0.34, 0.37, 1.0)
-		)
-	)
-	ui_theme.set_stylebox(
-		"hover",
-		theme_type,
-		_make_button_style(
-			Color(0.10, 0.22, 0.24, 1.0),
-			Color(0.30, 0.63, 0.60, 1.0)
-		)
-	)
-	ui_theme.set_stylebox(
-		"pressed",
-		theme_type,
-		_make_button_style(
-			Color(0.13, 0.29, 0.27, 1.0),
-			Color(0.43, 0.79, 0.67, 1.0)
-		)
-	)
-	ui_theme.set_stylebox(
-		"hover_pressed",
-		theme_type,
-		_make_button_style(
-			Color(0.15, 0.33, 0.30, 1.0),
-			Color(0.54, 0.87, 0.74, 1.0)
-		)
-	)
-	ui_theme.set_stylebox(
-		"disabled",
-		theme_type,
-		_make_button_style(
-			Color(0.055, 0.11, 0.125, 1.0),
-			Color(0.11, 0.23, 0.26, 1.0)
-		)
-	)
-	var focus_style := StyleBoxFlat.new()
-	focus_style.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	focus_style.border_color = Color(0.48, 0.84, 0.72, 0.95)
-	focus_style.set_border_width_all(2)
-	focus_style.set_corner_radius_all(10)
-	ui_theme.set_stylebox("focus", theme_type, focus_style)
-
-
-func _make_button_style(background: Color, border: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(10)
-	style.content_margin_left = 12.0
-	style.content_margin_top = 8.0
-	style.content_margin_right = 12.0
-	style.content_margin_bottom = 8.0
-	return style
-
-
-func _make_flat_style(
-	background: Color,
-	border: Color,
-	radius: int,
-	shadow_size: int
-) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(radius)
-	if shadow_size > 0:
-		style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
-		style.shadow_size = shadow_size
-		style.shadow_offset = Vector2(0.0, 3.0)
-	return style
+	return STUDIO_UI_THEME_SCRIPT.build_theme()
 
 
 func _apply_panel_style(panel: PanelContainer, alpha: float) -> void:
-	var style := _make_flat_style(
-		Color(0.035, 0.085, 0.10, alpha),
-		Color(0.15, 0.32, 0.36, 0.98),
-		12,
-		8
+	panel.add_theme_stylebox_override(
+		"panel",
+		STUDIO_UI_THEME_SCRIPT.panel_style(alpha)
 	)
-	style.content_margin_left = 12.0
-	style.content_margin_top = 11.0
-	style.content_margin_right = 12.0
-	style.content_margin_bottom = 11.0
-	panel.add_theme_stylebox_override("panel", style)
 
 
 func configure_scroll_container(scroll_container: ScrollContainer) -> void:
