@@ -2113,7 +2113,7 @@ func purchase_costume(costume_id: String) -> bool:
 	))
 	if purchased:
 		_refresh_decor_shop_panel()
-		_refresh_wardrobe_inventory_visuals()
+		refresh_wardrobe_inventory_visuals()
 	return purchased
 
 
@@ -2128,7 +2128,7 @@ func sell_costume_from_exchange(costume_id: String) -> int:
 	))
 	if amount > 0:
 		_refresh_decor_shop_panel()
-		_refresh_wardrobe_inventory_visuals()
+		refresh_wardrobe_inventory_visuals()
 	return amount
 
 

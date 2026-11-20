@@ -5,6 +5,7 @@ signal developer_funds_requested(amount: int)
 const STUDIO_UI_THEME_SCRIPT = preload(
 	"res://scripts/presentation/ui/studio_ui_theme.gd"
 )
+const GAME_CLOCK_SCRIPT = preload("res://scripts/core/game_clock.gd")
 
 const DEVELOPER_FUNDS_GRANT: int = 10000
 const SECTION_ORDER: Array[String] = [
@@ -140,10 +141,10 @@ func _build_shell() -> void:
 	speed_buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	speed_buttons.add_theme_constant_override("separation", 4)
 	top_row.add_child(speed_buttons)
-	_add_speed_button(speed_buttons, "Ⅱ", GameClock.SpeedMode.PAUSED)
-	_add_speed_button(speed_buttons, "1×", GameClock.SpeedMode.NORMAL)
-	_add_speed_button(speed_buttons, "3×", GameClock.SpeedMode.FAST)
-	_add_speed_button(speed_buttons, "6×", GameClock.SpeedMode.VERY_FAST)
+	_add_speed_button(speed_buttons, "Ⅱ", GAME_CLOCK_SCRIPT.SpeedMode.PAUSED)
+	_add_speed_button(speed_buttons, "1×", GAME_CLOCK_SCRIPT.SpeedMode.NORMAL)
+	_add_speed_button(speed_buttons, "3×", GAME_CLOCK_SCRIPT.SpeedMode.FAST)
+	_add_speed_button(speed_buttons, "6×", GAME_CLOCK_SCRIPT.SpeedMode.VERY_FAST)
 
 	var body := HBoxContainer.new()
 	body.name = "MainLayout"
