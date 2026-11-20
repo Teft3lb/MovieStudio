@@ -42,7 +42,7 @@ func _run_tests() -> void:
 	await process_frame
 	_expect(bool(wheel.call("is_open")), "Selecting an employee must open the radial action wheel.")
 	_expect(
-		int(wheel.call("get_action_button_count")) == 4,
+		int(wheel.call("get_action_button_count")) == 6,
 		"The action wheel must create one radial button for each available action."
 	)
 	var center_name: Label = wheel.get("_center_name") as Label

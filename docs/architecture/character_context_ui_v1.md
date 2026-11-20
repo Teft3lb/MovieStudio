@@ -12,7 +12,7 @@ The management navigation uses icon-led section labels. The HUD also exposes a l
 
 ## Character selection and radial actions
 
-`CharacterContextMenuController` owns the context-menu flow and coordinates two independent views: `CharacterActionWheel` and `CharacterDetailsDialog`. Selecting a 3D employee or an employee roster entry opens the radial wheel near the character's projected screen position. The center shows the employee monogram, name, profession and current task. Action availability is built from the employee's profession, assignment and live simulation state.
+`CharacterContextMenuController` owns the context-menu flow and coordinates two independent views: `CharacterActionWheel` and `CharacterDetailsDialog`. Selecting a 3D employee or an employee roster entry opens the radial wheel near the character's projected screen position. The center shows the employee monogram, name, profession and current task. The compact wheel uses a 380×380 logical layout, 104×62 action buttons and a 116×108 center card; the six-action arrangement is tested for button/card collisions and viewport bounds. Action availability is built from the employee's profession, assignment and live simulation state.
 
 The large CharacterManager remains the source of simulation state and exposes narrow action/query methods; it does not build the radial controls or own their visual layout.
 
