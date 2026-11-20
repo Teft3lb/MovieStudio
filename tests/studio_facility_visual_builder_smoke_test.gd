@@ -19,6 +19,7 @@ func _run_tests() -> void:
 	_test_cafeteria()
 	_test_staff_housing()
 	_test_star_bungalow()
+	_test_business_buildings()
 	_finish_test("StudioFacilityVisualBuilderSmokeTest")
 
 
@@ -227,6 +228,48 @@ func _test_staff_housing() -> void:
 		"Staff housing must retain explicit and inferred exit routes from occupied beds."
 	)
 	actor.queue_free()
+
+
+func _test_business_buildings() -> void:
+	var promotion_actor: Node3D = _create_facility("film_promotion")
+	var promotion_interior: Node3D = promotion_actor.get_node("Interior") as Node3D
+	_expect(
+		promotion_interior.get_node_or_null("PromotionPosterFrame_0") is MeshInstance3D
+		and promotion_interior.get_node_or_null("PromotionPresentationScreen") is MeshInstance3D,
+		"Film Promotion must have a distinct poster gallery and presentation interior."
+	)
+	promotion_actor.queue_free()
+
+	var wardrobe_actor: Node3D = _create_facility("costume_wardrobe")
+	var wardrobe_interior: Node3D = wardrobe_actor.get_node("Interior") as Node3D
+	_expect(
+		wardrobe_interior.get_node_or_null("WardrobeInventory") is Node3D
+		and wardrobe_interior.get_node_or_null("WardrobeFittingMirror") is MeshInstance3D
+		and wardrobe_interior.get_node_or_null("WardrobeRackBar_-1") is MeshInstance3D,
+		"Costume Wardrobe must have fitting facilities, racks and a live inventory root."
+	)
+	wardrobe_actor.call(
+		"set_wardrobe_inventory",
+		["classic_period_costumes", "science_fiction_costumes"]
+	)
+	var wardrobe_inventory: Node3D = wardrobe_interior.get_node(
+		"WardrobeInventory"
+	) as Node3D
+	_expect(
+		wardrobe_inventory.get_child_count() == 2,
+		"Purchased costume sets must appear as visible garments inside the wardrobe."
+	)
+	wardrobe_actor.queue_free()
+
+	var exchange_actor: Node3D = _create_facility("prop_exchange")
+	var exchange_interior: Node3D = exchange_actor.get_node("Interior") as Node3D
+	_expect(
+		exchange_interior.get_node_or_null("PropExchangeCounter") is MeshInstance3D
+		and exchange_interior.get_node_or_null("PropExchangeShelf_-1") is MeshInstance3D
+		and exchange_interior.get_node_or_null("PropExchangeDisplay_2") is MeshInstance3D,
+		"Prop Exchange must have a distinct sales counter, shelving and display stands."
+	)
+	exchange_actor.queue_free()
 
 
 func _test_star_bungalow() -> void:

@@ -201,6 +201,10 @@ func advance_minute(project: Variant, editor_ready: bool) -> Dictionary:
 			project.status = "completed"
 			project.continuity_score = get_timeline_coherence_score(project)
 			project.final_quality = _calculate_final_quality(project)
+			project.commercial_success_score = project.final_quality
+			project.marketing_bonus = 0.0
+			project.marketing_campaign_count = 0
+			project.marketing_spend = 0
 			project.pause_reason = ""
 			project.last_activity_message = (
 				"Фильм «%s» смонтирован и готов к выпуску."

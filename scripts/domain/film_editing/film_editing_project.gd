@@ -1,7 +1,7 @@
 extends RefCounted
 class_name FilmEditingProject
 
-const SCHEMA_VERSION: int = 2
+const SCHEMA_VERSION: int = 3
 
 var id: String = ""
 var production_project_id: String = ""
@@ -23,6 +23,10 @@ var editor_skill: float = 0.0
 var source_quality: int = 0
 var final_quality: int = 0
 var continuity_score: int = 100
+var commercial_success_score: int = 0
+var marketing_bonus: float = 0.0
+var marketing_campaign_count: int = 0
+var marketing_spend: int = 0
 
 var scene_results: Array = []
 var timeline_order: Array[int] = []
@@ -111,6 +115,10 @@ func to_dict() -> Dictionary:
 		"source_quality": source_quality,
 		"final_quality": final_quality,
 		"continuity_score": continuity_score,
+		"commercial_success_score": commercial_success_score,
+		"marketing_bonus": marketing_bonus,
+		"marketing_campaign_count": marketing_campaign_count,
+		"marketing_spend": marketing_spend,
 		"scene_results": scene_results.duplicate(true),
 		"timeline_order": timeline_order.duplicate(),
 		"pause_reason": pause_reason,
@@ -151,6 +159,10 @@ static func from_dict(payload: Dictionary) -> RefCounted:
 	result.source_quality = clampi(int(payload.get("source_quality", 0)), 0, 100)
 	result.final_quality = clampi(int(payload.get("final_quality", 0)), 0, 100)
 	result.continuity_score = clampi(int(payload.get("continuity_score", 100)), 0, 100)
+	result.commercial_success_score = clampi(int(payload.get("commercial_success_score", result.final_quality)), 0, 100)
+	result.marketing_bonus = clampf(float(payload.get("marketing_bonus", 0.0)), 0.0, 30.0)
+	result.marketing_campaign_count = clampi(int(payload.get("marketing_campaign_count", 0)), 0, 3)
+	result.marketing_spend = maxi(int(payload.get("marketing_spend", 0)), 0)
 
 	var raw_scenes: Variant = payload.get("scene_results", [])
 	if raw_scenes is Array:

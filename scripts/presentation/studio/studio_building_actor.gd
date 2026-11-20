@@ -34,6 +34,9 @@ const OFFICE_VISUAL_BUILDER_SCRIPT = preload(
 const FACILITY_VISUAL_BUILDER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_facility_visual_builder.gd"
 )
+const COSTUME_CATALOG_SCRIPT = preload(
+	"res://scripts/domain/studio/studio_costume_catalog.gd"
+)
 
 const CUTAWAY_DISTANCE: float = 36.0
 const WALL_THICKNESS: float = 0.28
@@ -54,6 +57,7 @@ var _set_dressing_root: Node3D
 var _active_set_scene_key: String = ""
 var _warehouse_inventory_root: Node3D
 var _warehouse_storage_positions: Array[Vector3] = []
+var _wardrobe_inventory_root: Node3D
 var _navigation_system: RefCounted
 var _navigation_controller: RefCounted
 var _marker_provider: RefCounted
@@ -326,6 +330,87 @@ func set_warehouse_inventory(prop_ids: Array) -> void:
 		_build_set_prop_visual(prop_root, prop_id)
 		_warehouse_inventory_root.add_child(prop_root)
 
+func set_wardrobe_inventory(costume_ids: Array) -> void:
+	if not is_instance_valid(_wardrobe_inventory_root):
+		return
+	for child in _wardrobe_inventory_root.get_children():
+		_wardrobe_inventory_root.remove_child(child)
+		child.queue_free()
+	var rack_positions: Array[Vector3] = []
+	for row_index in range(2):
+		for column_index in range(5):
+			rack_positions.append(Vector3(
+				-3.8 + float(column_index) * 1.9,
+				0.0,
+				-1.45 + float(row_index) * 3.0
+			))
+	for costume_index in range(costume_ids.size()):
+		var costume_id: String = str(costume_ids[costume_index])
+		var definition: Dictionary = COSTUME_CATALOG_SCRIPT.get_costume_definition(
+			costume_id
+		)
+		if definition.is_empty():
+			continue
+		var garment_root := Node3D.new()
+		garment_root.name = "StoredCostume_%s" % costume_id
+		garment_root.position = rack_positions[
+			posmod(costume_index, rack_positions.size())
+		]
+		_wardrobe_inventory_root.add_child(garment_root)
+		var garment_color: Color = definition.get(
+			"visual_color", Color(0.38, 0.38, 0.42)
+		)
+		_visual_factory.call(
+			"create_box",
+			garment_root,
+			"CostumeHanger",
+			Vector3(0.48, 0.025, 0.025),
+			Color(0.72, 0.70, 0.62),
+			Vector3(0.0, 1.48, 0.0)
+		)
+		_visual_factory.call(
+			"create_cylinder",
+			garment_root,
+			"CostumeHangerHook",
+			0.018,
+			0.12,
+			Color(0.72, 0.70, 0.62),
+			Vector3(0.0, 1.55, 0.0)
+		)
+		_visual_factory.call(
+			"create_box",
+			garment_root,
+			"CostumeTorso",
+			Vector3(0.56, 0.82, 0.16),
+			garment_color,
+			Vector3(0.0, 0.88, 0.0)
+		)
+		_visual_factory.call(
+			"create_box",
+			garment_root,
+			"CostumeLeftSleeve",
+			Vector3(0.19, 0.62, 0.16),
+			garment_color.darkened(0.08),
+			Vector3(-0.36, 0.93, 0.0)
+		)
+		_visual_factory.call(
+			"create_box",
+			garment_root,
+			"CostumeRightSleeve",
+			Vector3(0.19, 0.62, 0.16),
+			garment_color.darkened(0.08),
+			Vector3(0.36, 0.93, 0.0)
+		)
+		var label := Label3D.new()
+		label.name = "CostumeLabel"
+		label.text = str(definition.get("title", costume_id))
+		label.font_size = 12
+		label.pixel_size = 0.006
+		label.position = Vector3(0.0, 0.18, 0.12)
+		label.modulate = Color(0.94, 0.91, 0.82)
+		garment_root.add_child(label)
+
+
 func _build_set_prop_visual(parent: Node3D, prop_id: String) -> void:
 	if _set_prop_visual_builder == null:
 		return
@@ -385,6 +470,13 @@ func _build_visual() -> void:
 		"prop_warehouse":
 			_build_facility(
 				"prop_warehouse",
+				footprint,
+				height,
+				definition
+			)
+		"film_promotion", "costume_wardrobe", "prop_exchange":
+			_build_facility(
+				building_type_id,
 				footprint,
 				height,
 				definition
@@ -511,6 +603,9 @@ func _apply_building_visual_state(visual_state: Dictionary) -> void:
 
 	_warehouse_inventory_root = visual_state.get(
 		"warehouse_inventory_root"
+	) as Node3D
+	_wardrobe_inventory_root = visual_state.get(
+		"wardrobe_inventory_root"
 	) as Node3D
 	_warehouse_storage_positions.clear()
 	var warehouse_storage_positions: Array = visual_state.get(

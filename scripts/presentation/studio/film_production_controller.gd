@@ -486,7 +486,20 @@ func _refresh_active_scene_set_dressing_if_unstarted() -> void:
 		"refresh_current_scene_setup",
 		_active_film_project,
 		_active_film_script,
-		_set_inventory.get_owned_prop_ids()
+		_set_inventory.get_owned_prop_ids(),
+		_set_inventory.call("get_prop_condition_map"),
+		_set_inventory.call(
+			"get_prop_film_usage_count_map",
+			str(_active_film_project.id)
+		),
+		_manager.call(
+			"get_costume_ids_for_genre",
+			str(_active_film_script.genre_id)
+		),
+		float(_manager.call(
+			"get_costume_quality_bonus_for_genre",
+			str(_active_film_script.genre_id)
+		))
 	)
 	_last_scene_setup_refresh_key = _get_scene_setup_refresh_key()
 	_sync_film_set_dressing()
@@ -532,6 +545,19 @@ func _on_film_cast_role_selected(selected_index: int, role_id: String, role_opti
 		role_id,
 		role_option
 	)
+func _record_completed_scene_asset_usage() -> void:
+	if _active_film_project == null or _set_inventory == null:
+		return
+	var setup: Dictionary = _active_film_project.get_current_scene_setup()
+	for prop_id_value in setup.get("prop_ids", []):
+		_set_inventory.call(
+			"record_prop_use",
+			str(prop_id_value),
+			str(_active_film_project.id),
+			7.5
+		)
+
+
 func _get_film_crew_assignments(assigned_staff: Array) -> Dictionary:
 	return _get_assignment_controller().call(
 		"get_film_crew_assignments",
@@ -639,11 +665,25 @@ func _on_start_film_production_pressed() -> void:
 		1,
 		8
 	)
+	var film_genre_id: String = str(_get_latest_script().genre_id)
+	var costume_ids: Array[String] = _manager.call(
+		"get_costume_ids_for_genre", film_genre_id
+	)
+	var costume_quality_bonus: float = float(_manager.call(
+		"get_costume_quality_bonus_for_genre", film_genre_id
+	))
 	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		_get_latest_script().scenes,
 		_set_inventory.get_owned_prop_ids(),
-		str(_get_latest_script().genre_id),
-		technician_count
+		film_genre_id,
+		technician_count,
+		_set_inventory.call("get_prop_condition_map"),
+		_set_inventory.call(
+			"get_prop_film_usage_count_map",
+			project_id
+		),
+		costume_ids,
+		costume_quality_bonus
 	)
 	var production_shift: Vector2i = _get_film_production_shift_for_assignments(
 		crew_assignments,
@@ -1046,6 +1086,8 @@ func _advance_film_production(hour: int = -1) -> void:
 		cast_ready,
 		snapshot
 	)
+	if bool(result.get("scene_completed", false)):
+		_record_completed_scene_asset_usage()
 	if bool(result.get("advanced", false)):
 		_award_film_skill_progression(
 			phase_for_skill_progression,
@@ -1711,10 +1753,19 @@ func _format_set_prop_titles(prop_ids: Array) -> String:
 func _get_script_set_dressing_preview(script: Variant) -> Dictionary:
 	if script == null:
 		return {}
+	var preview_genre_id: String = str(script.genre_id)
 	var scene_setups: Array[Dictionary] = SET_CATALOG_SCRIPT.build_scene_setups(
 		script.scenes,
 		_set_inventory.get_owned_prop_ids(),
-		str(script.genre_id)
+		preview_genre_id,
+		1,
+		_set_inventory.call("get_prop_condition_map"),
+		_set_inventory.call("get_prop_film_usage_count_map"),
+		_manager.call("get_costume_ids_for_genre", preview_genre_id),
+		float(_manager.call(
+			"get_costume_quality_bonus_for_genre",
+			preview_genre_id
+		))
 	)
 	var missing_lookup: Dictionary = {}
 	var fully_dressed_scene_count: int = 0
@@ -1876,6 +1927,20 @@ func _update_film_production_ui() -> void:
 		var prop_quality_text: String = "Качество декораций: %d/100" % roundi(
 			float(setup.get("set_dressing_quality", 45.0))
 		)
+		prop_quality_text += (
+			"\nСредний износ: %.0f%% · штраф за состояние: -%.1f"
+			% [
+				100.0 - float(setup.get("average_prop_condition", 100.0)),
+				float(setup.get("condition_penalty", 0.0)),
+			]
+		)
+		prop_quality_text += (
+			"\nПовторное использование: -%.1f · костюмы: +%.1f"
+			% [
+				float(setup.get("reuse_penalty", 0.0)),
+				float(setup.get("costume_quality_bonus", 0.0)),
+			]
+		)
 		if not missing_props.is_empty():
 			prop_quality_text += "\nНе хватает: %s" % _format_set_prop_titles(
 				missing_props
@@ -1931,10 +1996,13 @@ func _update_film_production_ui() -> void:
 		]
 		for scene_result in project.scene_results:
 			result_lines.append(
-				"Сцена %02d · качество %d/100 · пересъёмок: %d"
+				"Сцена %02d · качество %d/100 · износ -%.1f · повтор -%.1f · костюмы +%.1f · пересъёмок: %d"
 				% [
 					int(scene_result.get("scene_number", 0)),
 					int(scene_result.get("quality", 0)),
+					float(scene_result.get("condition_penalty", 0.0)),
+					float(scene_result.get("reuse_penalty", 0.0)),
+					float(scene_result.get("costume_quality_bonus", 0.0)),
 					int(scene_result.get("retakes", 0)),
 				]
 			)
@@ -2020,7 +2088,20 @@ func _refresh_film_scene_setup_if_needed() -> void:
 		"refresh_current_scene_setup",
 		_active_film_project,
 		_active_film_script,
-		_set_inventory.get_owned_prop_ids()
+		_set_inventory.get_owned_prop_ids(),
+		_set_inventory.call("get_prop_condition_map"),
+		_set_inventory.call(
+			"get_prop_film_usage_count_map",
+			str(_active_film_project.id)
+		),
+		_manager.call(
+			"get_costume_ids_for_genre",
+			str(_active_film_script.genre_id)
+		),
+		float(_manager.call(
+			"get_costume_quality_bonus_for_genre",
+			str(_active_film_script.genre_id)
+		))
 	)
 	_last_scene_setup_refresh_key = refresh_key
 func _get_stage_technician_ids(crew_assignments: Dictionary) -> Array[String]:

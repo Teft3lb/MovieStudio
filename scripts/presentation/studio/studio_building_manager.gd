@@ -76,6 +76,12 @@ const CELEBRITY_SYSTEM_SCRIPT = preload(
 const PUBLICITY_EVENT_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/studio/studio_publicity_event_controller.gd"
 )
+const BUSINESS_CONTROLLER_SCRIPT = preload(
+	"res://scripts/presentation/studio/studio_business_controller.gd"
+)
+const FILM_MARKETING_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/film_distribution/film_marketing_system.gd"
+)
 const CHARACTER_DRAG_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_drag_drop_controller.gd"
 )
@@ -91,6 +97,8 @@ var _skill_progression_system: RefCounted
 var _film_editing_system: RefCounted
 var _navigation_system: RefCounted
 var _set_inventory: Variant
+var _business_controller: RefCounted
+var _film_marketing_system: RefCounted
 var _decor_shop_group_id: String = ""
 var _decor_shop_group_option: OptionButton
 var _decor_shop_budget_label: Label
@@ -197,6 +205,11 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_get_film_editing_controller()
 	_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
 	_set_inventory = SET_INVENTORY_SCRIPT.new()
+	_business_controller = BUSINESS_CONTROLLER_SCRIPT.new()
+	_business_controller.call(
+		"setup", self, _character_manager, _game_clock, _set_inventory
+	)
+	_film_marketing_system = FILM_MARKETING_SYSTEM_SCRIPT.new()
 	_get_set_logistics_controller()
 	_get_film_production_controller()
 	_get_building_placement_controller()
@@ -256,7 +269,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	if studio_hud != null:
 		studio_hud.call(
 			"set_developer_funds_status",
-			"Бюджет декораций: %d." % int(_set_inventory.budget)
+			"Бюджет студии: %d." % int(_set_inventory.budget)
 		)
 	_refresh_build_status()
 
@@ -373,13 +386,24 @@ func has_manual_staff_conflict(
 	crew: Dictionary, cast: Dictionary, background_ids: Array[String]
 ) -> bool:
 	for employee_id_value in crew.values():
-		if is_employee_in_manual_activity(str(employee_id_value)):
+		var crew_employee_id: String = str(employee_id_value)
+		if (
+			is_employee_in_manual_activity(crew_employee_id)
+			or is_employee_in_maintenance(crew_employee_id)
+		):
 			return true
 	for employee_id_value in cast.values():
-		if is_employee_in_manual_activity(str(employee_id_value)):
+		var cast_employee_id: String = str(employee_id_value)
+		if (
+			is_employee_in_manual_activity(cast_employee_id)
+			or is_employee_in_maintenance(cast_employee_id)
+		):
 			return true
 	for employee_id in background_ids:
-		if is_employee_in_manual_activity(employee_id):
+		if (
+			is_employee_in_manual_activity(employee_id)
+			or is_employee_in_maintenance(employee_id)
+		):
 			return true
 	return false
 
@@ -397,11 +421,24 @@ func has_publicity_staff_conflict(
 func has_tv_staff_conflict(
 	crew: Dictionary, cast: Dictionary, background_ids: Array[String]
 ) -> bool:
+	if _business_controller != null and bool(_business_controller.call(
+		"has_staff_conflict", crew, cast, background_ids
+	)):
+		return true
 	if _tv_guest_show_controller == null:
 		return false
 	return bool(_tv_guest_show_controller.call(
 		"has_staff_conflict", crew, cast, background_ids
 	))
+
+
+func is_employee_in_maintenance(employee_id: String) -> bool:
+	return (
+		_business_controller != null
+		and bool(_business_controller.call(
+			"is_employee_in_maintenance", employee_id
+		))
+	)
 
 
 func get_building_actor_by_id(building_id: String) -> Node3D:
@@ -1293,6 +1330,12 @@ func _create_building(
 			"set_warehouse_inventory",
 			_set_inventory.call("get_props_in_warehouse")
 		)
+	elif building_type_id == "costume_wardrobe" and _business_controller != null:
+		actor.call(
+			"set_wardrobe_inventory",
+			_business_controller.call("get_owned_costume_ids")
+		)
+		_refresh_decor_shop_panel()
 	if is_player_placed:
 		_refresh_build_status()
 		buildings_changed.emit()
@@ -1557,6 +1600,10 @@ func _on_game_minute_advanced(_day: int, hour: int, _minute: int) -> void:
 		_publicity_event_controller.call(
 			"advance_minute", _day, hour, _minute
 		)
+	if _business_controller != null:
+		_business_controller.call(
+			"advance_minute", _day, hour, _minute
+		)
 
 
 func get_latest_script() -> Variant:
@@ -1638,14 +1685,15 @@ func _build_decor_shop_panel(studio_hud: Node) -> void:
 	scroll.add_child(layout)
 
 	var heading := Label.new()
-	heading.text = "МАГАЗИН ДЕКОРАЦИЙ"
+	heading.text = "МАГАЗИН ДЕКОРАЦИЙ И КОСТЮМОВ"
 	heading.add_theme_font_size_override("font_size", 15)
 	layout.add_child(heading)
 
 	var description := Label.new()
 	description.text = (
-		"Покупай элементы для разных типов сцен. "
-		+ "Техники забирают их со склада, устанавливают в павильоне и возвращают после съёмки."
+		"Покупай декорации для съёмочных площадок и костюмные комплекты. "
+		+ "Декорации хранятся на складе, а костюмы — в гардеробной и автоматически "
+		+ "подбираются по жанру фильма."
 	)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(description)
@@ -1658,9 +1706,11 @@ func _build_decor_shop_panel(studio_hud: Node) -> void:
 	_decor_shop_group_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	layout.add_child(_decor_shop_group_option)
 	var group_ids: Array[String] = SET_CATALOG_SCRIPT.get_group_ids()
+	group_ids.append("costumes")
 	for group_id in group_ids:
 		_decor_shop_group_option.add_item(
-			SET_CATALOG_SCRIPT.get_group_title(group_id)
+			"Костюмы" if group_id == "costumes"
+			else SET_CATALOG_SCRIPT.get_group_title(group_id)
 		)
 	if not group_ids.is_empty():
 		_decor_shop_group_id = group_ids[0]
@@ -1678,6 +1728,7 @@ func _build_decor_shop_panel(studio_hud: Node) -> void:
 
 func _on_decor_shop_group_selected(selected_index: int) -> void:
 	var group_ids: Array[String] = SET_CATALOG_SCRIPT.get_group_ids()
+	group_ids.append("costumes")
 	if selected_index < 0 or selected_index >= group_ids.size():
 		return
 	_decor_shop_group_id = group_ids[selected_index]
@@ -1693,13 +1744,25 @@ func _refresh_decor_shop_panel() -> void:
 	var stage_count: int = _set_inventory.call(
 		"get_props_on_stage"
 	).size()
+	var costume_count: int = (
+		_business_controller.call("get_owned_costume_ids").size()
+		if _business_controller != null
+		else 0
+	)
 	_decor_shop_budget_label.text = (
-		"Бюджет реквизита: %d  ·  На складе: %d  ·  На площадке: %d"
-		% [_set_inventory.budget, warehouse_count, stage_count]
+		"Бюджет студии: %d  ·  Декорации на складе: %d  ·  На площадке: %d  ·  Костюмы: %d"
+		% [_set_inventory.budget, warehouse_count, stage_count, costume_count]
 	)
 	for child in _decor_shop_items.get_children():
 		_decor_shop_items.remove_child(child)
 		child.queue_free()
+
+	if _decor_shop_group_id == "costumes":
+		if _business_controller != null:
+			_business_controller.call(
+				"build_costume_shop_items", _decor_shop_items
+			)
+		return
 
 	for prop_id in SET_CATALOG_SCRIPT.get_prop_ids_for_group(
 		_decor_shop_group_id
@@ -2004,6 +2067,215 @@ func get_active_film_editing_project() -> Variant:
 
 func get_completed_film_archive() -> Array:
 	return _completed_film_archive.duplicate(true)
+
+
+func has_building_type(building_type_id: String) -> bool:
+	for building in _buildings:
+		if (
+			str(building.building_type_id) == building_type_id
+			and bool(building.is_operational)
+		):
+			return true
+	return false
+
+
+func build_business_building_detail(
+	layout: VBoxContainer,
+	building_id: String
+) -> void:
+	if _business_controller != null:
+		_business_controller.call(
+			"build_building_detail", layout, building_id
+		)
+
+
+func get_costume_ids_for_genre(genre_id: String) -> Array[String]:
+	if _business_controller == null:
+		return []
+	return _business_controller.call(
+		"get_costume_ids_for_genre", genre_id
+	)
+
+
+func get_costume_quality_bonus_for_genre(genre_id: String) -> float:
+	if _business_controller == null:
+		return 0.0
+	return float(_business_controller.call(
+		"get_costume_quality_bonus_for_genre", genre_id
+	))
+
+
+func purchase_costume(costume_id: String) -> bool:
+	if _business_controller == null:
+		return false
+	var purchased: bool = bool(_business_controller.call(
+		"purchase_costume", costume_id
+	))
+	if purchased:
+		_refresh_decor_shop_panel()
+		_refresh_wardrobe_inventory_visuals()
+	return purchased
+
+
+func sell_costume_from_exchange(costume_id: String) -> int:
+	if (
+		_business_controller == null
+		or not has_building_type("prop_exchange")
+	):
+		return 0
+	var amount: int = int(_business_controller.call(
+		"sell_costume", costume_id
+	))
+	if amount > 0:
+		_refresh_decor_shop_panel()
+		_refresh_wardrobe_inventory_visuals()
+	return amount
+
+
+func sell_prop_from_exchange(prop_id: String) -> int:
+	if (
+		_business_controller == null
+		or not has_building_type("prop_exchange")
+		or bool(_business_controller.call("is_prop_under_repair", prop_id))
+	):
+		return 0
+	var amount: int = int(_set_inventory.call("sell_prop", prop_id))
+	if amount > 0:
+		_refresh_warehouse_inventory_visuals()
+		_refresh_decor_shop_panel()
+	return amount
+
+
+func refresh_decor_shop_panel() -> void:
+	_refresh_decor_shop_panel()
+
+
+func refresh_wardrobe_inventory_visuals() -> void:
+	if _business_controller == null:
+		return
+	var costume_ids: Array[String] = _business_controller.call(
+		"get_owned_costume_ids"
+	)
+	for building in _buildings:
+		if str(building.building_type_id) != "costume_wardrobe":
+			continue
+		var actor: Variant = _building_actors.get(str(building.id))
+		if actor != null and is_instance_valid(actor):
+			actor.call("set_wardrobe_inventory", costume_ids)
+
+
+func get_marketable_films() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var archived_ids: Dictionary = {}
+	for archive_entry in _completed_film_archive:
+		var production: Dictionary = archive_entry.get("production", {})
+		var editing: Dictionary = archive_entry.get("editing", {})
+		var project_id: String = str(
+			production.get(
+				"id", editing.get("production_project_id", "")
+			)
+		)
+		if (
+			project_id.is_empty()
+			or str(editing.get("status", "")) != "completed"
+		):
+			continue
+		archived_ids[project_id] = true
+		result.append({
+			"project_id": project_id,
+			"film_title": str(editing.get("film_title", "Без названия")),
+			"final_quality": int(editing.get("final_quality", 0)),
+			"commercial_success_score": int(
+				editing.get(
+					"commercial_success_score",
+					editing.get("final_quality", 0)
+				)
+			),
+			"marketing_bonus": float(editing.get("marketing_bonus", 0.0)),
+			"marketing_campaign_count": int(
+				editing.get("marketing_campaign_count", 0)
+			),
+			"marketing_spend": int(editing.get("marketing_spend", 0)),
+		})
+	var active_editing: Variant = get_active_film_editing_project()
+	if (
+		active_editing != null
+		and str(active_editing.status) == "completed"
+	):
+		var active_id: String = str(active_editing.production_project_id)
+		if not active_id.is_empty() and not archived_ids.has(active_id):
+			result.append({
+				"project_id": active_id,
+				"film_title": str(active_editing.film_title),
+				"final_quality": int(active_editing.final_quality),
+				"commercial_success_score": int(
+					active_editing.commercial_success_score
+				),
+				"marketing_bonus": float(active_editing.marketing_bonus),
+				"marketing_campaign_count": int(
+					active_editing.marketing_campaign_count
+				),
+				"marketing_spend": int(active_editing.marketing_spend),
+			})
+	return result
+
+
+func get_marketing_campaign_definitions() -> Array[Dictionary]:
+	if _film_marketing_system == null:
+		return []
+	return _film_marketing_system.call("get_campaign_definitions")
+
+
+func launch_marketing_campaign(
+	project_id: String,
+	campaign_id: String
+) -> Dictionary:
+	if (
+		_film_marketing_system == null
+		or project_id.is_empty()
+		or not has_building_type("film_promotion")
+	):
+		return {"success": false, "reason": "Фильм для рекламы не найден."}
+	var campaign_cost: int = int(
+		_film_marketing_system.call("get_campaign_cost", campaign_id)
+	)
+	if campaign_cost <= 0:
+		return {"success": false, "reason": "Неизвестная рекламная кампания."}
+	if not bool(_set_inventory.call("spend_funds", campaign_cost)):
+		return {"success": false, "reason": "Недостаточно средств на рекламную кампанию."}
+	var result: Dictionary = {}
+	for archive_index in range(_completed_film_archive.size()):
+		var archive_entry: Dictionary = _completed_film_archive[archive_index]
+		var production: Dictionary = archive_entry.get("production", {})
+		var editing: Dictionary = archive_entry.get("editing", {})
+		var archived_id: String = str(
+			production.get("id", editing.get("production_project_id", ""))
+		)
+		if archived_id != project_id:
+			continue
+		result = _film_marketing_system.call(
+			"apply_campaign_to_record", editing, campaign_id
+		)
+		if bool(result.get("success", false)):
+			archive_entry["editing"] = editing
+			_completed_film_archive[archive_index] = archive_entry
+		break
+	if result.is_empty():
+		var active_editing: Variant = get_active_film_editing_project()
+		if (
+			active_editing != null
+			and str(active_editing.production_project_id) == project_id
+		):
+			result = _film_marketing_system.call(
+				"apply_campaign_to_project", active_editing, campaign_id
+			)
+	if not bool(result.get("success", false)):
+		_set_inventory.call("add_funds", campaign_cost)
+		if result.is_empty():
+			return {"success": false, "reason": "Фильм для рекламы не найден."}
+		return result
+	_refresh_decor_shop_panel()
+	return result
 
 
 func _get_assigned_staff(building_id: String) -> Array:

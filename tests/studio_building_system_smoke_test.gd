@@ -28,6 +28,7 @@ func _run_tests() -> void:
 	_test_catalogue()
 	_test_building_serialization()
 	_test_facility_buildings()
+	_test_business_buildings()
 	_test_facility_navigation()
 	_test_placement_validation()
 
@@ -39,17 +40,20 @@ func _test_catalogue() -> void:
 		BUILDING_CATALOG_SCRIPT.get_building_type_ids()
 	)
 	_expect(
-		building_ids.size() == 10
+		building_ids.size() == 13
 		and building_ids[0] == "cafeteria"
-		and building_ids[1] == "editing_suite"
-		and building_ids[2] == "fitness_center"
-		and building_ids[3] == "prop_warehouse"
-		and building_ids[4] == "script_department"
-		and building_ids[5] == "sound_stage"
-		and building_ids[6] == "staff_housing"
-		and building_ids[7] == "star_bungalow"
-		and building_ids[8] == "studio_lounge"
-		and building_ids[9] == "tv_studio",
+		and building_ids[1] == "costume_wardrobe"
+		and building_ids[2] == "editing_suite"
+		and building_ids[3] == "film_promotion"
+		and building_ids[4] == "fitness_center"
+		and building_ids[5] == "prop_exchange"
+		and building_ids[6] == "prop_warehouse"
+		and building_ids[7] == "script_department"
+		and building_ids[8] == "sound_stage"
+		and building_ids[9] == "staff_housing"
+		and building_ids[10] == "star_bungalow"
+		and building_ids[11] == "studio_lounge"
+		and building_ids[12] == "tv_studio",
 		"The building catalogue must expose all production and staff facility buildings."
 	)
 	_expect(
@@ -204,6 +208,46 @@ func _test_facility_buildings() -> void:
 		_expect(
 			facility_path.size() >= 4,
 			"%s must expose an entrance route and an interior facility point."
+			% building_type_id
+		)
+		actor.free()
+
+
+func _test_business_buildings() -> void:
+	for building_type_id in [
+		"film_promotion",
+		"costume_wardrobe",
+		"prop_exchange",
+	]:
+		_expect(
+			BUILDING_CATALOG_SCRIPT.has_building_type(building_type_id)
+			and BUILDING_CATALOG_SCRIPT.get_workplace_capacity(
+				building_type_id
+			) == 0
+			and BUILDING_CATALOG_SCRIPT.get_facility_capacity(
+				building_type_id
+			) == 0,
+			"%s must be a dedicated service building, not a staff workplace."
+			% building_type_id
+		)
+		var building: Variant = BUILDING_DATA_SCRIPT.new()
+		building.id = "BLD-%s" % building_type_id.to_upper()
+		building.building_type_id = building_type_id
+		building.display_name = BUILDING_CATALOG_SCRIPT.get_title(
+			building_type_id
+		)
+		building.position = Vector3.ZERO
+		var actor: Node3D = BUILDING_ACTOR_SCRIPT.new()
+		root.add_child(actor)
+		actor.call("setup", building)
+		if building_type_id == "costume_wardrobe":
+			actor.call(
+				"set_wardrobe_inventory",
+				["classic_period_costumes", "science_fiction_costumes"]
+			)
+		_expect(
+			str(actor.call("get_building_id")) == str(building.id),
+			"%s must create a selectable 3D building actor."
 			% building_type_id
 		)
 		actor.free()

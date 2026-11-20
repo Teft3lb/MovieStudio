@@ -185,6 +185,19 @@ func refresh_selected_building() -> void:
 		float(building.rotation_degrees),
 		int(building.stage_size_tier)
 	)
+	if building_type_id in [
+		"film_promotion",
+		"costume_wardrobe",
+		"prop_exchange",
+	]:
+		if is_instance_valid(_manager):
+			_manager.call(
+				"build_business_building_detail",
+				_detail_layout,
+				str(building.id)
+			)
+		_apply_inspector_width_constraints(_detail_layout)
+		return
 	var capacity: int = (
 		BUILDING_CATALOG_SCRIPT.get_facility_capacity(building_type_id)
 		if is_facility

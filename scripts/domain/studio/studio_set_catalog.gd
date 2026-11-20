@@ -237,7 +237,11 @@ static func build_scene_setups(
 	scenes: Array,
 	owned_prop_ids: Array[String],
 	genre_id: String = "",
-	technician_count: int = 1
+	technician_count: int = 1,
+	prop_condition_by_id: Dictionary = {},
+	prop_film_usage_counts: Dictionary = {},
+	costume_ids: Array[String] = [],
+	costume_quality_bonus: float = 0.0
 ) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var effective_technician_count: int = clampi(technician_count, 1, 8)
@@ -249,6 +253,10 @@ static func build_scene_setups(
 		var missing_props: Array[String] = []
 		var quality: float = 45.0
 		var required_stage_tier: int = 1
+		var condition_penalty_total: float = 0.0
+		var reuse_penalty_total: float = 0.0
+		var condition_total: float = 0.0
+		var reuse_count_total: float = 0.0
 		for prop_id in required_props:
 			if owned_prop_ids.has(prop_id):
 				selected_props.append(prop_id)
@@ -258,9 +266,20 @@ static func build_scene_setups(
 					required_stage_tier,
 					int(definition.get("required_stage_tier", 1))
 				)
+				var condition: float = clampf(float(prop_condition_by_id.get(prop_id, 100.0)), 0.0, 100.0)
+				var reuse_count: int = maxi(int(prop_film_usage_counts.get(prop_id, 0)), 0)
+				condition_total += condition
+				reuse_count_total += float(reuse_count)
+				condition_penalty_total += (100.0 - condition) / 100.0 * 8.0
+				reuse_penalty_total += minf(float(reuse_count) * 2.5, 12.0)
 			else:
 				missing_props.append(prop_id)
 				quality -= MISSING_PROP_QUALITY_PENALTY
+		var selected_prop_count: int = selected_props.size()
+		var condition_penalty: float = condition_penalty_total / float(selected_prop_count) if selected_prop_count > 0 else 0.0
+		var reuse_penalty: float = reuse_penalty_total / float(selected_prop_count) if selected_prop_count > 0 else 0.0
+		var average_condition: float = condition_total / float(selected_prop_count) if selected_prop_count > 0 else 100.0
+		var average_reuse_count: float = reuse_count_total / float(selected_prop_count) if selected_prop_count > 0 else 0.0
 		var set_id: String = group_id if not selected_props.is_empty() else "neutral"
 		var set_title: String = (
 			get_group_title(group_id)
@@ -279,6 +298,12 @@ static func build_scene_setups(
 			"setup_minutes": 2 + ceili(
 				float(selected_props.size()) / float(effective_technician_count)
 			),
+			"condition_penalty": condition_penalty,
+			"reuse_penalty": reuse_penalty,
+			"average_prop_condition": average_condition,
+			"average_reuse_count": average_reuse_count,
+			"costume_ids": costume_ids.duplicate(),
+			"costume_quality_bonus": clampf(costume_quality_bonus, 0.0, 10.0),
 			"set_dressing_quality": clampf(quality, 15.0, 80.0),
 		})
 	return result

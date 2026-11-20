@@ -130,7 +130,11 @@ func start_project(
 func refresh_current_scene_setup(
 	project: Variant,
 	script: Variant,
-	owned_prop_ids: Array[String]
+	owned_prop_ids: Array[String],
+	prop_condition_by_id: Dictionary = {},
+	prop_film_usage_counts: Dictionary = {},
+	costume_ids: Array[String] = [],
+	costume_quality_bonus: float = 0.0
 ) -> Dictionary:
 	if (
 		project == null
@@ -160,7 +164,11 @@ func refresh_current_scene_setup(
 		[scene],
 		owned_prop_ids,
 		str(script.genre_id),
-		int(project.technician_count)
+		int(project.technician_count),
+		prop_condition_by_id,
+		prop_film_usage_counts,
+		costume_ids,
+		costume_quality_bonus
 	)
 	if fresh_setups.is_empty():
 		return {}
@@ -772,6 +780,9 @@ func _calculate_scene_quality(
 				45.0
 			)) - 45.0
 		) * 0.14
+		+ clampf(float(project.get_current_scene_setup().get("costume_quality_bonus", 0.0)), 0.0, 10.0)
+		- clampf(float(project.get_current_scene_setup().get("condition_penalty", 0.0)), 0.0, 8.0)
+		- clampf(float(project.get_current_scene_setup().get("reuse_penalty", 0.0)), 0.0, 12.0)
 		+ (energy - 0.5) * 10.0
 		+ (morale - 0.5) * 6.0
 		- stress * 4.0
@@ -800,6 +811,12 @@ func _complete_current_scene(project: Variant, script: Variant) -> void:
 		"set_dressing_quality": float(
 			setup.get("set_dressing_quality", 45.0)
 		),
+		"condition_penalty": float(setup.get("condition_penalty", 0.0)),
+		"reuse_penalty": float(setup.get("reuse_penalty", 0.0)),
+		"costume_quality_bonus": float(setup.get("costume_quality_bonus", 0.0)),
+		"average_prop_condition": float(setup.get("average_prop_condition", 100.0)),
+		"average_reuse_count": float(setup.get("average_reuse_count", 0.0)),
+		"costume_ids": setup.get("costume_ids", []).duplicate(),
 		"set_dressing_props": setup_props.duplicate(),
 		"required_prop_ids": required_props.duplicate(),
 		"missing_prop_ids": missing_props.duplicate(),

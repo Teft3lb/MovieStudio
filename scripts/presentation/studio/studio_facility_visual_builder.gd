@@ -8,6 +8,7 @@ var _roof_assembly: Node3D
 var _workplace_points: Array[Vector3] = []
 var _warehouse_inventory_root: Node3D
 var _warehouse_storage_positions: Array[Vector3] = []
+var _wardrobe_inventory_root: Node3D
 
 
 func build(
@@ -26,8 +27,15 @@ func build(
 	_workplace_points.clear()
 	_warehouse_inventory_root = null
 	_warehouse_storage_positions.clear()
+	_wardrobe_inventory_root = null
 
 	match building_type_id:
+		"film_promotion":
+			_build_film_promotion(footprint, height, definition)
+		"costume_wardrobe":
+			_build_costume_wardrobe(footprint, height, definition)
+		"prop_exchange":
+			_build_prop_exchange(footprint, height, definition)
 		"prop_warehouse":
 			_build_prop_warehouse(footprint, height, definition)
 		"fitness_center":
@@ -46,7 +54,248 @@ func build(
 		"workplace_points": _workplace_points,
 		"warehouse_inventory_root": _warehouse_inventory_root,
 		"warehouse_storage_positions": _warehouse_storage_positions,
+		"wardrobe_inventory_root": _wardrobe_inventory_root,
 	}
+
+
+func _build_film_promotion(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	_create_floor(footprint, Color(0.32, 0.28, 0.25), "PromotionFloor")
+	_create_perimeter_walls(
+		width, depth, wall_height, Color(0.55, 0.43, 0.36), 2.4, 2.7
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	_actor.add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"PromotionRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		Color(0.24, 0.22, 0.24),
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		_actor,
+		"PromotionSign",
+		Vector3(5.8, 0.62, 0.16),
+		definition.get("accent_color", Color(0.68, 0.38, 0.28)),
+		Vector3(0.0, 3.0, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		_actor,
+		"PromotionSignText",
+		"РЕКЛАМНЫЙ ОТДЕЛ",
+		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
+		18
+	)
+	var poster_colors: Array[Color] = [
+		Color(0.48, 0.23, 0.20),
+		Color(0.20, 0.37, 0.46),
+		Color(0.42, 0.38, 0.22),
+	]
+	for poster_index in range(3):
+		var poster_x: float = -3.8 + float(poster_index) * 3.8
+		_create_box(
+			_interior_root,
+			"PromotionPosterFrame_%d" % poster_index,
+			Vector3(2.45, 2.9, 0.12),
+			Color(0.16, 0.17, 0.19),
+			Vector3(poster_x, 2.05, -4.55)
+		)
+		_create_box(
+			_interior_root,
+			"PromotionPoster_%d" % poster_index,
+			Vector3(2.18, 2.62, 0.08),
+			poster_colors[poster_index],
+			Vector3(poster_x, 2.05, -4.43)
+		)
+	_create_box(
+		_interior_root,
+		"PromotionConferenceTable",
+		Vector3(4.8, 0.18, 1.35),
+		Color(0.34, 0.23, 0.17),
+		Vector3(0.0, 0.86, 1.25)
+	)
+	_create_box(
+		_interior_root,
+		"PromotionPresentationScreen",
+		Vector3(3.2, 1.75, 0.12),
+		Color(0.12, 0.22, 0.26),
+		Vector3(0.0, 2.15, 4.55)
+	)
+
+
+func _build_costume_wardrobe(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	_create_floor(footprint, Color(0.43, 0.36, 0.34), "WardrobeFloor")
+	_create_perimeter_walls(
+		width, depth, wall_height, Color(0.62, 0.53, 0.48), 2.4, 2.7
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	_actor.add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"WardrobeRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		Color(0.25, 0.22, 0.25),
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		_actor,
+		"WardrobeSign",
+		Vector3(5.2, 0.62, 0.16),
+		definition.get("accent_color", Color(0.47, 0.34, 0.46)),
+		Vector3(0.0, 3.0, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		_actor,
+		"WardrobeSignText",
+		"ГАРДЕРОБНАЯ",
+		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
+		19
+	)
+	for side in [-1.0, 1.0]:
+		_create_box(
+			_interior_root,
+			"WardrobeRackFrame_%d" % int(side),
+			Vector3(0.16, 2.6, 5.7),
+			Color(0.22, 0.24, 0.25),
+			Vector3(side * 5.0, 1.3, -0.2)
+		)
+		_create_box(
+			_interior_root,
+			"WardrobeRackBar_%d" % int(side),
+			Vector3(0.08, 0.08, 5.6),
+			Color(0.72, 0.67, 0.57),
+			Vector3(side * 4.65, 2.25, -0.2)
+		)
+		for support_index in range(2):
+			_create_box(
+				_interior_root,
+				"WardrobeRackFoot_%d_%d" % [int(side), support_index],
+				Vector3(0.82, 0.12, 0.12),
+				Color(0.20, 0.21, 0.22),
+				Vector3(
+					side * 4.65,
+					0.08,
+					-2.6 + float(support_index) * 4.8
+				)
+			)
+	_create_box(
+		_interior_root,
+		"WardrobeFittingMirror",
+		Vector3(1.65, 2.55, 0.10),
+		Color(0.34, 0.48, 0.52),
+		Vector3(0.0, 1.55, -4.55)
+	)
+	_create_box(
+		_interior_root,
+		"WardrobeFittingScreen",
+		Vector3(2.6, 2.1, 0.12),
+		Color(0.54, 0.47, 0.40),
+		Vector3(0.0, 1.25, 4.45)
+	)
+	_wardrobe_inventory_root = Node3D.new()
+	_wardrobe_inventory_root.name = "WardrobeInventory"
+	_wardrobe_inventory_root.position = Vector3(0.0, 0.0, 0.0)
+	_interior_root.add_child(_wardrobe_inventory_root)
+
+
+func _build_prop_exchange(
+	footprint: Vector2,
+	height: float,
+	definition: Dictionary
+) -> void:
+	var width: float = footprint.x
+	var depth: float = footprint.y
+	var wall_height: float = height - 0.55
+	_create_floor(footprint, Color(0.38, 0.33, 0.27), "PropExchangeFloor")
+	_create_perimeter_walls(
+		width, depth, wall_height, Color(0.57, 0.49, 0.38), 2.6, 2.7
+	)
+	_roof_assembly = Node3D.new()
+	_roof_assembly.name = "RoofAssembly"
+	_actor.add_child(_roof_assembly)
+	_create_box(
+		_roof_assembly,
+		"PropExchangeRoof",
+		Vector3(width + 0.35, 0.55, depth + 0.35),
+		Color(0.24, 0.23, 0.20),
+		Vector3(0.0, height - 0.275, 0.0)
+	)
+	_create_box(
+		_actor,
+		"PropExchangeSign",
+		Vector3(6.2, 0.62, 0.16),
+		definition.get("accent_color", Color(0.55, 0.42, 0.25)),
+		Vector3(0.0, 3.0, depth * 0.5 + 0.22)
+	)
+	_create_label(
+		_actor,
+		"PropExchangeSignText",
+		"СКУПКА РЕКВИЗИТА",
+		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
+		18
+	)
+	_create_box(
+		_interior_root,
+		"PropExchangeCounter",
+		Vector3(7.4, 0.92, 1.0),
+		Color(0.30, 0.22, 0.16),
+		Vector3(0.0, 0.55, -4.25)
+	)
+	_create_box(
+		_interior_root,
+		"PropExchangeCounterTop",
+		Vector3(7.65, 0.14, 1.12),
+		Color(0.68, 0.57, 0.39),
+		Vector3(0.0, 1.08, -4.25)
+	)
+	for side in [-1.0, 1.0]:
+		_create_box(
+			_interior_root,
+			"PropExchangeShelf_%d" % int(side),
+			Vector3(0.72, 2.25, 5.7),
+			Color(0.25, 0.24, 0.21),
+			Vector3(side * 5.4, 1.12, -0.15)
+		)
+		for shelf_index in range(3):
+			_create_box(
+				_interior_root,
+				"PropExchangeShelfBoard_%d_%d" % [int(side), shelf_index],
+				Vector3(1.0, 0.12, 5.8),
+				Color(0.43, 0.32, 0.22),
+				Vector3(
+					side * 5.15,
+					0.45 + float(shelf_index) * 0.78,
+					-0.15
+				)
+			)
+	for display_index in range(3):
+		_create_box(
+			_interior_root,
+			"PropExchangeDisplay_%d" % display_index,
+			Vector3(1.35, 0.72, 1.05),
+			Color(0.48, 0.38, 0.27),
+			Vector3(
+				-3.0 + float(display_index) * 3.0,
+				0.36,
+				1.45
+			)
+		)
 
 
 func _build_prop_warehouse(
