@@ -16,6 +16,8 @@ func _on_placement_mode_requested(building_type_id: String) -> void:
 
 
 func _run_tests() -> void:
+	var test_canvas := CanvasLayer.new()
+	root.add_child(test_canvas)
 	var manager := Node3D.new()
 	root.add_child(manager)
 	var buildings: Array = []
@@ -23,6 +25,7 @@ func _run_tests() -> void:
 	controller.call("setup", manager, buildings)
 
 	var palette: PanelContainer = controller.call("build_palette")
+	test_canvas.add_child(palette)
 	_expect(
 		palette.name == "BuildingPalettePanel",
 		"The placement controller must build the studio construction palette."
@@ -108,4 +111,6 @@ func _run_tests() -> void:
 	)
 
 	manager.queue_free()
+	test_canvas.queue_free()
+	await process_frame
 	_finish_test("StudioBuildingPlacementControllerSmokeTest")

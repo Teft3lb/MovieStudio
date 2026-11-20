@@ -27,6 +27,7 @@ func _run_tests() -> void:
 	)
 	if not is_instance_valid(building_manager) or not is_instance_valid(studio_hud):
 		game_root.queue_free()
+		await process_frame
 		_finish_test("StudioWorldBootstrapSmokeTest")
 		return
 

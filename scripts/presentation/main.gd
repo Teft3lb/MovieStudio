@@ -1,6 +1,6 @@
 extends Node3D
 
-@onready var game_clock: GameClock = $GameClock
+@onready var game_clock: Node = $GameClock
 @onready var studio_hud: Node = $StudioHUD
 @onready var character_manager: Node = $CharacterManager
 @onready var studio_building_manager: Node = $StudioBuildingManager
