@@ -287,16 +287,25 @@ func ensure_startup_content() -> void:
 			)
 	_spawn_initial_buildings()
 	_build_ui()
+	if _character_drag_controller == null:
+		_character_drag_controller = CHARACTER_DRAG_CONTROLLER_SCRIPT.new()
+		_character_drag_controller.call("setup", self, _character_manager)
+	if (
+		is_instance_valid(_game_clock)
+		and _game_clock.has_signal("minute_advanced")
+	):
+		var minute_callback := Callable(self, "_on_game_minute_advanced")
+		if not _game_clock.is_connected("minute_advanced", minute_callback):
+			_game_clock.connect("minute_advanced", minute_callback)
 	_refresh_build_status()
 
 
 func is_startup_content_ready() -> bool:
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	return (
-		_has_building_record_of_type("script_department")
-		and _has_building_record_of_type("sound_stage")
-		and _has_building_record_of_type("prop_warehouse")
-		and _building_actors.size() >= 3
+		_has_building_actor_of_type("script_department")
+		and _has_building_actor_of_type("sound_stage")
+		and _has_building_actor_of_type("prop_warehouse")
 		and is_instance_valid(studio_hud)
 		and bool(studio_hud.call("has_workspace_panel", "studio"))
 		and bool(studio_hud.call("has_workspace_panel", "decor_shop"))
@@ -1301,37 +1310,78 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _spawn_initial_buildings() -> void:
-	if not _has_building_record_of_type("script_department"):
+	_ensure_initial_building(
+		"script_department",
+		SCRIPT_DEPARTMENT_START_POSITION,
+		"Сценарный отдел"
+	)
+	_ensure_initial_building(
+		"sound_stage",
+		SOUND_STAGE_START_POSITION,
+		"Съёмочный павильон №1"
+	)
+	_ensure_initial_building(
+		"prop_warehouse",
+		PROP_WAREHOUSE_START_POSITION,
+		"Склад съёмочного реквизита"
+	)
+
+
+func _ensure_initial_building(
+	building_type_id: String,
+	world_position: Vector3,
+	display_name: String
+) -> void:
+	var building_data: Variant = _find_building_record_of_type(building_type_id)
+	if building_data == null:
 		_create_building(
-			"script_department",
-			SCRIPT_DEPARTMENT_START_POSITION,
+			building_type_id,
+			world_position,
 			0.0,
-			"Сценарный отдел",
+			display_name,
 			false
 		)
-	if not _has_building_record_of_type("sound_stage"):
-		_create_building(
-			"sound_stage",
-			SOUND_STAGE_START_POSITION,
-			0.0,
-			"Съёмочный павильон №1",
-			false
+		return
+
+	var building_id: String = str(building_data.id)
+	var existing_actor: Variant = _building_actors.get(building_id)
+	if existing_actor != null and is_instance_valid(existing_actor):
+		if existing_actor.is_inside_tree():
+			return
+		existing_actor.queue_free()
+
+	var actor: Variant = BUILDING_ACTOR_SCRIPT.new()
+	actor.call("setup", building_data)
+	add_child(actor)
+	_building_actors[building_id] = actor
+	if building_type_id == "prop_warehouse":
+		actor.call(
+			"set_warehouse_inventory",
+			_set_inventory.call("get_props_in_warehouse")
 		)
-	if not _has_building_record_of_type("prop_warehouse"):
-		_create_building(
-			"prop_warehouse",
-			PROP_WAREHOUSE_START_POSITION,
-			0.0,
-			"Склад съёмочного реквизита",
-			false
-		)
+
+
+func _find_building_record_of_type(building_type_id: String) -> Variant:
+	for building in _buildings:
+		if str(building.building_type_id) == building_type_id:
+			return building
+	return null
 
 
 func _has_building_record_of_type(building_type_id: String) -> bool:
-	for building in _buildings:
-		if str(building.building_type_id) == building_type_id:
-			return true
-	return false
+	return _find_building_record_of_type(building_type_id) != null
+
+
+func _has_building_actor_of_type(building_type_id: String) -> bool:
+	var building_data: Variant = _find_building_record_of_type(building_type_id)
+	if building_data == null:
+		return false
+	var actor: Variant = _building_actors.get(str(building_data.id))
+	return (
+		actor != null
+		and is_instance_valid(actor)
+		and actor.is_inside_tree()
+	)
 
 
 func _create_building(
