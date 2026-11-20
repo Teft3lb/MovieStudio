@@ -39,6 +39,7 @@ func _run_tests() -> void:
 		actions,
 		Vector2(520.0, 300.0)
 	)
+	await process_frame
 	_expect(bool(wheel.call("is_open")), "Selecting an employee must open the radial action wheel.")
 	_expect(
 		int(wheel.call("get_action_button_count")) == 4,
@@ -51,7 +52,17 @@ func _run_tests() -> void:
 	)
 	var action_buttons: Array = wheel.get("_action_buttons")
 	if not action_buttons.is_empty():
-		(action_buttons[0] as Button).pressed.emit()
+		var first_button: Button = action_buttons[0] as Button
+		var title_label: Label = first_button.find_child(
+			"ActionTitleLabel", true, false
+		) as Label
+		_expect(
+			first_button.size.x >= 145.0
+			and title_label != null
+			and title_label.size.x >= 120.0,
+			"Radial action labels must receive enough horizontal space to avoid one-letter wrapping."
+		)
+		first_button.pressed.emit()
 	_expect(
 		_selected_action_id == "profile",
 		"Radial action activation must emit the selected action ID to the manager."

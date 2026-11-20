@@ -19,8 +19,10 @@ const SECTION_ORDER: Array[String] = [
 var _game_clock: Node
 var _root: Control
 var _navigation_list: HBoxContainer
+var _workspace_frame: PanelContainer
 var _workspace_heading: Label
 var _workspace_content: VBoxContainer
+var _workspace_drawer_open: bool = false
 var _inspector_frame: PanelContainer
 var _inspector_heading: Label
 var _inspector_content: VBoxContainer
@@ -153,17 +155,18 @@ func _build_shell() -> void:
 	body.add_theme_constant_override("separation", 10)
 	shell.add_child(body)
 
-	var workspace_frame := PanelContainer.new()
-	workspace_frame.name = "WorkspacePanel"
-	workspace_frame.custom_minimum_size = Vector2(350.0, 0.0)
-	workspace_frame.size_flags_horizontal = Control.SIZE_FILL
-	_apply_panel_style(workspace_frame, 0.93)
-	body.add_child(workspace_frame)
+	_workspace_frame = PanelContainer.new()
+	_workspace_frame.name = "WorkspacePanel"
+	_workspace_frame.custom_minimum_size = Vector2(350.0, 0.0)
+	_workspace_frame.size_flags_horizontal = Control.SIZE_FILL
+	_workspace_frame.visible = false
+	_apply_panel_style(_workspace_frame, 0.96)
+	body.add_child(_workspace_frame)
 
 	var workspace_layout := VBoxContainer.new()
 	workspace_layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	workspace_layout.add_theme_constant_override("separation", 8)
-	workspace_frame.add_child(workspace_layout)
+	_workspace_frame.add_child(workspace_layout)
 
 	_workspace_heading = Label.new()
 	_workspace_heading.add_theme_font_size_override("font_size", 17)
@@ -468,6 +471,8 @@ func show_workspace_panel(section_id: String) -> void:
 
 	_active_workspace_id = section_id
 	_workspace_heading.text = str(_workspace_titles.get(section_id, section_id))
+	_workspace_drawer_open = true
+	_workspace_frame.visible = true
 
 	for registered_id in _navigation_buttons:
 		var navigation_button: Button = _navigation_buttons[registered_id]
@@ -475,6 +480,35 @@ func show_workspace_panel(section_id: String) -> void:
 
 	if section_changed:
 		show_inspector_panel("", false)
+
+
+func hide_workspace_drawer() -> void:
+	_workspace_drawer_open = false
+	if is_instance_valid(_workspace_frame):
+		_workspace_frame.visible = false
+	for registered_id in _navigation_buttons:
+		var navigation_button: Button = _navigation_buttons[registered_id]
+		navigation_button.button_pressed = false
+
+
+func is_workspace_drawer_open() -> bool:
+	return _workspace_drawer_open and is_instance_valid(_workspace_frame) and _workspace_frame.visible
+
+
+func has_workspace_panel(section_id: String) -> bool:
+	return _workspace_panels.has(section_id)
+
+
+func has_inspector_panel(owner_id: String) -> bool:
+	return _inspector_panels.has(owner_id)
+
+
+func get_registered_workspace_ids() -> Array[String]:
+	var result: Array[String] = []
+	for section_id in _workspace_panels.keys():
+		result.append(str(section_id))
+	result.sort()
+	return result
 
 
 func show_inspector_panel(owner_id: String, should_show: bool) -> void:
@@ -503,13 +537,13 @@ func get_overlay_control_root() -> Control:
 func _get_navigation_label(section_id: String, fallback_title: String) -> String:
 	match section_id:
 		"studio":
-			return "✦  СТУДИЯ"
+			return "▣  ЗДАНИЯ"
 		"decor_shop":
 			return "▧  РЕКВИЗИТ"
 		"employees":
 			return "♟  ПЕРСОНАЛ"
 		"market":
-			return "★  КАСТИНГ"
+			return "★  РЫНОК"
 		"developer":
 			return "⚙ DEV"
 		_:
@@ -532,6 +566,9 @@ func _sort_navigation_buttons() -> void:
 
 
 func _on_navigation_button_pressed(section_id: String) -> void:
+	if _workspace_drawer_open and _active_workspace_id == section_id:
+		hide_workspace_drawer()
+		return
 	show_workspace_panel(section_id)
 
 

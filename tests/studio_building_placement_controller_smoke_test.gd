@@ -28,8 +28,9 @@ func _run_tests() -> void:
 		"The placement controller must build the studio construction palette."
 	)
 	_expect(
-		palette.get_child_count() == 1,
-		"The construction palette must contain its layout root."
+		palette.get_child_count() == 1
+		and palette.get_child(0) is ScrollContainer,
+		"The construction palette must contain a scrollable layout root."
 	)
 	_expect(
 		not bool(controller.call("is_placing_building")),
@@ -39,12 +40,28 @@ func _run_tests() -> void:
 		"placement_mode_requested",
 		Callable(self, "_on_placement_mode_requested")
 	)
-	var layout: VBoxContainer = palette.get_child(0) as VBoxContainer
+	var scroll: ScrollContainer = palette.get_child(0) as ScrollContainer
+	var layout: VBoxContainer = scroll.get_child(0) as VBoxContainer
 	var script_button: Button = layout.get_child(1) as Button
 	script_button.pressed.emit()
 	_expect(
 		_requested_placement_type == "script_department",
 		"Construction palette buttons must request placement through the manager-facing signal."
+	)
+	var promotion_button: Button = layout.find_child(
+		"Build_film_promotion", true, false
+	) as Button
+	var wardrobe_button: Button = layout.find_child(
+		"Build_costume_wardrobe", true, false
+	) as Button
+	var exchange_button: Button = layout.find_child(
+		"Build_prop_exchange", true, false
+	) as Button
+	_expect(
+		promotion_button != null
+		and wardrobe_button != null
+		and exchange_button != null,
+		"The construction palette must expose film promotion, costume wardrobe and prop exchange buildings."
 	)
 	_expect(
 		not bool(controller.call("is_placing_building")),

@@ -28,6 +28,11 @@ func _run_tests() -> void:
 	var employee_panel := PanelContainer.new()
 	var studio_panel := PanelContainer.new()
 	var decor_panel := PanelContainer.new()
+	var market_panel := PanelContainer.new()
+	_expect(
+		not bool(hud.call("is_workspace_drawer_open")),
+		"Workspace drawer must start hidden until the player requests it."
+	)
 	hud.call(
 		"register_workspace_panel",
 		"employees",
@@ -45,6 +50,12 @@ func _run_tests() -> void:
 		"decor_shop",
 		"Магазин декораций",
 		decor_panel
+	)
+	hud.call(
+		"register_workspace_panel",
+		"market",
+		"Кадровый рынок",
+		market_panel
 	)
 
 	hud.call("show_workspace_panel", "employees")
@@ -106,16 +117,31 @@ func _run_tests() -> void:
 		"Bottom navigation panel must exist in the HUD shell."
 	)
 	var navigation_buttons: Dictionary = hud.get("_navigation_buttons")
+	var building_button: Button = navigation_buttons.get("studio") as Button
 	var decor_button: Button = navigation_buttons.get("decor_shop") as Button
+	var market_button: Button = navigation_buttons.get("market") as Button
+	_expect(
+		building_button != null and building_button.text == "▣  ЗДАНИЯ",
+		"Construction must have an explicit bottom-navigation entry."
+	)
 	_expect(
 		decor_button != null
 		and decor_button.text == "▧  РЕКВИЗИТ",
 		"Decor shop must have a dedicated bottom-navigation button."
 	)
+	_expect(
+		market_button != null and market_button.text == "★  РЫНОК",
+		"Employee market must be clearly named in the bottom navigation."
+	)
 	hud.call("show_workspace_panel", "decor_shop")
 	_expect(
-		decor_panel.visible,
-		"Selecting the decor shop navigation item must show its workspace."
+		decor_panel.visible and bool(hud.call("is_workspace_drawer_open")),
+		"Selecting the decor shop navigation item must open its workspace drawer."
+	)
+	hud.call("_on_navigation_button_pressed", "decor_shop")
+	_expect(
+		not bool(hud.call("is_workspace_drawer_open")),
+		"Pressing the active navigation entry again must close the drawer."
 	)
 	_expect(
 		hud.get("_root").theme != null,

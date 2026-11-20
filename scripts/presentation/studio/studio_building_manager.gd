@@ -215,7 +215,6 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_get_building_placement_controller()
 	_get_building_inspector_controller()
 	_get_film_dossier_controller()
-	_get_tv_guest_show_controller()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
 
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
@@ -272,6 +271,37 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 			"Бюджет студии: %d." % int(_set_inventory.budget)
 		)
 	_refresh_build_status()
+	_get_tv_guest_show_controller()
+
+
+func ensure_startup_content() -> void:
+	if _set_inventory == null:
+		_set_inventory = SET_INVENTORY_SCRIPT.new()
+	if _navigation_system == null:
+		_navigation_system = NAVIGATION_SYSTEM_SCRIPT.new()
+	if _business_controller == null:
+		_business_controller = BUSINESS_CONTROLLER_SCRIPT.new()
+		if is_instance_valid(_character_manager) and is_instance_valid(_game_clock):
+			_business_controller.call(
+				"setup", self, _character_manager, _game_clock, _set_inventory
+			)
+	_spawn_initial_buildings()
+	_build_ui()
+	_refresh_build_status()
+
+
+func is_startup_content_ready() -> bool:
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	return (
+		_has_building_record_of_type("script_department")
+		and _has_building_record_of_type("sound_stage")
+		and _has_building_record_of_type("prop_warehouse")
+		and _building_actors.size() >= 3
+		and is_instance_valid(studio_hud)
+		and bool(studio_hud.call("has_workspace_panel", "studio"))
+		and bool(studio_hud.call("has_workspace_panel", "decor_shop"))
+	)
+
 
 func _get_set_logistics_controller() -> RefCounted:
 	if _set_logistics_controller == null:
@@ -1242,6 +1272,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var mouse_event := event as InputEventMouseButton
 	if not mouse_event.pressed or mouse_event.button_index != MOUSE_BUTTON_LEFT:
 		return
+	var studio_hud: Node = get_node_or_null("../StudioHUD")
+	if is_instance_valid(studio_hud) and studio_hud.has_method("hide_workspace_drawer"):
+		studio_hud.call("hide_workspace_drawer")
 	if (
 		_film_dossier_controller != null
 		and bool(_film_dossier_controller.call("try_pickup", mouse_event.position))
@@ -1268,27 +1301,37 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _spawn_initial_buildings() -> void:
-	_create_building(
-		"script_department",
-		SCRIPT_DEPARTMENT_START_POSITION,
-		0.0,
-		"Сценарный отдел",
-		false
-	)
-	_create_building(
-		"sound_stage",
-		SOUND_STAGE_START_POSITION,
-		0.0,
-		"Съёмочный павильон №1",
-		false
-	)
-	_create_building(
-		"prop_warehouse",
-		PROP_WAREHOUSE_START_POSITION,
-		0.0,
-		"Склад съёмочного реквизита",
-		false
-	)
+	if not _has_building_record_of_type("script_department"):
+		_create_building(
+			"script_department",
+			SCRIPT_DEPARTMENT_START_POSITION,
+			0.0,
+			"Сценарный отдел",
+			false
+		)
+	if not _has_building_record_of_type("sound_stage"):
+		_create_building(
+			"sound_stage",
+			SOUND_STAGE_START_POSITION,
+			0.0,
+			"Съёмочный павильон №1",
+			false
+		)
+	if not _has_building_record_of_type("prop_warehouse"):
+		_create_building(
+			"prop_warehouse",
+			PROP_WAREHOUSE_START_POSITION,
+			0.0,
+			"Склад съёмочного реквизита",
+			false
+		)
+
+
+func _has_building_record_of_type(building_type_id: String) -> bool:
+	for building in _buildings:
+		if str(building.building_type_id) == building_type_id:
+			return true
+	return false
 
 
 func _create_building(
@@ -1352,17 +1395,20 @@ func _build_ui() -> void:
 	if studio_hud == null:
 		push_error("StudioBuildingManager: StudioHUD node is missing.")
 		return
-	var build_panel: PanelContainer = _get_building_placement_controller().call(
-		"build_palette"
-	)
-	studio_hud.call(
-		"register_workspace_panel",
-		"studio",
-		"Студия",
-		build_panel
-	)
-	_get_building_inspector_controller().call("build_panel", studio_hud)
-	_build_decor_shop_panel(studio_hud)
+	if not bool(studio_hud.call("has_workspace_panel", "studio")):
+		var build_panel: PanelContainer = _get_building_placement_controller().call(
+			"build_palette"
+		)
+		studio_hud.call(
+			"register_workspace_panel",
+			"studio",
+			"Строительство и здания",
+			build_panel
+		)
+	if not bool(studio_hud.call("has_inspector_panel", "building")):
+		_get_building_inspector_controller().call("build_panel", studio_hud)
+	if not bool(studio_hud.call("has_workspace_panel", "decor_shop")):
+		_build_decor_shop_panel(studio_hud)
 
 
 func _refresh_build_status() -> void:

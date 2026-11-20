@@ -43,9 +43,18 @@ func build_palette() -> PanelContainer:
 	build_panel.name = "BuildingPalettePanel"
 	build_panel.custom_minimum_size = Vector2(0.0, 0.0)
 
+	var scroll := ScrollContainer.new()
+	scroll.name = "BuildingPaletteScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	build_panel.add_child(scroll)
+
 	var build_layout := VBoxContainer.new()
+	build_layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	build_layout.add_theme_constant_override("separation", 9)
-	build_panel.add_child(build_layout)
+	scroll.add_child(build_layout)
 
 	var heading := Label.new()
 	heading.text = "СТРОИТЕЛЬСТВО"
@@ -158,6 +167,33 @@ func build_palette() -> PanelContainer:
 	lounge_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lounge_button.pressed.connect(_request_placement.bind("studio_lounge"))
 	build_layout.add_child(lounge_button)
+
+	var promotion_button := Button.new()
+	promotion_button.name = "Build_film_promotion"
+	promotion_button.text = "＋ Рекламный отдел"
+	promotion_button.tooltip_text = "Построить здание для рекламных кампаний снятых фильмов"
+	promotion_button.custom_minimum_size = Vector2(0.0, 42.0)
+	promotion_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	promotion_button.pressed.connect(_request_placement.bind("film_promotion"))
+	build_layout.add_child(promotion_button)
+
+	var wardrobe_button := Button.new()
+	wardrobe_button.name = "Build_costume_wardrobe"
+	wardrobe_button.text = "＋ Гардеробная"
+	wardrobe_button.tooltip_text = "Построить хранилище купленных костюмов"
+	wardrobe_button.custom_minimum_size = Vector2(0.0, 42.0)
+	wardrobe_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	wardrobe_button.pressed.connect(_request_placement.bind("costume_wardrobe"))
+	build_layout.add_child(wardrobe_button)
+
+	var exchange_button := Button.new()
+	exchange_button.name = "Build_prop_exchange"
+	exchange_button.text = "＋ Скупка реквизита"
+	exchange_button.tooltip_text = "Построить здание для продажи ненужных декораций и костюмов"
+	exchange_button.custom_minimum_size = Vector2(0.0, 42.0)
+	exchange_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	exchange_button.pressed.connect(_request_placement.bind("prop_exchange"))
+	build_layout.add_child(exchange_button)
 
 	_build_status_label = Label.new()
 	_build_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
