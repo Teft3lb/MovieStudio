@@ -56,9 +56,9 @@ func _run_tests() -> void:
 		center_name != null and center_name.text == "Тестовый актёр",
 		"The wheel center must identify the selected employee."
 	)
-	var center_panel: PanelContainer = wheel.find_child(
+	var center_panel: Panel = wheel.find_child(
 		"CharacterCenterCard", true, false
-	) as PanelContainer
+	) as Panel
 	_expect(
 		center_panel != null
 		and center_panel.size.is_equal_approx(Vector2(116.0, 108.0)),
