@@ -205,9 +205,8 @@ func _build_marketing_detail(layout: VBoxContainer) -> void:
 
 	var description := Label.new()
 	description.text = (
-		"Продвигай завершённые фильмы до или после релиза. "
-		+ "Кампания повышает коммерческий успех, но не меняет художественное качество. "
-		+ "Для одного фильма доступно не более трёх кампаний; повторные вложения дают меньший эффект."
+		"Рекламу можно купить до релиза и во время проката. "
+		+ "Она повышает будущие сборы. Доступно три кампании на фильм с убывающим эффектом."
 	)
 	description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(description)
@@ -244,6 +243,19 @@ func _build_marketing_detail(layout: VBoxContainer) -> void:
 		]
 		film_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		film_layout.add_child(film_label)
+		var distribution: Dictionary = film.get("distribution", {})
+		var run_closed: bool = bool(distribution.get("closed", false))
+		var distribution_label := Label.new()
+		if distribution.is_empty():
+			distribution_label.text = "Ожидает доставки в пункт «Релиз»"
+		elif run_closed:
+			distribution_label.text = "Прокат завершён · Сборы: %d" % int(distribution.gross)
+		else:
+			distribution_label.text = "Прокат до дня %d · Сборы: %d" % [
+				int(distribution.end_day), int(distribution.gross)
+			]
+		distribution_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		film_layout.add_child(distribution_label)
 		var buttons := HBoxContainer.new()
 		buttons.add_theme_constant_override("separation", 5)
 		film_layout.add_child(buttons)
@@ -261,7 +273,8 @@ func _build_marketing_detail(layout: VBoxContainer) -> void:
 				campaign.get("description", "")
 			)
 			campaign_button.disabled = (
-				int(film.get("marketing_campaign_count", 0)) >= 3
+				run_closed
+				or int(film.get("marketing_campaign_count", 0)) >= 3
 				or int(_set_inventory.get("budget")) < price
 			)
 			campaign_button.pressed.connect(

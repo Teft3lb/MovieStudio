@@ -176,8 +176,8 @@ The production domain test covers role resolution, unavailable-crew pauses and a
 - Scene actions are generated from the existing beat/action/dialogue fields and mapped to a small procedural animation library.
 - Camera rigs rotate to follow the cast and the operator occupies the primary rig; a live SubViewport/video-feed panel and player-operated camera tracks, lenses or shot framing are not implemented yet.
 - No retake-specific dialogue variation or actor memory of previous takes.
-- Film editing, timeline ordering, sound mix, color grading and export are implemented. Release scheduling, marketing, distribution, audience reception and box-office results are not implemented yet.
-- Set Dressing Workshop currently uses its own prototype budget and is not connected to the future Studio Economy ledger.
+- Film editing, timeline ordering, sound mix, color grading, export, marketing and a seven-day theatrical run are implemented. Calendar-based release scheduling and audience reception remain future work.
+- The Set Dressing Workshop shares the operating balance with advertising and theatrical receipts. The full studio ledger remains future work.
 - Purchased props and inventory expose serialization methods, but campaign SaveSystem integration does not yet exist.
 - Set-piece positions are selected automatically from a small fixed layout; there is no manual set editor or imported production-ready asset library yet.
 - Navigation uses grid-based obstacle avoidance for the current studio scale; it is not a full NavMesh or dynamic crowd-avoidance system.
@@ -211,15 +211,15 @@ The production shift is calculated from the overlap of all assigned cast, crew a
 
 ## Career pacing and staffing constraints
 
-The career target is approximately 30–40 released feature films for a highly demanded actor over a full career. With five biological years passing per 365 game days, an actor's age-20-to-65 career spans roughly nine game years. The corresponding average interval between major acting credits is 82–110 game days. The long-term studio release cadence remains 30–45 game days per feature, with an actor appearing in a subset of releases rather than every project. This release interval is a campaign-balance target, not yet an enforced timer: Film Distribution, marketing, release scheduling and box-office simulation are still future systems.
+The career target is approximately 30–40 released feature films for a highly demanded actor over a full career. With five biological years passing per 365 game days, an actor's age-20-to-65 career spans roughly nine game years. The corresponding average interval between major acting credits is 82–110 game days. The target studio release cadence is 30–45 game days per feature, with an actor appearing in a subset of releases. The current seven-day theatrical run does not enforce the target cadence.
 
 An 8–12-scene feature now targets 8–15 shared-shift working days from first preparation through the final set strike. The target interpolates from 8 days at eight scenes to 15 days at twelve scenes; longer scripts add approximately 1.25 working days per scene beyond twelve. Larger scene casts and heavier prop plans increase the target, while additional technicians modestly reduce it. Short scripts below eight scenes retain compact timings for shorts and smoke-test fixtures. Retakes add their full scaled duration to the estimate. The editing workflow adds approximately 2–3.5 editor working days for an 8–12-scene feature, adjusted by the editor's skill; longer scripts add further editing time. FilmEditingProject schema v2 persists the editor's effective workday length and the skill-adjusted phase multiplier.
 
-Feature-film career credits will count released feature films, not background appearances or uncompleted shoots. That counter belongs with the future distribution/release flow and must not be inferred from scene count alone.
+Release already updates popularity and recognition for the credited cast and director. A separate career counter for released features remains planned.
 
 Staffing remains player-controlled. The initial six-person team is not automatically expanded to fill optional crew roles or background positions. Those positions must be assigned from existing employees; only an explicit player hiring action can grow the roster.
 
 
 ## Physical screenplay and film transfer
 
-Completed screenplays now have a tracked production dossier and a clickable 3D folder outside the writers' entrance. Drag with the left mouse button to a suitable sound stage before production can begin. When shooting finishes, the folder becomes an actual reel that must be dragged to an editing suite before the editing project can be created. Once the editor finishes, drag the mastered film to the marked release dock at world position (23, 0, -28). The release dock records the film in the studio's completed archive. A pending previous film must be delivered for release before starting the next one. Building placement reserves the release dock area, and the staged screenplay determines the cast/scene assignments. This is the handoff layer, not a substitute for a future marketing or distribution economy.
+Completed screenplays have a tracked production dossier and a clickable 3D folder outside the writers' entrance. Drag the folder to a suitable sound stage to begin production. When shooting finishes, drag the reel to an editing suite. Deliver the mastered film to the release dock at world position (23, 0, -28) to archive the film and start its theatrical run. A completed film must reach the dock before the next production starts. Building placement reserves the dock area, and the staged screenplay determines the cast and scene assignments. See [Studio Business](studio_business_system_v1.md#theatrical-run) for daily box-office settlement.

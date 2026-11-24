@@ -87,6 +87,7 @@ func _build_center() -> void:
 
 	_center_name = Label.new()
 	_center_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_center_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_center_name.custom_minimum_size = Vector2(0.0, 15.0)
 	_center_name.add_theme_font_size_override("font_size", 12)
 	_center_name.add_theme_color_override("font_color", Color(0.96, 0.84, 0.62, 1.0))
@@ -94,6 +95,7 @@ func _build_center() -> void:
 
 	_center_profession = Label.new()
 	_center_profession.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_center_profession.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_center_profession.custom_minimum_size = Vector2(0.0, 13.0)
 	_center_profession.add_theme_font_size_override("font_size", 9)
 	_center_profession.add_theme_color_override("font_color", Color(0.81, 0.75, 0.67, 1.0))
@@ -101,8 +103,8 @@ func _build_center() -> void:
 
 	_center_status = Label.new()
 	_center_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_center_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_center_status.custom_minimum_size = Vector2(104.0, 22.0)
+	_center_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_center_status.custom_minimum_size = Vector2(104.0, 18.0)
 	_center_status.add_theme_font_size_override("font_size", 9)
 	_center_status.add_theme_color_override("font_color", Color(0.65, 0.79, 0.68, 1.0))
 	layout.add_child(_center_status)

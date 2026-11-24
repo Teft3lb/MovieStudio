@@ -291,9 +291,10 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 2.35
+		var desk_name: String = "WriterDesk" if slot_index == 0 else "WriterDesk%d" % (slot_index + 1)
 		_create_box(
 			_interior_root,
-			"WriterDesk",
+			desk_name,
 			Vector3(1.75, 0.16, 0.85),
 			desk_color,
 			Vector3(desk_x, 0.82, -0.95)

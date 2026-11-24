@@ -18,7 +18,7 @@
 
 ## Текущий статус
 
-В репозитории находится запускаемый 3D-проект Godot 4.7.2. Реализованы базовая территория студии, игровое время, свободная камера, процедурные персонажи, управление персоналом и симуляция потребностей сотрудников.
+В репозитории находится запускаемый 3D-проект Godot 4.7.2. Работают территория студии, строительство, игровое время, свободная камера, управление персоналом и симуляция потребностей сотрудников. Фильм проходит путь от сценарного отдела через съёмочный павильон и монтаж до пункта релиза. Реклама влияет на сборы, которые поступают в бюджет в течение семи игровых дней.
 
 ## Документация
 
@@ -30,6 +30,7 @@
 - [Profession Catalogue](docs/architecture/profession_catalog.md)
 - [Film Production v1](docs/architecture/film_production_v1.md)
 - [Film Set Dressing v1](docs/architecture/film_set_dressing_v1.md)
+- [Экономика реквизита, реклама и прокат](docs/architecture/studio_business_system_v1.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии
@@ -45,6 +46,17 @@
 - Новые ветки и Pull Request для обычной разработки не создаются.
 - Все изменения выполняются непосредственно в `main` после проверки `git status` и `git log`.
 - Локальные пользовательские изменения не перезаписываются; `reset --hard`, `clean` и force-push запрещены.
+
+Для локальной проверки в PowerShell укажите путь к консольному исполняемому файлу Godot 4.7.2 и выполните команды из корня проекта.
+
+```powershell
+$godotExe = 'C:\path\to\Godot_v4.7.2-stable_win64_console.exe'
+& $godotExe --version
+& $godotExe --headless --path . --editor --import --quit
+& $godotExe --headless --path . --quit-after 5
+& $godotExe --headless --path . --script res://tests/character_action_wheel_smoke_test.gd
+& $godotExe --headless --path . --script res://tests/film_distribution_smoke_test.gd
+```
 
 ## Лицензия
 

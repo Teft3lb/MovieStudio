@@ -396,6 +396,7 @@ func _test_idle_production_staff_roam_until_dispatched() -> void:
 		),
 		"A manual stage call must also override night-time housing until released."
 	)
+	clock.set("is_manual_fast_forward", false)
 	character_manager.call(
 		"release_employee_from_workplace_manually",
 		str(employee.id)
@@ -559,6 +560,8 @@ class FakeProductionEmployee extends RefCounted:
 	var id: String = ""
 	var shift_start_hour: int = 8
 	var shift_end_hour: int = 17
+	var break_start_hour: int = 12
+	var break_end_hour: int = 13
 
 	func _init(employee_id: String = "") -> void:
 		id = employee_id

@@ -22,7 +22,7 @@ These are service buildings, not employee workplaces. A wardrobe must exist befo
 
 The existing `StudioSetInventory.budget` remains the prototype studio operating budget for this increment. Prop purchases, costume purchases, advertising campaigns and resale proceeds all use the same balance. This avoids introducing parallel wallets before the dedicated Studio Economy milestone.
 
-The balance is still a prototype budget; payroll, rent, distribution revenue and a full financial ledger are not part of this increment.
+The balance is still the studio's prototype budget. Film distribution now credits it with daily box-office receipts. Payroll, rent and a full financial ledger remain separate work.
 
 ## Wardrobe
 
@@ -59,11 +59,19 @@ The marketing system offers three paid campaign tiers:
 | Regional | 600 | +8 |
 | National | 1,200 | +14 |
 
-A film can receive at most three campaigns. Subsequent campaigns have diminishing returns (100%, 60%, 30%). Advertising increases the film's **commercial success score**, not its artistic production quality. The score is stored in the editing project and completed-film archive so the future Film Distribution system can use it when calculating audience reach and box office performance.
+A film can receive at most three campaigns. Subsequent campaigns have diminishing returns (100%, 60%, 30%). Advertising increases the commercial success score used to calculate future receipts. The editing project and completed-film archive retain both this score and the artistic quality.
+
+## Theatrical run
+
+Deliver the mastered reel to the release dock to open a seven-day theatrical run. On each of the next seven game days, the shared studio budget receives the commercial score multiplied by the day's reach factor (20, 17, 14, 11, 8, 6, 4). Pre-release campaigns affect the entire run. Campaigns bought during the run affect only unsettled days, and the campaign buttons become unavailable once the run closes. The Film Promotion inspector shows the run status and cumulative gross. Releasing a new film can overlap an existing theatrical run.
+
+`FilmDistributionSystem` owns the run state and tracks settled days per production ID. `StudioBuildingManager` starts the run from the dossier release callback and credits the existing balance on `GameClock.day_advanced`, including during manual fast-forward. Repeating a release or settling the same day twice cannot duplicate the revenue.
+
+For manual verification, deliver a mastered reel to the release dock and open Film Promotion. Use the +1 day control and compare the displayed gross with the budget change. Buy a campaign after the first payment, then check the next day and confirm the previous receipts remain intact. Advance through the seventh payment and confirm the run closes and campaign buttons are disabled.
 
 ## Current boundaries
 
-- The commercial-success score is now calculated and persisted, but box-office revenue, release windows and distribution contracts remain part of the future Film Distribution milestone.
+- The run currently uses a fixed release window and deterministic reach. Distribution contracts, reviews, competing films, theatrical costs and campaign save/load remain future work.
 - Costume selection is genre-based and automatic; per-character costume assignment and costume wear are not yet modeled.
 - Repairs use the existing technician profession and warehouse routing. A dedicated maintenance department and repair priority queue are future extensions.
 - The shared budget is intentionally transitional until the full Studio Economy system is introduced.

@@ -119,4 +119,4 @@ These tests cover profession-to-building assignment, workplace capacity and skil
 
 ## Explicit boundaries
 
-Studio Operations v1 established the workplace and crew-readiness foundation but did not itself start film production. That boundary has since been extended by **Film Production v1**, documented in \`docs/architecture/film_production_v1.md\`. Film Production v1 adds role casting, actor blocking, scene phases, takes, retakes, camera tracking and completed-film results. Editing, release, distribution and campaign persistence remain future systems.
+Studio Operations v1 established workplaces and crew readiness. [Film Production v1](film_production_v1.md) adds role casting, actor blocking, scene phases, takes, retakes, camera tracking and completed-film results. Mastered films reach the release dock after editing and then earn daily receipts through [the theatrical run](studio_business_system_v1.md#theatrical-run). Campaign persistence remains planned.

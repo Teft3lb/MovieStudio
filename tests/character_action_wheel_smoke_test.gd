@@ -106,6 +106,21 @@ func _run_tests() -> void:
 		_selected_action_id == "profile",
 		"Radial action activation must emit the selected action ID to the manager."
 	)
+	wheel.call(
+		"open_for_employee",
+		{
+			"name": "Александра Константинопольская",
+			"profession": "Художник-постановщик",
+			"status": "Ожидает начала репетиции в большом съёмочном павильоне",
+		},
+		actions,
+		Vector2(520.0, 300.0)
+	)
+	await process_frame
+	_expect(
+		center_panel != null and center_panel.size.is_equal_approx(Vector2(116.0, 108.0)),
+		"Long employee details must fit the same compact center card."
+	)
 	wheel.call("close")
 	_expect(
 		not bool(wheel.call("is_open")),

@@ -18,11 +18,6 @@ class FakeStage extends RefCounted:
 	var stage_size_tier: int = 3
 
 
-class FakeInventory extends RefCounted:
-	func get_owned_prop_ids() -> Array[String]:
-		return []
-
-
 class FakeStudioManager extends Node:
 	var screenplay: Variant
 	var stage: Variant
@@ -35,6 +30,15 @@ class FakeStudioManager extends Node:
 
 	func get_script_for_production() -> Variant:
 		return screenplay
+
+	func get_active_writing_project() -> Variant:
+		return null
+
+	func get_costume_ids_for_genre(_genre_id: String) -> Array[String]:
+		return []
+
+	func get_costume_quality_bonus_for_genre(_genre_id: String) -> float:
+		return 0.0
 
 	func get_active_film_project() -> Variant:
 		return null
@@ -100,7 +104,7 @@ func _run_tests() -> void:
 		FILM_PRODUCTION_SYSTEM_SCRIPT.new(),
 		null,
 		null,
-		FakeInventory.new()
+		StudioSetInventory.new()
 	)
 	var layout := VBoxContainer.new()
 	root.add_child(layout)

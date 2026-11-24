@@ -82,6 +82,9 @@ const BUSINESS_CONTROLLER_SCRIPT = preload(
 const FILM_MARKETING_SYSTEM_SCRIPT = preload(
 	"res://scripts/domain/film_distribution/film_marketing_system.gd"
 )
+const FILM_DISTRIBUTION_SYSTEM_SCRIPT = preload(
+	"res://scripts/domain/film_distribution/film_distribution_system.gd"
+)
 const CHARACTER_DRAG_CONTROLLER_SCRIPT = preload(
 	"res://scripts/presentation/characters/character_drag_drop_controller.gd"
 )
@@ -99,6 +102,7 @@ var _navigation_system: RefCounted
 var _set_inventory: Variant
 var _business_controller: RefCounted
 var _film_marketing_system: RefCounted
+var _film_distribution := FILM_DISTRIBUTION_SYSTEM_SCRIPT.new()
 var _decor_shop_group_id: String = ""
 var _decor_shop_group_option: OptionButton
 var _decor_shop_budget_label: Label
@@ -216,6 +220,7 @@ func setup(game_clock: Node, character_manager: Node) -> void:
 	_get_building_inspector_controller()
 	_get_film_dossier_controller()
 	_game_clock.minute_advanced.connect(_on_game_minute_advanced)
+	_game_clock.day_advanced.connect(_settle_film_distribution)
 
 	var studio_hud: Node = get_node_or_null("../StudioHUD")
 	if (
@@ -555,15 +560,39 @@ func on_film_editing_started() -> void:
 
 
 func on_film_dossier_released(payload: Dictionary) -> void:
+	var production: Variant = _active_film_project
+	var editing: Variant = _active_editing_project
+	if (
+		production == null
+		or editing == null
+		or str(payload.get("script_id", "")) != str(production.script_id)
+		or str(editing.production_project_id) != str(production.id)
+		or str(editing.status) != "completed"
+	):
+		return
+	if not _film_distribution.open_run(
+		str(production.id), int(_game_clock.current_day), int(editing.commercial_success_score)
+	):
+		return
 	_released_film_records.append(payload.duplicate(true))
-	if _active_film_project != null and is_instance_valid(_character_manager):
+	if is_instance_valid(_character_manager):
 		CELEBRITY_SYSTEM_SCRIPT.new().call(
 			"apply_film_project_release",
-			_active_film_project,
+			production,
 			_character_manager.call("get_employees")
 		)
 	archive_completed_film_chain()
 	_refresh_building_detail()
+
+
+func _settle_film_distribution(day: int) -> void:
+	var revenue: int = _film_distribution.settle_through(day)
+	if revenue > 0:
+		_set_inventory.call("add_funds", revenue)
+		_refresh_decor_shop_panel()
+	var selected_building: Variant = _find_building(_selected_building_id)
+	if selected_building != null and str(selected_building.building_type_id) == "film_promotion":
+		_refresh_building_detail()
 
 
 func get_released_film_records() -> Array[Dictionary]:
@@ -2313,6 +2342,8 @@ func get_marketable_films() -> Array[Dictionary]:
 				),
 				"marketing_spend": int(active_editing.marketing_spend),
 			})
+	for film in result:
+		film["distribution"] = _film_distribution.get_run(str(film.project_id))
 	return result
 
 
@@ -2332,6 +2363,8 @@ func launch_marketing_campaign(
 		or not has_building_type("film_promotion")
 	):
 		return {"success": false, "reason": "Фильм для рекламы не найден."}
+	if bool(_film_distribution.get_run(project_id).get("closed", false)):
+		return {"success": false, "reason": "Прокат фильма уже завершён."}
 	var campaign_cost: int = int(
 		_film_marketing_system.call("get_campaign_cost", campaign_id)
 	)
@@ -2370,6 +2403,9 @@ func launch_marketing_campaign(
 		if result.is_empty():
 			return {"success": false, "reason": "Фильм для рекламы не найден."}
 		return result
+	_film_distribution.update_commercial_score(
+		project_id, int(result.get("commercial_success_score", 0))
+	)
 	_refresh_decor_shop_panel()
 	return result
 

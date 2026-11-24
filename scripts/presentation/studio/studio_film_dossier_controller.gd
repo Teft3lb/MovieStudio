@@ -196,7 +196,7 @@ func release_film(script_id: String) -> bool:
 	var dossier: Variant = _dossiers.get(script_id)
 	if dossier == null or not bool(dossier.release_film()):
 		return false
-	_last_message = "Фильм «%s» выпущен! Он добавлен в архив студии." % str(
+	_last_message = "Фильм «%s» выпущен. Первые сборы поступят завтра." % str(
 		dossier.title
 	)
 	# Keep the latest master on the release platform, but retire older
