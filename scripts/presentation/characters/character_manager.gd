@@ -78,6 +78,7 @@ var market_candidates: Array = []
 var _generator: RefCounted
 var _needs_system: RefCounted
 var _aging_system: RefCounted
+var _lounge_conversations := preload("res://scripts/presentation/characters/studio_lounge_conversations.gd").new()
 var _skill_progression_system: RefCounted
 var _employment_system: Variant
 var _game_clock: Node
@@ -1738,7 +1739,7 @@ func _get_free_time_facility_type(
 			return "studio_lounge"
 	return ""
 
-func _update_social_relationships() -> void:
+func _update_social_relationships(absolute_minute: int = 0) -> void:
 	var attendees_by_building: Dictionary = {}
 	for employee in employees:
 		var actor: Node = get_employee_actor(str(employee.id))
@@ -1753,6 +1754,7 @@ func _update_social_relationships() -> void:
 		if not attendees_by_building.has(building_id):
 			attendees_by_building[building_id] = []
 		attendees_by_building[building_id].append(employee)
+	_lounge_conversations.update(attendees_by_building, _employee_actors, absolute_minute)
 	for building_id_value in attendees_by_building.keys():
 		var attendees: Array = attendees_by_building[building_id_value]
 		for first_index in range(attendees.size()):
@@ -2199,7 +2201,7 @@ func _on_game_minute_advanced(day: int, hour: int, _minute: int) -> void:
 				_employee_task_overrides[employee_id]
 			)
 
-	_update_social_relationships()
+	_update_social_relationships(day * 1440 + hour * 60 + _minute)
 	if not _game_clock.is_manual_fast_forward:
 		_refresh_roster()
 		_refresh_detail_panel()

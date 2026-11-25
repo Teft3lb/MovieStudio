@@ -32,6 +32,7 @@ var _workplace_exit_path: Array[Vector3] = []
 var _workplace_path_index: int = 0
 var _workplace_work_style: String = ""
 var _workplace_slot_index: int = -1
+var _office_interaction: OfficeInteractionSlot
 var _blocked_movement_seconds: float = 0.0
 var _production_action_id: String = ""
 var _has_workplace_destination: bool = false
@@ -46,6 +47,7 @@ var _facility_slot_index: int = -1
 var _facility_route: Array[Vector3] = []
 var _facility_route_index: int = 0
 var _facility_action_id: String = ""
+var _lounge_action: String = ""
 var _facility_facing_direction: Vector3 = Vector3.ZERO
 var _movement_collision_shape: CapsuleShape3D
 var _clear_workplace_after_facility_leave: bool = false
@@ -170,7 +172,8 @@ func _process_facility_movement(simulation_delta: float) -> void:
 		return
 	_set_walking(false)
 	if is_instance_valid(_visual):
-		_visual.call("set_performance_action", _facility_action_id)
+		var action: String = _facility_action_id if _lounge_action.is_empty() else _lounge_action
+		_visual.call("set_performance_action", action)
 	_advance_visual(simulation_delta)
 
 
@@ -544,6 +547,8 @@ func _cancel_scene_performance() -> void:
 
 
 func _finish_workplace_arrival() -> void:
+	if _is_at_workplace and not _is_leaving_workplace:
+		return
 	_is_at_workplace = true
 	_is_leaving_workplace = false
 	_face_workplace()
@@ -552,6 +557,11 @@ func _finish_workplace_arrival() -> void:
 
 
 func _face_workplace() -> void:
+	var interaction := _find_office_interaction()
+	if interaction != null and interaction.get_occupant() in [null, self]:
+		global_position = interaction.global_position
+		look_at(global_position - interaction.global_basis.z, Vector3.UP)
+		return
 	if _workplace_path.size() < 2:
 		return
 	var last_index: int = _workplace_path.size() - 1
@@ -700,6 +710,7 @@ func snap_outside_facility() -> void:
 
 
 func _finish_facility_leave() -> void:
+	_lounge_action = ""
 	var should_clear_workplace: bool = _clear_workplace_after_facility_leave
 	_clear_workplace_after_facility_leave = false
 	_facility_active = false
@@ -751,6 +762,25 @@ func _face_facility() -> void:
 			)
 
 
+func set_lounge_conversation(position_on_lot: Vector3, speaking: bool, argument: bool) -> void:
+	if not is_at_facility("studio_lounge"):
+		return
+	var direction := position_on_lot - global_position
+	direction.y = 0.0
+	if not direction.is_zero_approx():
+		look_at(global_position + direction, Vector3.UP)
+	if argument:
+		_lounge_action = "dramatic" if speaking else "reacting"
+	else:
+		_lounge_action = "speaking" if speaking else "waiting"
+
+
+func clear_lounge_conversation() -> void:
+	_lounge_action = ""
+	if is_at_facility("studio_lounge"):
+		_face_facility()
+
+
 func is_in_facility() -> bool:
 	return _facility_active
 
@@ -779,6 +809,7 @@ func get_facility_slot_index() -> int:
 
 
 func _clear_facility_route() -> void:
+	_lounge_action = ""
 	if not _facility_active:
 		return
 	_clear_workplace_after_facility_leave = false
@@ -1012,10 +1043,7 @@ func _recover_blocked_route(simulation_delta: float, route_kind: String) -> void
 	# Actors are children of CharacterManager, while StudioBuildingManager is
 	# its sibling. The old ../ path resolved below CharacterManager and never
 	# found the navigation service, silently disabling recovery.
-	var navigation_manager: Node = get_node_or_null("../../StudioBuildingManager")
-	if navigation_manager == null:
-		# Preserve support for tests and scenes that parent actors directly.
-		navigation_manager = get_node_or_null("../StudioBuildingManager")
+	var navigation_manager := _get_building_manager()
 	if navigation_manager == null:
 		return
 	var route: Array[Vector3] = []
@@ -1201,13 +1229,55 @@ func _set_working(value: bool) -> void:
 	if not is_instance_valid(_visual):
 		return
 	if value and not _production_action_id.is_empty():
+		_set_office_interaction(null)
 		_visual.call("set_performance_action", _production_action_id)
 	else:
+		_set_office_interaction(_find_office_interaction() if value else null)
 		_visual.call(
 			"set_working",
 			value,
 			_workplace_work_style
 		)
+
+
+func _get_building_manager() -> Node:
+	var manager := get_node_or_null("../../StudioBuildingManager")
+	return manager if manager != null else get_node_or_null("../StudioBuildingManager")
+
+
+func _find_office_interaction() -> OfficeInteractionSlot:
+	if _workplace_work_style not in ["screenwriter", "film_editor"] or _workplace_slot_index < 0:
+		return null
+	if is_instance_valid(_office_interaction):
+		return _office_interaction
+	var manager := _get_building_manager()
+	if manager == null or not manager.has_method("get_building_actor_by_id"):
+		return null
+	var building: Node = manager.call("get_building_actor_by_id", _workplace_building_id)
+	if building == null or not building.has_method("get_office_interaction"):
+		return null
+	return building.call("get_office_interaction", _workplace_slot_index)
+
+
+func _set_office_interaction(interaction: OfficeInteractionSlot) -> void:
+	if _office_interaction == interaction:
+		return
+	if is_instance_valid(_office_interaction):
+		_office_interaction.tree_exiting.disconnect(_on_office_interaction_removed)
+		_office_interaction.release(self)
+	_office_interaction = interaction if is_instance_valid(interaction) and interaction.try_reserve(self) else null
+	if _office_interaction != null:
+		_office_interaction.tree_exiting.connect(_on_office_interaction_removed)
+	_visual.call("set_office_interaction", _office_interaction)
+
+
+func _on_office_interaction_removed() -> void:
+	clear_workplace()
+
+
+func _exit_tree() -> void:
+	if is_instance_valid(_office_interaction):
+		_office_interaction.release(self)
 
 
 func _create_name_tag() -> void:

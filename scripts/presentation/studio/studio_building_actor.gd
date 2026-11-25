@@ -64,6 +64,7 @@ var _marker_provider: RefCounted
 var _set_prop_visual_builder: RefCounted
 var _visual_factory: RefCounted
 var _interior_lighting: RefCounted
+var _cutaway_wall: String = "uninitialized"
 
 func setup(data: Variant) -> void:
 	building_data = data
@@ -164,6 +165,10 @@ func get_workplace_facing_direction(slot_index: int) -> Vector3:
 	if _marker_provider == null:
 		return Vector3.ZERO
 	return _marker_provider.call("get_workplace_facing_direction", slot_index)
+
+
+func get_office_interaction(slot_index: int) -> OfficeInteractionSlot:
+	return _interior_root.get_node_or_null("Workstation_%d" % slot_index) as OfficeInteractionSlot
 
 func get_scene_mark(
 	slot_index: int,
@@ -782,19 +787,22 @@ func _update_cutaway() -> void:
 		return
 
 	var is_close: bool = _is_selected or (
-		camera.global_position.distance_to(global_position)
-		<= CUTAWAY_DISTANCE
+		camera.global_position.distance_squared_to(global_position)
+		<= CUTAWAY_DISTANCE * CUTAWAY_DISTANCE
 	)
-	_roof_assembly.visible = not is_close
 
-	var visible_wall: String = ""
+	var hidden_wall: String = ""
 	if is_close:
 		var camera_local: Vector3 = to_local(camera.global_position)
 		if absf(camera_local.x) > absf(camera_local.z):
-			visible_wall = "right" if camera_local.x > 0.0 else "left"
+			hidden_wall = "right" if camera_local.x > 0.0 else "left"
 		else:
-			visible_wall = "front" if camera_local.z > 0.0 else "back"
+			hidden_wall = "front" if camera_local.z > 0.0 else "back"
 
+	if _cutaway_wall == hidden_wall:
+		return
+	_cutaway_wall = hidden_wall
+	_roof_assembly.visible = not is_close
 	for wall_id in _wall_groups:
 		var wall_group: Node3D = _wall_groups[wall_id]
-		wall_group.visible = not is_close or str(wall_id) != visible_wall
+		wall_group.visible = str(wall_id) != hidden_wall

@@ -47,7 +47,7 @@ func setup(
 	var imported := MODEL.instantiate() as Node3D
 	add_child(imported)
 	_skeleton = imported.find_children("*", "Skeleton3D", true, false)[0] as Skeleton3D
-	for bone_name in POSE_BONES + ["Head"]:
+	for bone_name in POSE_BONES + ["Head", "LeftForearm", "RightForearm"]:
 		_bone_indices[bone_name] = _skeleton.find_bone(bone_name)
 	var player := imported.find_children("*", "AnimationPlayer", true, false)[0] as AnimationPlayer
 	_setup_animation_tree(player)
@@ -151,6 +151,42 @@ func advance(
 
 func _set_joint_pitch(bone_name: String, radians: float) -> void:
 	_skeleton.set_bone_pose_rotation(_bone_indices[bone_name], Quaternion(Vector3.RIGHT, radians))
+
+
+func apply_keyboard_pose(slot: OfficeInteractionSlot, seated: float, phase: float) -> void:
+	var influence := smoothstep(0.55, 1.0, seated)
+	if influence <= 0.0:
+		return
+	var left := slot.left_hand.global_position + Vector3.UP * (0.012 * sin(phase * 5.8))
+	var right := slot.right_hand.global_position + Vector3.UP * (0.012 * sin(phase * 5.1 + PI))
+	_reach("Left", _skeleton.to_local(left), Vector3(-0.55, -1.0, 0.0), influence)
+	_reach("Right", _skeleton.to_local(right), Vector3(0.55, -1.0, 0.0), influence)
+
+
+func _reach(side: String, target: Vector3, pole: Vector3, influence: float) -> void:
+	var upper: int = _bone_indices[side + "Arm"]
+	var forearm: int = _bone_indices[side + "Forearm"]
+	var shoulder := _skeleton.get_bone_global_pose(upper).origin
+	var axis := (target - shoulder).normalized()
+	var bend := (pole - axis * pole.dot(axis)).normalized()
+	if axis.is_zero_approx() or bend.is_zero_approx():
+		return
+	var upper_rest := _skeleton.get_bone_rest(forearm).origin
+	var upper_length := upper_rest.length()
+	var lower_length: float = 0.36
+	var distance := clampf(shoulder.distance_to(target), 0.10, upper_length + lower_length - 0.015)
+	var projected := (distance * distance + upper_length * upper_length - lower_length * lower_length) / (2.0 * distance)
+	var elbow := shoulder + axis * projected + bend * sqrt(maxf(upper_length * upper_length - projected * projected, 0.0))
+	var wrist := shoulder + axis * distance
+	_aim_arm_bone(upper, upper_rest.normalized(), (elbow - shoulder).normalized(), influence)
+	_aim_arm_bone(forearm, Vector3.DOWN, (wrist - elbow).normalized(), influence)
+
+
+func _aim_arm_bone(bone: int, rest_axis: Vector3, target_axis: Vector3, influence: float) -> void:
+	var parent := _skeleton.get_bone_global_pose(_skeleton.get_bone_parent(bone)).basis.orthonormalized()
+	var desired := parent.get_rotation_quaternion().inverse() * Quaternion(rest_axis, target_axis)
+	var current := _skeleton.get_bone_pose_rotation(bone)
+	_skeleton.set_bone_pose_rotation(bone, current.slerp(desired, influence))
 
 
 func _setup_animation_tree(player: AnimationPlayer) -> void:

@@ -57,6 +57,8 @@ var _animation_phase: float = 0.0
 var _last_facing: float = 0.0
 var _turn_time: float = 0.0
 var _seat_blend: float = 0.0
+var _seat_drop: float = 0.28
+var _office_interaction: OfficeInteractionSlot
 
 
 func setup(character_payload: Dictionary) -> void:
@@ -82,6 +84,10 @@ func set_character_age(age: int) -> void:
 
 func set_costume(costume_id: String) -> void:
 	_employee_model.call("set_costume", costume_id)
+
+
+func set_office_interaction(interaction: OfficeInteractionSlot) -> void:
+	_office_interaction = interaction
 
 func set_walking(value: bool) -> void:
 	_walking = value
@@ -143,7 +149,15 @@ func advance_simulation(simulation_delta: float) -> void:
 
 	var carrying: bool = _carried_prop_root.visible
 	var is_eating: bool = _performing and _performance_action == "eating"
-	_seat_blend = move_toward(_seat_blend, 1.0 if is_eating else 0.0, simulation_delta / 0.18)
+	var is_at_desk: bool = _working and is_instance_valid(_office_interaction)
+	_seat_blend = move_toward(
+		_seat_blend, 1.0 if is_eating or is_at_desk else 0.0, simulation_delta / 0.24
+	)
+	if is_at_desk:
+		var seat := _office_interaction.get_node("Seat") as Marker3D
+		_seat_drop = 0.85 * _body_base_scale.y - seat.position.y
+	elif is_eating:
+		_seat_drop = 0.28
 	if _walking:
 		var swing: float = sin(_animation_phase) * 0.55
 		if carrying:
@@ -157,6 +171,10 @@ func advance_simulation(simulation_delta: float) -> void:
 	elif _working:
 		_set_knee_pose(0.0, 0.0)
 		_advance_work_animation()
+		if is_at_desk:
+			_set_leg_pose(1.42 * _seat_blend, 1.42 * _seat_blend)
+			_set_knee_pose(-1.42 * _seat_blend, -1.42 * _seat_blend)
+			_body_root.rotation.x = -0.10 * _seat_blend
 	else:
 		_set_arm_pose(0.0, 0.0)
 		_set_leg_pose(0.0, 0.0)
@@ -168,7 +186,7 @@ func advance_simulation(simulation_delta: float) -> void:
 
 	if is_instance_valid(_body_root):
 		var is_sleeping: bool = _performing and _performance_action == "sleeping"
-		var pose_offset: float = 0.58 if is_sleeping else -0.28 * _seat_blend
+		var pose_offset: float = 0.58 if is_sleeping else -_seat_drop * _seat_blend
 		var bob_amount: float = (
 			0.022 if _walking
 			else 0.004 if is_sleeping
@@ -190,6 +208,8 @@ func advance_simulation(simulation_delta: float) -> void:
 		"advance", simulation_delta, _get_skeletal_state(simulation_delta),
 		_pose_pivots, _head_root, carrying
 	)
+	if is_at_desk:
+		_employee_model.call("apply_keyboard_pose", _office_interaction, _seat_blend, _animation_phase)
 
 
 func _get_skeletal_state(delta: float) -> StringName:
@@ -203,6 +223,8 @@ func _get_skeletal_state(delta: float) -> StringName:
 	if _walking:
 		return &"Walk"
 	if _working:
+		if is_instance_valid(_office_interaction):
+			return &"DeskTyping"
 		match _work_style:
 			"screenwriter", "film_editor", "producer", "casting_director":
 				return &"Typing"

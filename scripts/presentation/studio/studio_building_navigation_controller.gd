@@ -51,11 +51,12 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	var outside: Vector3 = _entrance_outside + Vector3(offset, 0.0, 0.0)
 	var inside: Vector3 = _entrance_inside + Vector3(offset, 0.0, 0.0)
 	var target: Vector3 = _workplace_points[normalized_slot]
+	var route_target := _get_workplace_approach(normalized_slot, target)
 	# The old door-to-corridor segment cut straight through set walls.
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
 		inside,
-		target,
+		route_target,
 		_get_interior_navigation_obstacles(normalized_slot),
 		0.5,
 		_get_interior_navigation_bounds()
@@ -76,6 +77,12 @@ func get_workplace_path(slot_index: int) -> Array[Vector3]:
 	if path.size() == 3:
 		path.insert(2, path[1].lerp(path[2], 0.5))
 	return path
+
+
+func _get_workplace_approach(slot_index: int, fallback: Vector3) -> Vector3:
+	var approach := _interior_root.get_node_or_null("Workstation_%d/Approach" % slot_index) as Marker3D
+	return _interior_root.to_local(approach.global_position) if approach != null else fallback
+
 
 func _get_entrance_slot_offset(
 	slot_index: int,
@@ -133,9 +140,13 @@ func get_exit_path_from(
 	)
 	var doorway_offset := Vector3(slot_offset, 0.0, 0.0)
 	var inside_position: Vector3 = _entrance_inside + doorway_offset
+	var route_start := local_start
+	if resolved_slot_index >= 0 and resolved_slot_index < _workplace_points.size():
+		if local_start.distance_to(_workplace_points[resolved_slot_index]) < 0.28:
+			route_start = _get_workplace_approach(resolved_slot_index, local_start)
 	var indoor_path: Array[Vector3] = _navigation_system.call(
 		"build_path",
-		local_start,
+		route_start,
 		inside_position,
 		_get_interior_navigation_obstacles(resolved_slot_index),
 		0.5,
@@ -144,6 +155,8 @@ func get_exit_path_from(
 	if indoor_path.is_empty():
 		return []
 	var result: Array[Vector3] = []
+	if route_start != local_start:
+		result.append(start_world_position)
 	for point in indoor_path:
 		result.append(_interior_root.to_global(point))
 	var outside_position: Vector3 = _interior_root.to_global(
@@ -174,6 +187,24 @@ func _get_interior_navigation_bounds() -> Rect2:
 func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 	var obstacles: Array[Dictionary] = []
 	match str(_building_data.building_type_id):
+		"script_department", "editing_suite":
+			var editing: bool = str(_building_data.building_type_id) == "editing_suite"
+			var desk_depth: float = 0.475 if editing else 0.425
+			var desk_width: float = 1.225 if editing else 0.875
+			var desk_z: float = -0.55 if editing else -0.95
+			for index in _workplace_points.size():
+				var point := _workplace_points[index]
+				obstacles.append({
+					"center": Vector2(point.x, desk_z),
+					"half_extents": Vector2(desk_width, desk_depth),
+					"clearance": 0.16,
+				})
+				if index != slot_index:
+					obstacles.append({
+						"center": Vector2(point.x, point.z),
+						"half_extents": Vector2(0.32, 0.36),
+						"clearance": 0.18,
+					})
 		"cafeteria":
 			obstacles.append({
 				"center": Vector2(0.0, -4.45),

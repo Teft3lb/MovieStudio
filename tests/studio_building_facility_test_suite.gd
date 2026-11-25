@@ -94,11 +94,11 @@ func _test_cafeteria_seating_layout() -> void:
 		and back_back_position.z > first_back_seat.z,
 		"Cafeteria chair backs must sit behind the employee on both sides of the table."
 	)
-	var front_back_mesh: BoxMesh = (front_chair_back as MeshInstance3D).mesh as BoxMesh
+	var front_back_mesh: Mesh = (front_chair_back as MeshInstance3D).mesh
 	_expect(
 		front_back_mesh != null
-		and absf(front_back_mesh.size.x - 0.58) < 0.01
-		and absf(front_back_mesh.size.z - 0.12) < 0.01,
+		and absf(front_back_mesh.get_aabb().size.x - 0.58) < 0.01
+		and absf(front_back_mesh.get_aabb().size.z - 0.12) < 0.01,
 		"Chair backs must be wide across the seat and thin front-to-back, not laid across the seat center."
 	)
 	var front_facing: Vector3 = actor.call("get_workplace_facing_direction", 0)

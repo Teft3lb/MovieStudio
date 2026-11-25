@@ -99,18 +99,6 @@ func _capture() -> void:
 	gallery.position = Vector3(-7.0, 0.0, 10.0)
 	_aim(camera, Vector3(-1.0, 0.0, 0.0), Vector3(18.0, 35.0, 31.0))
 	await _save_frame("benchmark")
-	for step in range(12):
-		await RenderingServer.frame_post_draw
-	var elapsed_usec := Time.get_ticks_usec()
-	for step in range(90):
-		for visual in samples:
-			visual.call("advance_simulation", 1.0 / 60.0)
-		await RenderingServer.frame_post_draw
-	print("BENCHMARK characters=%d frames=90 elapsed_ms=%.1f draw_calls=%d primitives=%d" % [
-		samples.size(), (Time.get_ticks_usec() - elapsed_usec) / 1000.0,
-		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
-		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME),
-	])
 	var scene_mark := stage.get_scene_mark(0, "rehearsal", 0)
 	var scene_actor := _add_preview_actor(world, clock, scene_mark)
 	scene_actor.start_scene_performance(

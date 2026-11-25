@@ -1,6 +1,8 @@
 extends RefCounted
 class_name StudioOfficeVisualBuilder
 
+const FURNITURE = preload("res://scripts/presentation/studio/studio_office_furniture.gd")
+
 var _actor: Node3D
 var _interior_root: Node3D
 var _visual_factory: RefCounted
@@ -74,13 +76,7 @@ func _build_editing_suite(
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_create_box(
-		_actor,
-		"EditingBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color)
 	_create_box(
 		_get_wall_group("front"),
 		"EditingWindowLeft",
@@ -113,76 +109,20 @@ func _build_editing_suite(
 	_build_editing_suite_interior(width, depth)
 
 func _build_editing_suite_interior(width: float, depth: float) -> void:
-	var desk_color: Color = Color(0.22, 0.24, 0.26)
 	var metal_color: Color = Color(0.15, 0.17, 0.19)
-	var screen_color: Color = Color(0.08, 0.28, 0.36)
-	var mixer_color: Color = Color(0.31, 0.34, 0.35)
-
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 3.0
-		_create_box(
-			_interior_root,
-			"EditingDesk_%d" % slot_index,
-			Vector3(2.45, 0.16, 0.95),
-			desk_color,
-			Vector3(desk_x, 0.82, -0.55)
-		)
-		for leg_x in [-1.02, 1.02]:
-			for leg_z in [-0.34, 0.34]:
-				_create_box(
-					_interior_root,
-					"EditingDeskLeg_%d_%d_%d" % [
-						slot_index,
-						roundi(leg_x * 100.0),
-						roundi(leg_z * 100.0),
-					],
-					Vector3(0.09, 0.78, 0.09),
-					metal_color,
-					Vector3(desk_x + leg_x, 0.40, -0.55 + leg_z)
-				)
-		_create_box(
-			_interior_root,
-			"EditingMonitor_%d" % slot_index,
-			Vector3(0.78, 0.54, 0.08),
-			screen_color,
-			Vector3(desk_x - 0.43, 1.25, -0.93)
-		)
-		_create_box(
-			_interior_root,
-			"EditingPreviewMonitor_%d" % slot_index,
-			Vector3(0.78, 0.54, 0.08),
-			Color(0.12, 0.24, 0.30),
-			Vector3(desk_x + 0.43, 1.25, -0.93)
-		)
-		_create_box(
-			_interior_root,
-			"EditingKeyboard_%d" % slot_index,
-			Vector3(0.72, 0.04, 0.22),
-			metal_color,
-			Vector3(desk_x - 0.22, 0.93, -0.12)
-		)
-		_create_box(
-			_interior_root,
-			"AudioMixer_%d" % slot_index,
-			Vector3(0.58, 0.18, 0.42),
-			mixer_color,
-			Vector3(desk_x + 0.76, 0.95, -0.12)
-		)
-		_create_cylinder(
-			_interior_root,
-			"EditingChairSeat_%d" % slot_index,
-			0.32,
-			0.12,
-			metal_color,
-			Vector3(desk_x, 0.48, 0.82)
-		)
-		_create_box(
-			_interior_root,
-			"EditingChairBack_%d" % slot_index,
-			Vector3(0.62, 0.68, 0.12),
-			Color(0.12, 0.15, 0.18),
-			Vector3(desk_x, 0.86, 1.08)
-		)
+		var keyboard := Vector3(desk_x, 0.9, -0.17)
+		FURNITURE.place(_interior_root, "EditingDesk", "EditingDesk_%d" % slot_index,
+			Vector3(desk_x, 0, -0.55))
+		FURNITURE.place(_interior_root, "OfficeMonitor", "EditingMonitor_%d" % slot_index,
+			Vector3(desk_x - 0.43, 0.9, -0.84))
+		FURNITURE.place(_interior_root, "OfficeMonitor", "EditingPreviewMonitor_%d" % slot_index,
+			Vector3(desk_x + 0.43, 0.9, -0.84))
+		FURNITURE.place(_interior_root, "OfficeKeyboard", "EditingKeyboard_%d" % slot_index, keyboard)
+		FURNITURE.place(_interior_root, "AudioMixer", "AudioMixer_%d" % slot_index,
+			Vector3(desk_x + 0.77, 0.9, -0.31))
+		_add_workstation(slot_index, Vector3(desk_x, 0, 0.47), keyboard)
 
 	_create_box(
 		_interior_root,
@@ -198,11 +138,6 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		metal_color,
 		Vector3(width * 0.5 - 0.55, 0.93, -2.55)
 	)
-	_workplace_points = [
-		Vector3(-3.0, 0.0, 1.55),
-		Vector3(0.0, 0.0, 1.55),
-		Vector3(3.0, 0.0, 1.55),
-	]
 
 func _build_script_department(
 	footprint: Vector2,
@@ -246,13 +181,7 @@ func _build_script_department(
 		Vector3(0.0, height - 0.275, 0.0)
 	)
 
-	_create_box(
-		_actor,
-		"OfficeBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color)
 	_create_box(
 		_get_wall_group("front"),
 		"OfficeFrontWindowLeft",
@@ -285,64 +214,17 @@ func _build_script_department(
 	_build_script_department_interior(width, depth)
 
 func _build_script_department_interior(width: float, depth: float) -> void:
-	var desk_color: Color = Color(0.34, 0.23, 0.16)
-	var metal_color: Color = Color(0.17, 0.19, 0.21)
-	var screen_color: Color = Color(0.10, 0.27, 0.32)
-
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 2.35
 		var desk_name: String = "WriterDesk" if slot_index == 0 else "WriterDesk%d" % (slot_index + 1)
-		_create_box(
-			_interior_root,
-			desk_name,
-			Vector3(1.75, 0.16, 0.85),
-			desk_color,
-			Vector3(desk_x, 0.82, -0.95)
-		)
-		for leg_x in [-0.72, 0.72]:
-			for leg_z in [-0.30, 0.30]:
-				_create_box(
-					_interior_root,
-					"DeskLeg",
-					Vector3(0.09, 0.78, 0.09),
-					metal_color,
-					Vector3(desk_x + leg_x, 0.40, -0.95 + leg_z)
-				)
-		_create_box(
-			_interior_root,
-			"ComputerMonitor",
-			Vector3(0.72, 0.48, 0.08),
-			screen_color,
-			Vector3(desk_x, 1.16, -1.23)
-		)
-		_create_box(
-			_interior_root,
-			"Keyboard",
-			Vector3(0.58, 0.035, 0.20),
-			metal_color,
-			Vector3(desk_x, 0.92, -0.56)
-		)
-		_create_cylinder(
-			_interior_root,
-			"OfficeChairSeat",
-			0.32,
-			0.12,
-			metal_color,
-			Vector3(desk_x + 0.82, 0.48, 0.72)
-		)
-		_create_box(
-			_interior_root,
-			"OfficeChairBack",
-			Vector3(0.58, 0.65, 0.12),
-			Color(0.15, 0.18, 0.21),
-			Vector3(desk_x + 0.82, 0.85, 0.97)
-		)
+		var keyboard := Vector3(desk_x, 0.9, -0.60)
+		var monitor_name: String = "ComputerMonitor" if slot_index == 0 else "ComputerMonitor%d" % (slot_index + 1)
+		FURNITURE.place(_interior_root, "WriterDesk", desk_name, Vector3(desk_x, 0, -0.95))
+		FURNITURE.place(_interior_root, "OfficeMonitor", monitor_name,
+			Vector3(desk_x, 0.9, -1.20))
+		FURNITURE.place(_interior_root, "OfficeKeyboard", "WriterKeyboard_%d" % slot_index, keyboard)
+		_add_workstation(slot_index, Vector3(desk_x, 0, 0.04), keyboard)
 
-	_workplace_points = [
-		Vector3(-2.35, 0.0, 0.0),
-		Vector3(0.0, 0.0, 0.0),
-		Vector3(2.35, 0.0, 0.0),
-	]
 	_create_box(
 		_interior_root,
 		"Bookshelf",
@@ -357,6 +239,27 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 		Color(0.38, 0.40, 0.36),
 		Vector3(width * 0.5 - 1.2, 2.0, -depth * 0.5 + 0.12)
 	)
+
+
+func _add_workstation(index: int, seat: Vector3, keyboard: Vector3) -> void:
+	var station := OfficeInteractionSlot.new()
+	station.setup(str(_actor.call("get_building_id")), index, seat, keyboard)
+	_interior_root.add_child(station)
+	_workplace_points.append(seat)
+	FURNITURE.place(_interior_root, "OfficeChair", "OfficeChair_%d" % index, seat)
+
+
+func _build_base_trim(width: float, depth: float, color: Color) -> void:
+	var front_panel_width := (width - 1.8) * 0.5
+	for side in [-1, 1]:
+		var name: String = "left" if side < 0 else "right"
+		_create_box(_get_wall_group(name), "SideBaseTrim", Vector3(0.14, 0.28, depth + 0.12),
+			color, Vector3(side * width * 0.5, 0.14, 0.0))
+		_create_box(_get_wall_group("front"), "FrontBaseTrim_%d" % side,
+			Vector3(front_panel_width, 0.28, 0.14), color,
+			Vector3(side * (0.90 + front_panel_width * 0.5), 0.14, depth * 0.5))
+	_create_box(_get_wall_group("back"), "BackBaseTrim", Vector3(width, 0.28, 0.14),
+		color, Vector3(0.0, 0.14, -depth * 0.5))
 
 
 func _create_floor(

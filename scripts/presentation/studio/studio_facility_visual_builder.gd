@@ -1,6 +1,8 @@
 extends RefCounted
 class_name StudioFacilityVisualBuilder
 
+const FURNITURE = preload("res://scripts/presentation/studio/studio_office_furniture.gd")
+
 var _actor: Node3D
 var _interior_root: Node3D
 var _visual_factory: RefCounted
@@ -800,20 +802,8 @@ func _build_cafeteria(
 	var table_center_z: float = 0.35
 	for table_index in range(table_centers.size()):
 		var center_x: float = table_centers[table_index]
-		_create_box(
-			_interior_root,
-			"CafeteriaTable_%d" % table_index,
-			Vector3(2.1, 0.16, 1.25),
-			Color(0.42, 0.29, 0.19),
-			Vector3(center_x, 0.82, table_center_z)
-		)
-		_create_box(
-			_interior_root,
-			"CafeteriaTableLeg_%d" % table_index,
-			Vector3(0.16, 0.72, 0.16),
-			trim_color,
-			Vector3(center_x, 0.40, 0.35)
-		)
+		FURNITURE.place(_interior_root, "DiningTable", "CafeteriaTable_%d" % table_index,
+			Vector3(center_x, 0.0, table_center_z))
 		var table_seats: Array[Vector3] = [
 			Vector3(center_x - 0.55, 0.0, table_center_z - 1.3),
 			Vector3(center_x + 0.55, 0.0, table_center_z - 1.3),
@@ -823,24 +813,13 @@ func _build_cafeteria(
 		for seat_index in range(table_seats.size()):
 			var seat_position: Vector3 = table_seats[seat_index]
 			seat_positions.append(seat_position)
-			_create_cylinder(
-				_interior_root,
-				"CafeteriaChairSeat_%d_%d" % [table_index, seat_index],
-				0.30,
-				0.12,
-				Color(0.23, 0.27, 0.27),
-				seat_position + Vector3(0.0, 0.48, 0.0)
-			)
-			var chair_back_side: float = (
-				-1.0 if seat_position.z < table_center_z else 1.0
-			)
-			_create_box(
-				_interior_root,
+			var chair := FURNITURE.place(_interior_root, "DiningChair",
+				"CafeteriaChair_%d_%d" % [table_index, seat_index], seat_position)
+			var front_row: bool = seat_position.z < table_center_z
+			chair.rotation.y = PI if front_row else 0.0
+			FURNITURE.place(_interior_root, "DiningChairBack",
 				"CafeteriaChairBack_%d_%d" % [table_index, seat_index],
-				Vector3(0.58, 0.62, 0.12),
-				Color(0.23, 0.27, 0.27),
-				seat_position + Vector3(0.0, 0.80, chair_back_side * 0.34)
-			)
+				seat_position + Vector3(0.0, 0.853, -0.31 if front_row else 0.31))
 	_workplace_points = seat_positions
 
 func _build_staff_housing(
@@ -914,8 +893,7 @@ func _build_staff_housing(
 		Vector3(4.7, 3.2, depth * 0.5 + 0.22)
 	)
 
-	var bed_frame_color: Color = Color(0.28, 0.20, 0.15)
-	var mattress_color: Color = Color(0.68, 0.65, 0.56)
+
 	var locker_color: Color = Color(0.24, 0.29, 0.28)
 	var bed_z_positions: Array[float] = [-3.5, -1.2, 1.2, 3.5]
 	var sleeping_positions: Array[Vector3] = []
@@ -923,34 +901,12 @@ func _build_staff_housing(
 		for bed_index in range(bed_z_positions.size()):
 			var bed_z: float = bed_z_positions[bed_index]
 			var bed_position := Vector3(side * 5.15, 0.0, bed_z)
-			_create_box(
-				_interior_root,
-				"StaffBedFrame_%d_%d" % [int(side), bed_index],
-				Vector3(1.55, 0.20, 1.95),
-				bed_frame_color,
-				bed_position + Vector3(0.0, 0.20, 0.0)
-			)
-			_create_box(
-				_interior_root,
-				"StaffBedMattress_%d_%d" % [int(side), bed_index],
-				Vector3(1.42, 0.20, 1.82),
-				mattress_color,
-				bed_position + Vector3(0.0, 0.40, 0.0)
-			)
-			_create_box(
-				_interior_root,
-				"StaffBedPillow_%d_%d" % [int(side), bed_index],
-				Vector3(0.78, 0.15, 0.46),
-				Color(0.83, 0.82, 0.74),
-				bed_position + Vector3(0.0, 0.56, -0.55)
-			)
-			_create_box(
-				_interior_root,
-				"StaffBedHeadboard_%d_%d" % [int(side), bed_index],
-				Vector3(1.55, 0.82, 0.12),
-				bed_frame_color,
-				bed_position + Vector3(0.0, 0.58, -0.95)
-			)
+			var suffix: String = "_%d_%d" % [int(side), bed_index]
+			FURNITURE.place(_interior_root, "BedFrame", "StaffBedFrame" + suffix, bed_position)
+			FURNITURE.place(_interior_root, "BedMattress", "StaffBedMattress" + suffix,
+				bed_position + Vector3.UP * 0.40)
+			FURNITURE.place(_interior_root, "BedPillow", "StaffBedPillow" + suffix,
+				bed_position + Vector3(0, 0.56, -0.55))
 			sleeping_positions.append(
 				Vector3(bed_position.x, 0.0, bed_z + 0.75)
 			)
@@ -1025,13 +981,17 @@ func _build_star_bungalow(
 		Color(0.20, 0.34, 0.37),
 		Vector3(3.3, 3.2, depth * 0.5 + 0.22)
 	)
-	var bed_frame_color: Color = Color(0.30, 0.22, 0.16)
-	var mattress_color: Color = Color(0.77, 0.72, 0.63)
+
+
 	var bed_position := Vector3(0.0, 0.0, -1.3)
-	_create_box(_interior_root, "StarBedFrame", Vector3(2.05, 0.22, 2.35), bed_frame_color, bed_position + Vector3(0.0, 0.20, 0.0))
-	_create_box(_interior_root, "StarBedMattress", Vector3(1.92, 0.20, 2.20), mattress_color, bed_position + Vector3(0.0, 0.41, 0.0))
-	_create_box(_interior_root, "StarBedPillow", Vector3(0.95, 0.15, 0.48), Color(0.91, 0.88, 0.80), bed_position + Vector3(0.0, 0.56, -0.72))
-	_create_box(_interior_root, "StarBedHeadboard", Vector3(2.05, 0.92, 0.14), bed_frame_color, bed_position + Vector3(0.0, 0.58, -1.12))
+	var frame := FURNITURE.place(_interior_root, "BedFrame", "StarBedFrame", bed_position)
+	frame.scale = Vector3(1.32, 1.0, 1.21)
+	var mattress := FURNITURE.place(_interior_root, "BedMattress", "StarBedMattress",
+		bed_position + Vector3.UP * 0.41)
+	mattress.scale = Vector3(1.35, 1.0, 1.21)
+	var pillow := FURNITURE.place(_interior_root, "BedPillow", "StarBedPillow",
+		bed_position + Vector3(0, 0.56, -0.72))
+	pillow.scale.x = 1.22
 	_create_box(_interior_root, "StarWardrobe", Vector3(1.15, 2.15, 0.82), Color(0.28, 0.23, 0.20), Vector3(-3.35, 1.08, -1.25))
 	_create_box(_interior_root, "StarNightstand", Vector3(0.78, 0.72, 0.68), Color(0.35, 0.25, 0.18), Vector3(2.65, 0.36, -1.3))
 	_create_cylinder(_interior_root, "StarBedsideLamp", 0.12, 0.42, Color(0.86, 0.72, 0.48), Vector3(2.65, 0.91, -1.3))
