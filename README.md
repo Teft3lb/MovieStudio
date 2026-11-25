@@ -31,6 +31,7 @@
 - [Film Production v1](docs/architecture/film_production_v1.md)
 - [Film Set Dressing v1](docs/architecture/film_set_dressing_v1.md)
 - [Экономика реквизита, реклама и прокат](docs/architecture/studio_business_system_v1.md)
+- [Visual Overhaul v1 и конвейер Blender → Godot](docs/architecture/visual_overhaul_v1.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии

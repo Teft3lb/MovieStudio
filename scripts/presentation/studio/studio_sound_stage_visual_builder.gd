@@ -325,7 +325,7 @@ func _build_small_sound_stage_interior() -> void:
 		"SmallSetPlatform",
 		Vector3(5.8, 0.16, 2.8),
 		Color(0.29, 0.28, 0.25),
-		Vector3(0.0, 0.12, -2.35)
+		Vector3(0.0, -0.05, -2.35)
 	)
 	for side in [-1.0, 1.0]:
 		_visual_factory.call("create_wall_panel",
@@ -400,7 +400,7 @@ func _build_medium_sound_stage_interior() -> void:
 		"SetPlatform",
 		Vector3(8.2, 0.16, 3.2),
 		Color(0.29, 0.28, 0.25),
-		Vector3(0.0, 0.12, -2.6)
+		Vector3(0.0, -0.05, -2.6)
 	)
 	_visual_factory.call("create_wall_panel",
 		_interior_root,
@@ -504,7 +504,7 @@ func _build_large_sound_stage_interior() -> void:
 		"HighBaySetPlatform",
 		Vector3(13.2, 0.18, 5.4),
 		Color(0.27, 0.29, 0.30),
-		Vector3(0.0, 0.13, -4.45)
+		Vector3(0.0, -0.06, -4.45)
 	)
 	for side in [-1.0, 1.0]:
 		_visual_factory.call("create_wall_panel",

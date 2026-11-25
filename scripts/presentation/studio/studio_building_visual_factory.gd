@@ -1,6 +1,11 @@
 extends RefCounted
 class_name StudioBuildingVisualFactory
 
+const STAGE_EQUIPMENT: PackedScene = preload("res://assets/models/equipment/stage_equipment.glb")
+const CAMERA_PIVOT_HEIGHT: float = 1.52
+
+static var _equipment_meshes: Dictionary[String, Mesh] = {}
+
 
 func create_floor(
 	interior_root: Node3D,
@@ -64,40 +69,39 @@ func create_camera_rig(
 	interior_root: Node3D,
 	rig_index: int,
 	local_position: Vector3,
-	metal_color: Color,
-	equipment_color: Color
+	_metal_color: Color,
+	_equipment_color: Color
 ) -> Node3D:
 	var rig := Node3D.new()
 	rig.name = "CameraRig_%d" % rig_index
-	rig.position = local_position
+	rig.position = local_position + Vector3.UP * CAMERA_PIVOT_HEIGHT
 	interior_root.add_child(rig)
-	create_cylinder(rig, "CameraTripodBase", 0.38, 0.10, metal_color, Vector3(0.0, 0.10, 0.0))
-	create_cylinder(rig, "CameraTripodColumn", 0.075, 1.25, metal_color, Vector3(0.0, 0.72, 0.0))
-	create_box(rig, "CinemaCameraBody", Vector3(0.68, 0.48, 0.82), equipment_color, Vector3(0.0, 1.45, -0.18))
-	create_cylinder(rig, "CameraLens", 0.19, 0.42, Color(0.08, 0.10, 0.12), Vector3(0.0, 1.45, -0.78))
+	_add_equipment_mesh(rig, "CinemaCameraBody", Vector3.ZERO)
+	_add_equipment_mesh(interior_root, "CameraTripodBase", local_position)
 	return rig
 
 
 func create_light_stand(
 	interior_root: Node3D,
 	local_position: Vector3,
-	metal_color: Color
+	_metal_color: Color
 ) -> void:
-	create_cylinder(
-		interior_root,
-		"LightStand",
-		0.055,
-		2.5,
-		metal_color,
-		local_position + Vector3(0.0, 1.25, 0.0)
-	)
-	create_box(
-		interior_root,
-		"StudioLight",
-		Vector3(1.05, 0.65, 0.28),
-		Color(0.73, 0.68, 0.53),
-		local_position + Vector3(0.0, 2.55, -0.10)
-	)
+	_add_equipment_mesh(interior_root, "LightStand", local_position)
+	_add_equipment_mesh(interior_root, "StudioLight", local_position)
+
+
+func _add_equipment_mesh(parent: Node3D, mesh_name: String, local_position: Vector3) -> void:
+	if _equipment_meshes.is_empty():
+		var equipment := STAGE_EQUIPMENT.instantiate()
+		for node in equipment.find_children("*", "MeshInstance3D", true, false):
+			var part := node as MeshInstance3D
+			_equipment_meshes[part.name] = part.mesh
+		equipment.free()
+	var instance := MeshInstance3D.new()
+	instance.name = mesh_name
+	instance.mesh = _equipment_meshes[mesh_name]
+	instance.position = local_position
+	parent.add_child(instance)
 
 
 func create_wall_panel(

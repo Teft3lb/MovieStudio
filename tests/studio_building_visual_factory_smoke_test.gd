@@ -119,6 +119,13 @@ func _run_tests() -> void:
 		and camera_rig.get_node_or_null("CinemaCameraBody") is MeshInstance3D,
 		"Camera rig creation must preserve its stable hierarchy and rig index."
 	)
+	var tripod := root_node.get_node_or_null("CameraTripodBase") as MeshInstance3D
+	camera_rig.rotation.x = 0.4
+	_expect(
+		tripod != null and tripod.mesh is ArrayMesh and tripod.rotation.is_zero_approx()
+		and tripod.position.is_equal_approx(Vector3(1.0, 0.0, 2.0)),
+		"The imported tripod must remain stationary while the mounted camera tilts."
+	)
 
 	factory.call(
 		"create_light_stand",
