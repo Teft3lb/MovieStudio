@@ -265,6 +265,11 @@ func set_carrying_prop(value: bool) -> void:
 		_visual.call("set_carrying_prop", value)
 
 
+func set_scene_costume(costume_id: String) -> void:
+	if is_instance_valid(_visual):
+		_visual.call("set_costume", costume_id)
+
+
 func set_scene_performance_action(
 	action_id: String,
 	dialogue_text: String = ""
@@ -294,6 +299,7 @@ func move_to_scene_hold(
 	_scene_performance_active = true
 	_scene_returning_to_workplace = false
 	_scene_hold_active = true
+	set_scene_costume("")
 	_scene_target_position = target_position
 	_scene_focus_position = target_position + Vector3.RIGHT
 	_scene_action_id = ""
@@ -366,6 +372,7 @@ func return_to_workplace(movement_path: Array = []) -> void:
 	var last_index: int = _workplace_commute_path.size() - 1
 	_scene_performance_active = true
 	_scene_returning_to_workplace = true
+	set_scene_costume("")
 	_scene_hold_active = false
 	_scene_is_moving = true
 	_scene_target_position = _workplace_commute_path[last_index]
@@ -522,6 +529,7 @@ func _set_scene_dialogue(dialogue_text: String) -> void:
 
 
 func _cancel_scene_performance() -> void:
+	set_scene_costume("")
 	_scene_performance_active = false
 	_scene_returning_to_workplace = false
 	_scene_hold_active = false

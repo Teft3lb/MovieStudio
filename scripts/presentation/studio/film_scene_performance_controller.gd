@@ -23,6 +23,11 @@ func setup(
 
 
 func clear_active_scene_performers() -> void:
+	if is_instance_valid(_character_manager):
+		for employee_id in _active_scene_performer_ids:
+			var actor: Node = _character_manager.call("get_employee_actor", employee_id)
+			if is_instance_valid(actor) and actor.has_method("set_scene_costume"):
+				actor.call("set_scene_costume", "")
 	_active_scene_performer_ids.clear()
 
 
@@ -67,7 +72,7 @@ func pause_for_off_hours(stage_id: String) -> void:
 		)
 		if not return_path.is_empty():
 			actor.call("return_to_workplace", return_path)
-	_active_scene_performer_ids.clear()
+	clear_active_scene_performers()
 	restore_off_camera_staff(stage_id)
 	_manager.call("set_stage_camera_target", stage_id, Vector3.ZERO, false)
 
@@ -96,7 +101,7 @@ func sync_scene_performance(project: Variant, script: Variant) -> bool:
 					)
 				if not return_path.is_empty():
 					actor.call("return_to_workplace", return_path)
-		_active_scene_performer_ids.clear()
+		clear_active_scene_performers()
 		return false
 
 	var stage_id: String = _get_sound_stage_building_id()
@@ -151,6 +156,9 @@ func sync_scene_performance(project: Variant, script: Variant) -> bool:
 	_manager.call("set_stage_camera_target", stage_id, camera_target, camera_active)
 	var new_active_ids: Array[String] = []
 	var all_at_marks: bool = not performer_ids.is_empty()
+	var scene_setup: Dictionary = project.get_current_scene_setup()
+	var costume_ids: Array = scene_setup.get("costume_ids", [])
+	var costume_id: String = str(costume_ids[0]) if not costume_ids.is_empty() else ""
 	for performer_index in range(performer_ids.size()):
 		var employee_id: String = str(performer_ids[performer_index])
 		var employee: Variant = _find_employee(employee_id)
@@ -230,6 +238,8 @@ func sync_scene_performance(project: Variant, script: Variant) -> bool:
 			dialogue_text,
 			movement_path
 		)
+		if actor.has_method("set_scene_costume"):
+			actor.call("set_scene_costume", costume_id)
 		_character_manager.call(
 			"set_employee_task",
 			employee_id,

@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/presentation/orbit_camera_controller.gd" id="2_camera"]
@@ -21,6 +21,14 @@ size = Vector3(4, 0.08, 148)
 albedo_color = Color(0.13, 0.14, 0.15, 1)
 roughness = 1.0
 
+[sub_resource type="Environment" id="Environment_studio"]
+background_mode = 1
+background_color = Color(0.22, 0.32, 0.39, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.81, 0.89, 1, 1)
+ambient_light_energy = 0.42
+tonemap_mode = 2
+
 [node name="MovieStudio" type="Node3D"]
 script = ExtResource("1_main")
 
@@ -33,9 +41,13 @@ script = ExtResource("6_hud")
 [node name="Camera3D" type="Camera3D" parent="."]
 script = ExtResource("2_camera")
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_studio")
+
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.8, -0.5, 0)
-light_energy = 1.2
+light_color = Color(1, 0.94, 0.84, 1)
+light_energy = 1.1
 shadow_enabled = true
 
 [node name="Ground" type="MeshInstance3D" parent="."]

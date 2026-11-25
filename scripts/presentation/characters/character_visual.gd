@@ -1,6 +1,8 @@
 extends Node3D
 class_name CharacterVisual
 
+const EMPLOYEE_MODEL = preload("res://scripts/presentation/characters/studio_employee_model.gd")
+
 const SKIN_TONES: Array[Color] = [
 	Color(0.96, 0.78, 0.64),
 	Color(0.83, 0.61, 0.45),
@@ -30,11 +32,7 @@ const OUTFIT_COLORS: Array[Color] = [
 	Color(0.48, 0.30, 0.42),
 ]
 
-const TROUSER_COLOR: Color = Color(0.16, 0.18, 0.22)
-const SHOE_COLOR: Color = Color(0.08, 0.075, 0.07)
-const EYE_COLOR: Color = Color(0.94, 0.91, 0.84)
-const PUPIL_COLOR: Color = Color(0.10, 0.085, 0.075)
-
+var _employee_model: Node3D
 var _body_root: Node3D
 var _head_root: Node3D
 var _left_arm_pivot: Node3D
@@ -45,10 +43,10 @@ var _left_knee_pivot: Node3D
 var _right_knee_pivot: Node3D
 var _mouth_node: MeshInstance3D
 var _carried_prop_root: Node3D
+var _pose_pivots: Array[Node3D] = []
 var _body_base_scale: Vector3 = Vector3.ONE
-var _hair_meshes: Array[MeshInstance3D] = []
 var _base_hair_color: Color = Color.WHITE
-var _character_age: int = 30
+var _character_age: int = -1
 
 var _walking: bool = false
 var _working: bool = false
@@ -56,6 +54,9 @@ var _work_style: String = ""
 var _performing: bool = false
 var _performance_action: String = ""
 var _animation_phase: float = 0.0
+var _last_facing: float = 0.0
+var _turn_time: float = 0.0
+var _seat_blend: float = 0.0
 
 
 func setup(character_payload: Dictionary) -> void:
@@ -63,7 +64,10 @@ func setup(character_payload: Dictionary) -> void:
 
 
 func set_character_age(age: int) -> void:
-	_character_age = maxi(age, 18)
+	var normalized_age := maxi(age, 18)
+	if _character_age == normalized_age:
+		return
+	_character_age = normalized_age
 	var grey_factor: float = clampf(
 		(float(_character_age) - 43.0) / 32.0,
 		0.0,
@@ -73,14 +77,11 @@ func set_character_age(age: int) -> void:
 		Color(0.68, 0.68, 0.66, 1.0),
 		grey_factor
 	)
-	for hair_mesh in _hair_meshes:
-		if not is_instance_valid(hair_mesh):
-			continue
-		var hair_material: StandardMaterial3D = (
-			hair_mesh.material_override as StandardMaterial3D
-		)
-		if hair_material != null:
-			hair_material.albedo_color = aged_hair_color
+	_employee_model.call("set_hair_color", aged_hair_color)
+
+
+func set_costume(costume_id: String) -> void:
+	_employee_model.call("set_costume", costume_id)
 
 func set_walking(value: bool) -> void:
 	_walking = value
@@ -140,9 +141,12 @@ func advance_simulation(simulation_delta: float) -> void:
 		7.2 if _walking else 4.8 if _performing else 3.0 if _working else 1.8
 	)
 
+	var carrying: bool = _carried_prop_root.visible
+	var is_eating: bool = _performing and _performance_action == "eating"
+	_seat_blend = move_toward(_seat_blend, 1.0 if is_eating else 0.0, simulation_delta / 0.18)
 	if _walking:
 		var swing: float = sin(_animation_phase) * 0.55
-		if is_instance_valid(_carried_prop_root) and _carried_prop_root.visible:
+		if carrying:
 			_set_arm_pose(0.82 + swing * 0.08, 0.82 - swing * 0.08)
 		else:
 			_set_arm_pose(swing, -swing)
@@ -163,9 +167,8 @@ func advance_simulation(simulation_delta: float) -> void:
 			_head_root.rotation = Vector3.ZERO
 
 	if is_instance_valid(_body_root):
-		var is_eating: bool = _performing and _performance_action == "eating"
 		var is_sleeping: bool = _performing and _performance_action == "sleeping"
-		var pose_offset: float = -0.28 if is_eating else 0.58 if is_sleeping else 0.0
+		var pose_offset: float = 0.58 if is_sleeping else -0.28 * _seat_blend
 		var bob_amount: float = (
 			0.022 if _walking
 			else 0.004 if is_sleeping
@@ -183,6 +186,43 @@ func advance_simulation(simulation_delta: float) -> void:
 			if is_sleeping
 			else _body_base_scale
 		)
+	_employee_model.call(
+		"advance", simulation_delta, _get_skeletal_state(simulation_delta),
+		_pose_pivots, _head_root, carrying
+	)
+
+
+func _get_skeletal_state(delta: float) -> StringName:
+	var facing: float = get_parent_node_3d().rotation.y if get_parent_node_3d() != null else rotation.y
+	if _walking or _performing or _working:
+		_turn_time = 0.0
+	elif absf(angle_difference(_last_facing, facing)) > 0.5:
+		_turn_time = 0.65
+	_last_facing = facing
+	_turn_time = maxf(_turn_time - delta, 0.0)
+	if _walking:
+		return &"Walk"
+	if _working:
+		match _work_style:
+			"screenwriter", "film_editor", "producer", "casting_director":
+				return &"Typing"
+			"camera_operator":
+				return &"Camera"
+			"technician":
+				return &"Lift"
+		return &"Gesture"
+	if _performing:
+		match _performance_action:
+			"eating":
+				return &"Eating"
+			"sleeping", "waiting":
+				return &"Rest"
+			"operating_camera":
+				return &"Camera"
+			"placing_set_piece", "collecting_prop", "carrying_prop", "removing_set_piece", "storing_prop":
+				return &"Lift"
+		return &"Gesture"
+	return &"Turn" if _turn_time > 0.0 else &"Idle"
 
 
 func _advance_performance_animation() -> void:
@@ -244,8 +284,8 @@ func _advance_performance_animation() -> void:
 				maxf(sin(_animation_phase * 1.65 - PI), 0.0),
 				1.2
 			)
-			left_arm = lerpf(0.40, 2.08, left_reach)
-			right_arm = lerpf(0.40, 2.08, right_reach)
+			left_arm = lerpf(0.40, 1.45, left_reach)
+			right_arm = lerpf(0.40, 1.45, right_reach)
 			body_lean = 0.0
 			head_motion = -0.035 - maxf(left_reach, right_reach) * 0.10
 		"sleeping":
@@ -303,7 +343,7 @@ func _advance_performance_animation() -> void:
 			_mouth_node.scale.y = 1.0
 	var leg_motion: float = sin(_animation_phase * 2.0) * 0.075
 	if _performance_action == "eating":
-		var seated_hip_angle: float = 1.18
+		var seated_hip_angle: float = 1.18 * _seat_blend
 		_set_leg_pose(
 			seated_hip_angle + leg_motion * 0.12,
 			seated_hip_angle - leg_motion * 0.12
@@ -389,226 +429,52 @@ func _set_knee_pose(left_angle: float, right_angle: float) -> void:
 
 func _build_model(character_payload: Dictionary) -> void:
 	var appearance: Dictionary = character_payload.get("appearance", {})
+	var skin := SKIN_TONES[posmod(int(appearance.get("skin_tone", 0)), SKIN_TONES.size())]
+	var outfit := OUTFIT_COLORS[posmod(int(appearance.get("outfit_color", 0)), OUTFIT_COLORS.size())]
+	_base_hair_color = HAIR_COLORS[posmod(int(appearance.get("hair_color", 0)), HAIR_COLORS.size())]
+	var identity_hash := str(character_payload.get("id", "")).hash()
+	var shoulder_scale := lerpf(0.88, 1.13, float(identity_hash % 211) / 210.0)
+	var height_scale := clampf(float(appearance.get("height_scale", 1.0)), 0.9, 1.1)
+	var head_scale := clampf(float(appearance.get("head_scale", 1.0)), 0.9, 1.1)
+	_body_root = _make_pivot(self, "BodyRoot", Vector3.ZERO)
+	_body_base_scale = Vector3(shoulder_scale, height_scale, 1.0)
+	_body_root.scale = _body_base_scale
 
-	var skin_color: Color = SKIN_TONES[
-		posmod(int(appearance.get("skin_tone", 0)), SKIN_TONES.size())
+	_employee_model = EMPLOYEE_MODEL.new()
+	_employee_model.name = "EmployeeModel"
+	_body_root.add_child(_employee_model)
+	_mouth_node = _employee_model.call("setup", character_payload, skin, _base_hair_color, outfit, head_scale)
+	_mouth_node.name = "Mouth"
+	_mouth_node.position = Vector3(0.0, -0.085, -0.177)
+	_head_root = _make_pivot(_body_root, "Head", Vector3(0.0, 2.17, 0.0))
+	_head_root.add_child(_mouth_node)
+
+	_left_arm_pivot = _make_pivot(_body_root, "LeftArmPivot", Vector3(-0.34, 1.76, 0.0))
+	_right_arm_pivot = _make_pivot(_body_root, "RightArmPivot", Vector3(0.34, 1.76, 0.0))
+	_left_leg_pivot = _make_pivot(_body_root, "LeftLegPivot", Vector3(-0.14, 0.83, 0.0))
+	_right_leg_pivot = _make_pivot(_body_root, "RightLegPivot", Vector3(0.14, 0.83, 0.0))
+	_left_knee_pivot = _make_pivot(_left_leg_pivot, "LeftKneePivot", Vector3.DOWN * 0.46)
+	_right_knee_pivot = _make_pivot(_right_leg_pivot, "RightKneePivot", Vector3.DOWN * 0.46)
+	_pose_pivots = [
+		_left_arm_pivot, _right_arm_pivot, _left_leg_pivot, _right_leg_pivot,
+		_left_knee_pivot, _right_knee_pivot,
 	]
-	var hair_color: Color = HAIR_COLORS[
-		posmod(int(appearance.get("hair_color", 0)), HAIR_COLORS.size())
-	]
-	var outfit_color: Color = OUTFIT_COLORS[
-		posmod(int(appearance.get("outfit_color", 0)), OUTFIT_COLORS.size())
-	]
-	var hair_style: int = int(appearance.get("hair_style", 0))
-	_base_hair_color = hair_color
-	_hair_meshes.clear()
-	var height_scale: float = float(appearance.get("height_scale", 1.0))
-	var head_scale: float = float(appearance.get("head_scale", 1.0))
 
-	_body_root = Node3D.new()
-	_body_root.name = "BodyRoot"
-	_body_root.scale = Vector3(1.0, height_scale, 1.0)
-	_body_base_scale = _body_root.scale
-	add_child(_body_root)
-
-	_create_capsule(
-		_body_root, "Trousers", 0.22, 0.48, TROUSER_COLOR, Vector3(0.0, 0.91, 0.0)
-	)
-	_create_capsule(
-		_body_root, "Jacket", 0.275, 0.92, outfit_color, Vector3(0.0, 1.43, 0.0)
-	)
-	_create_capsule(
-		_body_root, "Neck", 0.09, 0.20, skin_color, Vector3(0.0, 1.94, 0.0)
-	)
-
-	_head_root = Node3D.new()
-	_head_root.name = "Head"
-	var head_root: Node3D = _head_root
-	head_root.position = Vector3(0.0, 2.17, 0.0)
-	head_root.scale = Vector3.ONE * head_scale
-	_body_root.add_child(head_root)
-
-	_create_sphere(head_root, "Face", 0.235, skin_color, Vector3.ZERO)
-
-	var hair_cap := _create_sphere(
-		head_root, "HairCap", 0.24, hair_color, Vector3(0.0, 0.135, 0.0)
-	)
-	hair_cap.scale = Vector3(1.0, 0.52, 1.0)
-	_hair_meshes.append(hair_cap)
-
-	if hair_style == 1:
-		var back_hair := _create_sphere(
-			head_root, "BackHair", 0.19, hair_color, Vector3(0.0, -0.015, 0.115)
-		)
-		back_hair.scale = Vector3(0.88, 1.05, 0.75)
-		_hair_meshes.append(back_hair)
-	elif hair_style == 2:
-		var fringe := _create_sphere(
-			head_root, "Fringe", 0.15, hair_color, Vector3(0.0, 0.105, -0.145)
-		)
-		fringe.scale = Vector3(1.0, 0.48, 0.52)
-		_hair_meshes.append(fringe)
-
-	_create_sphere(
-		head_root, "LeftEar", 0.055, skin_color, Vector3(-0.225, 0.0, 0.0)
-	)
-	_create_sphere(
-		head_root, "RightEar", 0.055, skin_color, Vector3(0.225, 0.0, 0.0)
-	)
-
-	for side in [-1.0, 1.0]:
-		var eye_x: float = side * 0.078
-		_create_sphere(
-			head_root, "EyeWhite", 0.032, EYE_COLOR,
-			Vector3(eye_x, 0.025, -0.204)
-		)
-		_create_sphere(
-			head_root, "Pupil", 0.015, PUPIL_COLOR,
-			Vector3(eye_x, 0.022, -0.231)
-		)
-		var eyebrow := _create_box(
-			head_root, "Eyebrow", Vector3(0.075, 0.014, 0.012),
-			hair_color, Vector3(eye_x, 0.082, -0.207)
-		)
-		_hair_meshes.append(eyebrow)
-
-	_create_sphere(
-		head_root, "Nose", 0.035, skin_color, Vector3(0.0, -0.045, -0.218)
-	)
-	_mouth_node = _create_box(
-		head_root, "Mouth", Vector3(0.072, 0.012, 0.012),
-		Color(0.32, 0.12, 0.12), Vector3(0.0, -0.112, -0.211)
-	)
-
-	_left_arm_pivot = Node3D.new()
-	_left_arm_pivot.name = "LeftArmPivot"
-	_left_arm_pivot.position = Vector3(-0.34, 1.76, 0.0)
-	_body_root.add_child(_left_arm_pivot)
-	_create_capsule(
-		_left_arm_pivot, "LeftSleeve", 0.105, 0.70, outfit_color,
-		Vector3(0.0, -0.32, 0.0)
-	)
-	_create_sphere(
-		_left_arm_pivot, "LeftHand", 0.085, skin_color,
-		Vector3(0.0, -0.68, 0.0)
-	)
-
-	_right_arm_pivot = Node3D.new()
-	_right_arm_pivot.name = "RightArmPivot"
-	_right_arm_pivot.position = Vector3(0.34, 1.76, 0.0)
-	_body_root.add_child(_right_arm_pivot)
-	_create_capsule(
-		_right_arm_pivot, "RightSleeve", 0.105, 0.70, outfit_color,
-		Vector3(0.0, -0.32, 0.0)
-	)
-	_create_sphere(
-		_right_arm_pivot, "RightHand", 0.085, skin_color,
-		Vector3(0.0, -0.68, 0.0)
-	)
-
-	_left_leg_pivot = Node3D.new()
-	_left_leg_pivot.name = "LeftLegPivot"
-	_left_leg_pivot.position = Vector3(-0.14, 0.83, 0.0)
-	_body_root.add_child(_left_leg_pivot)
-	_create_capsule(
-		_left_leg_pivot, "LeftLeg", 0.125, 0.48, TROUSER_COLOR,
-		Vector3(0.0, -0.23, 0.0)
-	)
-	_left_knee_pivot = Node3D.new()
-	_left_knee_pivot.name = "LeftKneePivot"
-	_left_knee_pivot.position = Vector3(0.0, -0.46, 0.0)
-	_left_leg_pivot.add_child(_left_knee_pivot)
-	_create_capsule(
-		_left_knee_pivot, "LeftShin", 0.11, 0.42, TROUSER_COLOR,
-		Vector3(0.0, -0.21, 0.0)
-	)
-	_create_box(
-		_left_knee_pivot, "LeftShoe", Vector3(0.25, 0.13, 0.36),
-		SHOE_COLOR, Vector3(0.0, -0.42, -0.07)
-	)
-
-	_carried_prop_root = Node3D.new()
-	_carried_prop_root.name = "CarriedProp"
-	_carried_prop_root.position = Vector3(0.0, 1.08, -0.48)
-	_body_root.add_child(_carried_prop_root)
-	_create_box(
-		_carried_prop_root,
-		"PropTransportCase",
-		Vector3(0.58, 0.40, 0.34),
-		Color(0.42, 0.29, 0.17),
-		Vector3.ZERO
-	)
-	_create_box(
-		_carried_prop_root,
-		"PropTransportCaseHandle",
-		Vector3(0.24, 0.07, 0.08),
-		Color(0.18, 0.19, 0.19),
-		Vector3(0.0, 0.22, -0.02)
-	)
+	_carried_prop_root = _make_pivot(_body_root, "CarriedProp", Vector3(0.0, 1.08, -0.48))
+	_create_box(_carried_prop_root, "PropTransportCase", Vector3(0.58, 0.4, 0.34),
+		Color(0.42, 0.29, 0.17), Vector3.ZERO)
+	_create_box(_carried_prop_root, "PropTransportCaseHandle", Vector3(0.24, 0.07, 0.08),
+		Color(0.18, 0.19, 0.19), Vector3(0.0, 0.22, -0.02))
 	_carried_prop_root.visible = false
 	set_character_age(int(character_payload.get("age", 30)))
 
-	_right_leg_pivot = Node3D.new()
-	_right_leg_pivot.name = "RightLegPivot"
-	_right_leg_pivot.position = Vector3(0.14, 0.83, 0.0)
-	_body_root.add_child(_right_leg_pivot)
-	_create_capsule(
-		_right_leg_pivot, "RightLeg", 0.125, 0.48, TROUSER_COLOR,
-		Vector3(0.0, -0.23, 0.0)
-	)
-	_right_knee_pivot = Node3D.new()
-	_right_knee_pivot.name = "RightKneePivot"
-	_right_knee_pivot.position = Vector3(0.0, -0.46, 0.0)
-	_right_leg_pivot.add_child(_right_knee_pivot)
-	_create_capsule(
-		_right_knee_pivot, "RightShin", 0.11, 0.42, TROUSER_COLOR,
-		Vector3(0.0, -0.21, 0.0)
-	)
-	_create_box(
-		_right_knee_pivot, "RightShoe", Vector3(0.25, 0.13, 0.36),
-		SHOE_COLOR, Vector3(0.0, -0.42, -0.07)
-	)
 
-
-func _create_capsule(
-	parent: Node3D,
-	node_name: String,
-	radius: float,
-	height: float,
-	color: Color,
-	local_position: Vector3
-) -> MeshInstance3D:
-	var mesh := CapsuleMesh.new()
-	mesh.radius = radius
-	mesh.height = height
-
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.material_override = _make_material(color)
-	instance.position = local_position
-	parent.add_child(instance)
-	return instance
-
-
-func _create_sphere(
-	parent: Node3D,
-	node_name: String,
-	radius: float,
-	color: Color,
-	local_position: Vector3
-) -> MeshInstance3D:
-	var mesh := SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-
-	var instance := MeshInstance3D.new()
-	instance.name = node_name
-	instance.mesh = mesh
-	instance.material_override = _make_material(color)
-	instance.position = local_position
-	parent.add_child(instance)
-	return instance
+func _make_pivot(parent: Node3D, pivot_name: String, pivot_position: Vector3) -> Node3D:
+	var pivot := Node3D.new()
+	pivot.name = pivot_name
+	pivot.position = pivot_position
+	parent.add_child(pivot)
+	return pivot
 
 
 func _create_box(
