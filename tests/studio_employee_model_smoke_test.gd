@@ -64,7 +64,32 @@ func _run_tests() -> void:
 	_expect(not _surface_color(hair, "Hair").is_equal_approx(original_hair),
 		"Changing age must update visible hair without rebuilding the model.")
 	visual.free()
+	_check_authored_variants()
 	_finish_test("StudioEmployeeModelSmokeTest")
+
+
+func _check_authored_variants() -> void:
+	var payload := {
+		"id": "EMP-VISUAL-V3", "profession_id": "actor",
+		"appearance": {"hair_style": 5, "wardrobe_style": 2, "cheekbones": 0.75},
+	}
+	for instance in range(2):
+		var visual := VISUAL.new()
+		visual.setup(payload)
+		root.add_child(visual)
+		var face := visual.find_child("Face", true, false) as MeshInstance3D
+		var skirt := visual.find_child("WardrobeSkirt", true, false) as MeshInstance3D
+		_expect(visual.find_child("Hair5", true, false) != null
+			and visual.find_child("Hair0", true, false) == null
+			and visual.find_child("CollarFold", true, false) != null,
+			"Saved appearance should reproduce the same selected hair and collar.")
+		_expect(is_equal_approx(face.get_blend_shape_value(1), 0.75) and skirt.skin != null,
+			"Authored cheeks and skinned skirt must remain available after import.")
+		visual.set_costume("western_costumes")
+		_expect(not skirt.visible, "A production costume should cover the everyday skirt.")
+		visual.set_costume("")
+		_expect(skirt.visible, "Everyday clothing should return after production.")
+		visual.free()
 
 
 func _surface_color(part: MeshInstance3D, slot: String) -> Color:

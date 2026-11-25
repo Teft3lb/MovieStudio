@@ -128,7 +128,8 @@ def join(name, objects, rig):
 
 
 def shape(obj, name, change):
-    obj.shape_key_add(name="Basis")
+    if obj.data.shape_keys is None:
+        obj.shape_key_add(name="Basis")
     key = obj.shape_key_add(name=name)
     for vertex in key.data:
         x, minus_z, y = vertex.co
@@ -227,9 +228,11 @@ def build():
     hair = material("Hair", (0.12, 0.07, 0.045))
     trousers = material("Trousers", (0.055, 0.076, 0.09), 0.92)
     leather = material("Leather", (0.064, 0.038, 0.025))
+    shoe_upper = material("ShoeUpper", (0.064, 0.038, 0.025))
     rubber = material("Rubber", (0.105, 0.12, 0.12))
     shirt = material("Cotton", (0.72, 0.66, 0.51), 0.88)
     brass = material("Brass", (0.53, 0.32, 0.095), 0.38, 0.6)
+    knit = material("KnitTrim", (.16, .235, .235), .95)
     pupil = material("Iris", (0.035, 0.018, 0.013), 0.33)
     eye = material("Eye", (0.88, 0.80, 0.67), 0.45)
     lip = material("Lip", (0.18, 0.057, 0.040))
@@ -277,8 +280,8 @@ def build():
             (1.795, sign*.299, .004, .085, .09),
         ], cloth, arm_weight))
         trim.append(loft("Hand", [
-            (1.006, sign*.405, -.025, .034, .040), (1.03, sign*.405, -.016, .056, .051),
-            (1.095, sign*.408, -.009, .060, .054), (1.143, sign*.404, -.006, .047, .045),
+            (1.001, sign*.408, -.026, .028, .030), (1.026, sign*.407, -.022, .045, .038),
+            (1.071, sign*.411, -.013, .053, .047), (1.143, sign*.404, -.006, .045, .041),
         ], skin, side + "Forearm", 10))
         trim.append(oval("Thumb", (sign*.363, 1.065, -.039), (.025, .041, .03), skin, side + "Forearm", 8))
 
@@ -292,14 +295,14 @@ def build():
             (.65, sign*.126, 0, .116, .123), (.82, sign*.128, 0, .126, .129),
             (.89, sign*.119, 0, .111, .108),
         ], trousers, leg_weight))
-        shoe = [(0.013, sign*.143, -.064, .108, .174), (.043, sign*.143, -.065, .113, .176),
-                (.059, sign*.143, -.065, .108, .172)]
+        shoe = [(0.013, sign*.143, -.059, .102, .161), (.043, sign*.143, -.064, .108, .169),
+                (.059, sign*.143, -.064, .104, .164)]
         trim.append(loft("Sole", shoe, rubber, side + "Foot", 12))
         trim.append(loft("Shoe", [shoe[-1],
                                  (.09, sign*.143, -.072, .105, .158),
                                  (.128, sign*.143, -.054, .098, .115),
                                  (.153, sign*.143, -.023, .084, .100)],
-                         leather, side + "Foot", 12))
+                         shoe_upper, side + "Foot", 12))
         trim.append(panel("ShoeLaces", [(sign*.105, .14, -.128), (sign*.180, .14, -.128),
                                         (sign*.184, .11, -.164), (sign*.10, .11, -.164)],
                           shirt, side + "Foot"))
@@ -309,33 +312,77 @@ def build():
              + 0.07 * max(0.0, 1 - abs(y - 0.97) / 0.21)),
         y, z - 0.022 * max(0.0, 1 - abs(y - 1.57) / 0.19) if z < 0 else z,
     ))
+    shape(body, "RelaxedFit", lambda x, y, z: (
+        x * (1 + .084 * max(0, 1 - abs(y - 1.23) / .54)), y,
+        z * (1 + .14 * max(0, 1 - abs(y - 1.34) / .41)),
+    ))
+    shape(body, "StructuredShoulders", lambda x, y, z: (
+        x * (1 + .10 * max(0, 1 - abs(y - 1.70) / .27)), y, z,
+    ))
+    shape(body, "FittedLeggings", lambda x, y, z: (
+        x * (.88 + .12 * min(1.0, abs(y - .54) / .46)),
+        y, z * (.81 + .19 * min(1.0, abs(y - .54) / .46)),
+    ) if .16 < y < 1 else (x, y, z))
+    join("CollarCrew", [
+        panel("KnitBib", [(-.104, 1.872, -.163), (.104, 1.872, -.163), (.098, 1.72, -.202),
+                          (.036, 1.573, -.243), (-.036, 1.573, -.243), (-.098, 1.72, -.202)],
+              knit, "Chest", .032),
+    ], rig)
+    join("CollarFold", [
+        panel("CollarPoint", [(sign*.017, 1.879, -.152), (sign*.112, 1.90, -.135),
+                              (sign*.140, 1.815, -.176), (sign*.065, 1.762, -.206)],
+              shirt, "Chest", .025) for sign in (-1, 1)
+    ], rig)
+    def skirt_weight(point):
+        x, y, _ = point
+        leg = max(0.0, min(.84, (1.02 - y) * 3.8))
+        right = min(1.0, max(0.0, .5 + x * 5.0))
+        return {"Pelvis": 1 - leg, "LeftThigh": leg * (1 - right), "RightThigh": leg * right}
+
+    join("WardrobeSkirt", [loft("Skirt", [
+        (.625, 0, 0, .272, .145), (.667, 0, 0, .267, .150),
+        (.862, 0, 0, .254, .163), (.97, 0, 0, .238, .155),
+        (1.039, 0, 0, .218, .15),
+    ], knit, skirt_weight, 16)], rig)
 
     face = [loft("Face", [
-        (1.993, 0, -.045, .075, .073), (2.025, 0, -.033, .137, .116),
-        (2.082, 0, -.022, .182, .15), (2.151, 0, -.022, .208, .183),
-        (2.219, 0, -.019, .212, .182), (2.278, 0, .002, .202, .165),
+        (1.993, 0, -.045, .081, .077), (2.025, 0, -.034, .131, .122),
+        (2.082, 0, -.026, .174, .157), (2.151, 0, -.022, .202, .183),
+        (2.219, 0, -.019, .208, .182), (2.278, 0, .002, .198, .165),
         (2.348, 0, .019, .166, .141), (2.396, 0, .027, .083, .075),
     ], skin, "Head", 20)]
     face.append(loft("NoseBridge", [(2.141, 0, -.199, .025, .027),
-                                    (2.157, 0, -.211, .047, .043),
-                                    (2.178, 0, -.203, .033, .040),
+                                    (2.157, 0, -.213, .035, .037),
+                                    (2.178, 0, -.207, .029, .035),
                                     (2.23, 0, -.194, .019, .018)], skin, "Head", 10))
     for sign in (-1, 1):
-        face.append(oval("Ear", (sign*.206, 2.179, .002), (.044, .068, .041), skin, "Head"))
-        face.append(oval("Eye", (sign*.083, 2.217, -.195), (.045, .020, .018), eye, "Head"))
-        face.append(oval("Iris", (sign*.080, 2.217, -.211), (.017, .016, .009), pupil, "Head"))
-        face.append(oval("Eyebrow", (sign*.083, 2.262, -.189), (.05, .009, .013), hair, "Head"))
+        face.append(oval("Ear", (sign*.201, 2.179, .003), (.041, .064, .040), skin, "Head"))
+        face.append(oval("NoseWing", (sign*.028, 2.153, -.215), (.018, .015, .023), skin, "Head", 8))
+        face.append(oval("Eye", (sign*.083, 2.215, -.191), (.041, .019, .023), eye, "Head"))
+        face.append(oval("Iris", (sign*.079, 2.215, -.210), (.015, .017, .010), pupil, "Head"))
+        face.append(oval("EyeLight", (sign*.079-.003, 2.221, -.219), (.004, .004, .003), eye, "Head", 6))
+        face.append(panel("Eyebrow", [(sign*.042, 2.249, -.200), (sign*.086, 2.266, -.196),
+                                     (sign*.130, 2.257, -.170), (sign*.128, 2.249, -.173),
+                                     (sign*.086, 2.254, -.198), (sign*.043, 2.240, -.201)],
+                          hair, "Head", .012))
     face_mesh = join("Face", face, rig)
     shape(face_mesh, "SoftJaw", lambda x, y, z: (
         x * (1.0 - 0.16 * max(0.0, 1 - abs(y - 2.055) / 0.16)), y, z,
     ))
-    join("MouthShape", [oval("LipLine", (0, 0, 0), (.054, .010, .012), lip, None)], None)
+    shape(face_mesh, "HighCheekbones", lambda x, y, z: (
+        x * (1 + .082 * max(0, 1 - abs(y - 2.17) / .07)), y, z,
+    ))
+    join("MouthShape", [
+        oval("LipLine", (0, 0, 0), (.050, .008, .010), lip, None),
+        oval("SmileCorner", (-.039, .004, 0), (.015, .006, .009), lip, None, 8),
+        oval("SmileCorner", (.039, .004, 0), (.015, .006, .009), lip, None, 8),
+    ], None)
 
-    for style in range(3):
+    for style in range(6):
         shapes = [loft("Scalp", [
             (2.21, 0, .079, .205, .094), (2.27, 0, .053, .216, .145),
             (2.35, 0, .022, .221, .181), (2.413, -.025, .007, .170, .130),
-            (2.437 + style*.012, -.054, -.028, .088, .072),
+            (2.437 + (style%3)*.012, -.054, -.028, .088, .072),
         ], hair, "Head", 18)]
         if style == 0:
             shapes.append(oval("SweptCrown", (-.060, 2.377, -.095), (.146, .075, .120), hair, "Head"))
@@ -346,9 +393,24 @@ def build():
                                hair, "Head", 16))
             for sign in (-1, 1):
                 shapes.append(oval("TempleLock", (sign*.186, 2.222, -.094), (.054, .129, .074), hair, "Head"))
-        else:
+        elif style == 2:
             for x, h in [(-.132, 2.37), (-.061, 2.422), (.025, 2.43), (.11, 2.389)]:
                 shapes.append(oval("Curl", (x, h, -.114), (.087, .065, .091), hair, "Head"))
+        elif style == 3:
+            shapes.append(oval("NapeBun", (.073, 2.225, .214), (.122, .115, .102), hair, "Head"))
+            shapes.append(oval("SideSweep", (-.076, 2.352, -.117), (.16, .053, .111), hair, "Head"))
+        elif style == 4:
+            shapes.append(loft("Crop", [(2.323, 0, -.048, .199, .163),
+                                        (2.407, -.014, -.044, .196, .153),
+                                        (2.466, -.028, -.058, .135, .109),
+                                        (2.485, -.031, -.040, .070, .065)], hair, "Head", 16))
+        else:
+            shapes.append(loft("Layers", [(1.957, 0, .159, .144, .040),
+                                           (2.040, 0, .112, .211, .103),
+                                           (2.220, 0, .066, .225, .143),
+                                           (2.390, 0, .021, .189, .161)], hair, "Head", 16))
+            shapes.append(oval("Wave", (-.145, 2.300, -.127), (.100, .123, .071), hair, "Head"))
+            shapes.append(oval("Wave", (.162, 2.336, -.106), (.086, .087, .076), hair, "Head"))
         join(f"Hair{style}", shapes, rig)
 
     cap = [loft("CapCrown", [(2.306, 0, .001, .221, .18), (2.34, 0, 0, .24, .205),

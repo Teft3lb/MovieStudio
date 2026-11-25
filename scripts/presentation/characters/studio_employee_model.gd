@@ -20,6 +20,7 @@ const POSE_BONES: Array[String] = [
 ]
 const DISTANT_ANIMATION_DISTANCE_SQUARED: float = 32.0 * 32.0
 const DISTANT_ANIMATION_INTERVAL: float = 1.0 / 30.0
+const HAIR_STYLE_COUNT: int = 6
 
 static var _tinted_materials: Dictionary[String, StandardMaterial3D] = {}
 static var _states: AnimationNodeStateMachine
@@ -55,8 +56,11 @@ func setup(
 	var appearance: Dictionary = payload.get("appearance", {})
 	var identity_hash := str(payload.get("id", "")).hash()
 	var silhouette: float = clampf(float(appearance.get("silhouette", identity_hash % 2)), 0.0, 1.0)
+	var wardrobe_style := posmod(int(appearance.get("wardrobe_style", identity_hash / 3)), 3)
+	var face_style := clampf(float(appearance.get("cheekbones", (identity_hash >> 5) % 5 / 4.0)), 0.0, 1.0)
 	_role_name = str(ROLE_MESHES.get(str(payload.get("profession_id", "")), "RoleOffice"))
-	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), 3)
+	var skirt := wardrobe_style == 2 and _role_name in ["RoleOffice", "RoleActor"]
+	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), HAIR_STYLE_COUNT)
 	_idle_state = &"Idle" if identity_hash % 2 == 0 else &"IdleLook"
 	_phase_offset = float(identity_hash % 997) / 997.0
 	_head_scale = Vector3(facial_scale * lerpf(0.94, 1.06, _phase_offset), facial_scale, facial_scale)
@@ -73,15 +77,44 @@ func setup(
 		elif str(model_mesh.name).begins_with("Costume"):
 			model_mesh.hide()
 		elif str(model_mesh.name).begins_with("Hair"):
-			model_mesh.visible = model_mesh.name == _hair_name and _role_name != "RoleDirector"
-		elif model_mesh.name == &"WardrobeBody" or model_mesh.name == &"Face":
+			if model_mesh.name != _hair_name:
+				model_mesh.free()
+				continue
+			model_mesh.visible = _role_name != "RoleDirector"
+		elif model_mesh.name == &"CollarCrew":
+			if wardrobe_style != 1:
+				model_mesh.free()
+				continue
+		elif model_mesh.name == &"CollarFold":
+			if wardrobe_style != 2:
+				model_mesh.free()
+				continue
+		elif model_mesh.name == &"WardrobeSkirt":
+			if not skirt:
+				model_mesh.free()
+				continue
+		elif model_mesh.name == &"WardrobeBody":
 			model_mesh.set_blend_shape_value(0, silhouette)
+			model_mesh.set_blend_shape_value(1, 0.75 if wardrobe_style == 1 else 0.0)
+			model_mesh.set_blend_shape_value(2, 0.85 if wardrobe_style == 2 else 0.0)
+			model_mesh.set_blend_shape_value(3, 1.0 if skirt else 0.0)
+		elif model_mesh.name == &"Face":
+			model_mesh.set_blend_shape_value(0, silhouette)
+			model_mesh.set_blend_shape_value(1, face_style)
 		_mesh_nodes.append(model_mesh)
 	mouth.owner = null
 	mouth.get_parent().remove_child(mouth)
 	_tint_surfaces("Skin", skin)
 	_tint_surfaces("Hair", hair)
 	_tint_surfaces("Cloth", outfit)
+	if wardrobe_style == 1:
+		_tint_surfaces("ShoeUpper", Color(0.23, 0.18, 0.15))
+		var knit := outfit.lerp(Color(0.65, 0.62, 0.51), 0.46)
+		_tint_surfaces("KnitTrim", knit)
+		_tint_surfaces("Cotton", knit)
+	elif wardrobe_style == 2:
+		_tint_surfaces("ShoeUpper", Color(0.11, 0.13, 0.15))
+		_tint_surfaces("KnitTrim", outfit.darkened(0.32))
 	return mouth
 
 
@@ -98,6 +131,8 @@ func set_costume(costume_id: String) -> void:
 	_tint_surfaces("Cloth", costume.get("visual_color", _outfit))
 	for part in _mesh_nodes:
 		if part.name == _role_name:
+			part.visible = costume.is_empty()
+		elif part.name == &"WardrobeSkirt":
 			part.visible = costume.is_empty()
 		elif part.name == _hair_name:
 			part.visible = costume_mesh != "CostumeWestern" and (

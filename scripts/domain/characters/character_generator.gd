@@ -196,7 +196,7 @@ func generate(
 		"skin_tone": rng.randi_range(0, 5),
 		"hair_color": rng.randi_range(0, 5),
 		"outfit_color": rng.randi_range(0, 7),
-		"hair_style": rng.randi_range(0, 2),
+		"hair_style": rng.randi_range(0, 5),
 		"height_scale": snappedf(rng.randf_range(0.94, 1.06), 0.01),
 		"head_scale": snappedf(rng.randf_range(0.94, 1.06), 0.01),
 	}
