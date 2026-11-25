@@ -3,6 +3,7 @@ class_name StudioBuildingVisualFactory
 
 const STAGE_EQUIPMENT: PackedScene = preload("res://assets/models/equipment/stage_equipment.glb")
 const CAMERA_PIVOT_HEIGHT: float = 1.52
+const PALETTE = preload("res://scripts/presentation/studio/studio_surface_palette.gd")
 
 static var _equipment_meshes: Dictionary[String, Mesh] = {}
 
@@ -22,7 +23,8 @@ func create_floor(
 	instance.name = node_name
 	instance.mesh = mesh
 	instance.position.y = 0.02
-	instance.material_override = make_material(color)
+	var hard_floor := node_name.contains("Stage") or node_name.contains("Warehouse") or node_name.contains("Editing")
+	instance.material_override = PALETTE.finish(color, "concrete" if hard_floor else "wood")
 	interior_root.add_child(instance)
 
 
@@ -117,7 +119,7 @@ func create_wall_panel(
 	color: Color,
 	local_position: Vector3
 ) -> void:
-	create_box(parent, node_name, size, color, local_position)
+	create_box(parent, node_name, size, color, local_position).material_override = PALETTE.finish(color, "wall")
 	create_wall_collision(parent, node_name, size, local_position)
 
 
@@ -219,7 +221,4 @@ func create_sphere(
 
 
 func make_material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 0.82
-	return material
+	return PALETTE.finish(color)

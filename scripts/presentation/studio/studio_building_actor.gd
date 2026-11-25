@@ -37,6 +37,7 @@ const FACILITY_VISUAL_BUILDER_SCRIPT = preload(
 const COSTUME_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_costume_catalog.gd"
 )
+const ARCHITECTURE = preload("res://scripts/presentation/studio/studio_architecture.gd")
 
 const CUTAWAY_DISTANCE: float = 36.0
 const WALL_THICKNESS: float = 0.28
@@ -77,22 +78,13 @@ func setup(data: Variant) -> void:
 	rotation_degrees.y = float(data.rotation_degrees)
 	add_to_group("studio_building")
 	_build_visual()
+	var type: String = str(building_data.building_type_id)
+	var tier: int = int(building_data.stage_size_tier)
+	var footprint: Vector2 = BUILDING_CATALOG_SCRIPT.get_footprint(type, 0.0, tier)
+	var height: float = BUILDING_CATALOG_SCRIPT.get_building_height(type, tier)
+	ARCHITECTURE.apply(self, _roof_assembly, type, footprint, height, tier)
 	_interior_lighting = INTERIOR_LIGHTING_SCRIPT.new()
-	_interior_lighting.call(
-		"setup",
-		self,
-		_interior_root,
-		BUILDING_CATALOG_SCRIPT.get_footprint(
-			str(building_data.building_type_id),
-			0.0,
-			int(building_data.stage_size_tier)
-		),
-		BUILDING_CATALOG_SCRIPT.get_building_height(
-			str(building_data.building_type_id),
-			int(building_data.stage_size_tier)
-		),
-		str(building_data.building_type_id)
-	)
+	_interior_lighting.call("setup", self, _interior_root, footprint, height, type)
 	_navigation_controller = BUILDING_NAVIGATION_CONTROLLER_SCRIPT.new()
 	_navigation_controller.call(
 		"setup",

@@ -8,8 +8,8 @@ from build_studio_employee import material, oval, panel
 
 def build_room_details(oak, edge, steel, dark, teal, paper, glass, amber):
     cream = material("GlazedPorcelain", (.79, .73, .58), .36)
-    clay = material("BurntTerracotta", (.48, .166, .089), .84)
-    plum = material("PlumTextile", (.25, .11, .17), .91)
+    clay = material("BurntTerracotta", (.39, .155, .083), .86)
+    plum = material("PlumTextile", (.145, .077, .096), .94)
     ice = material("SteelBluePaint", (.19, .34, .43), .57)
     front = .042
 

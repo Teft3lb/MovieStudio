@@ -36,6 +36,10 @@ func _run_tests() -> void:
 		root.add_child(room)
 		var fixture := room.get_node_or_null("Interior/" + str(entry[2])) as MeshInstance3D
 		_expect(fixture != null and fixture.mesh != null, "Room is missing fixture %s." % entry[2])
+		var front := room.get_wall_group_for_visual_builder("front")
+		var facade := front.get_node_or_null("EntranceMasonry") as MeshInstance3D
+		_expect(facade != null and facade.mesh.get_surface_count() >= 2,
+			"The entrance architecture must be attached to its cutaway wall.")
 		if data.building_type_id == "cafeteria":
 			var first := room.get_node("Interior/CafeteriaTable_0") as MeshInstance3D
 			var second := room.get_node("Interior/CafeteriaTable_1") as MeshInstance3D

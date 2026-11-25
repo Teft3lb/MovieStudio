@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/presentation/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/presentation/orbit_camera_controller.gd" id="2_camera"]
@@ -6,13 +6,14 @@
 [ext_resource type="Script" path="res://scripts/presentation/characters/character_manager.gd" id="4_characters"]
 [ext_resource type="Script" path="res://scripts/presentation/studio/studio_building_manager.gd" id="5_buildings"]
 [ext_resource type="Script" path="res://scripts/presentation/ui/studio_hud.gd" id="6_hud"]
+[ext_resource type="Shader" path="res://scripts/presentation/studio/studio_terrain.gdshader" id="7_terrain"]
+[ext_resource type="Script" path="res://scripts/presentation/studio/studio_backlot.gd" id="8_backlot"]
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
 size = Vector2(180, 180)
 
-[sub_resource type="StandardMaterial3D" id="Material_ground"]
-albedo_color = Color(0.22, 0.27, 0.23, 1)
-roughness = 1.0
+[sub_resource type="ShaderMaterial" id="Material_ground"]
+shader = ExtResource("7_terrain")
 
 [sub_resource type="BoxMesh" id="BoxMesh_road"]
 size = Vector3(4, 0.08, 148)
@@ -23,11 +24,12 @@ roughness = 1.0
 
 [sub_resource type="Environment" id="Environment_studio"]
 background_mode = 1
-background_color = Color(0.22, 0.32, 0.39, 1)
+background_color = Color(0.28, 0.40, 0.49, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.81, 0.89, 1, 1)
-ambient_light_energy = 0.42
+ambient_light_color = Color(0.84, 0.91, 1, 1)
+ambient_light_energy = 0.49
 tonemap_mode = 2
+tonemap_exposure = 0.96
 
 [node name="MovieStudio" type="Node3D"]
 script = ExtResource("1_main")
@@ -45,10 +47,17 @@ script = ExtResource("2_camera")
 environment = SubResource("Environment_studio")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-rotation = Vector3(-0.8, -0.5, 0)
-light_color = Color(1, 0.94, 0.84, 1)
-light_energy = 1.1
+rotation = Vector3(-0.93, -0.66, 0)
+light_color = Color(1, 0.93, 0.82, 1)
+light_energy = 1.17
 shadow_enabled = true
+directional_shadow_blend_splits = true
+directional_shadow_max_distance = 83.0
+
+[node name="PortraitFill" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.43, 2.27, 0)
+light_color = Color(0.83, 0.91, 1, 1)
+light_energy = 0.24
 
 [node name="Ground" type="MeshInstance3D" parent="."]
 mesh = SubResource("PlaneMesh_ground")
@@ -58,6 +67,9 @@ material_override = SubResource("Material_ground")
 position = Vector3(10, 0.02, 0)
 mesh = SubResource("BoxMesh_road")
 material_override = SubResource("Material_road")
+
+[node name="Backlot" type="Node3D" parent="."]
+script = ExtResource("8_backlot")
 
 [node name="StudioBuildingManager" type="Node3D" parent="."]
 script = ExtResource("5_buildings")

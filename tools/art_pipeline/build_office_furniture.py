@@ -14,6 +14,28 @@ from build_studio_employee import material, oval
 from build_interior_details import build_room_details
 
 
+def tint_with_grain(finish, color, name, textile=False):
+    size = 96
+    image = bpy.data.images.new(name, width=size, height=size, alpha=False)
+    samples = []
+    for row in range(size):
+        v = tau * row / size
+        for column in range(size):
+            u = tau * column / size
+            if textile:
+                value = .96 + .025 * cos(u*24) * cos(v*24) + .015 * sin(u*5 + v*3)
+            else:
+                wave = v*9 + .53*sin(u*2 + v) + .22*cos(u*3-v*2)
+                value = .91 + .055*sin(wave) + .024*cos(wave*2) + .011*sin(v*31)
+            samples.extend([*((channel * value) ** (1 / 2.2) for channel in color), 1.0])
+    image.pixels.foreach_set(samples)
+    image.pack()
+    graph = finish.node_tree
+    texture = graph.nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    graph.links.new(texture.outputs["Color"], graph.nodes.get("Principled BSDF").inputs["Base Color"])
+
+
 def build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent):
     rust = material("TerracottaUpholstery", (.42, .13, .077), .92)
     leaf = material("BroadLeaf", (.10, .27, .095), .86)
@@ -153,17 +175,19 @@ def build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, acce
 
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    oak = material("StudioWalnut", (.35, .17, .065), .62)
+    oak = material("StudioWalnut", (.32, .166, .085), .58)
     edge = material("WalnutEdge", (.18, .075, .035), .65)
-    steel = material("SlateSteel", (.12, .18, .20), .55, .35)
+    steel = material("SlateSteel", (.12, .18, .20), .44, .43)
     charcoal = material("DarkPolymer", (.038, .053, .063), .69)
-    teal = material("FeltTeal", (.043, .19, .20), .94)
+    teal = material("FeltTeal", (.054, .153, .158), .92)
     paper = material("IvoryPaper", (.71, .64, .49), .94)
     key = material("KeyboardKeys", (.28, .32, .31), .78)
     caster = material("CasterHousing", (.19, .22, .22), .72, .18)
-    screen = material("MonitorGlass", (.036, .18, .22), .32)
+    screen = material("MonitorGlass", (.026, .13, .166), .26)
     accent = material("InterfaceAmber", (.66, .31, .075), .63)
     signal = material("InterfaceCyan", (.11, .40, .44), .61)
+    tint_with_grain(oak, (.32, .166, .085), "Studio walnut grain")
+    tint_with_grain(teal, (.054, .153, .158), "Tight upholstery weave", textile=True)
 
     for name, width, depth, finish in [
         ("WriterDesk", 1.75, .85, oak), ("EditingDesk", 2.45, .95, steel),

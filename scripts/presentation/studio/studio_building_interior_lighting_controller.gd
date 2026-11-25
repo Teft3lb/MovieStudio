@@ -22,6 +22,8 @@ func setup(
 	var split_light: bool = footprint.x >= 12.0 or building_type_id in ["editing_suite", "script_department"]
 	var columns: int = 2 if split_light else 1
 	var rows: int = 2 if footprint.y >= 15.0 else 1
+	var technical := building_type_id in ["sound_stage", "tv_studio", "editing_suite"]
+	var residential := building_type_id in ["staff_housing", "star_bungalow", "studio_lounge"]
 	for col in range(columns):
 		for row in range(rows):
 			var lamp := OmniLight3D.new()
@@ -32,12 +34,12 @@ func setup(
 				(float(row) - float(rows - 1) * 0.5) * footprint.y * 0.48
 			)
 			lamp.omni_range = maxf(footprint.x, footprint.y) * 0.79
-			lamp.light_energy = 1.34 if split_light else 1.75
-			lamp.light_color = (
-				Color(0.92, 0.95, 1.0)
-				if building_type_id in ["sound_stage", "tv_studio", "editing_suite"]
-				else Color(1.0, 0.87, 0.68)
-			)
+			lamp.light_energy = 1.28 if split_light else 1.68
+			lamp.light_color = Color(1.0, .89, .74)
+			if technical:
+				lamp.light_color = Color(.83, .91, 1.0) if col == 0 else Color(1.0, .93, .81)
+			elif residential:
+				lamp.light_color = Color(1.0, .81, .62) if col == 0 else Color(1.0, .94, .84)
 			# Many studios can exist at once. Keep the lights unshadowed:
 			# collision geometry already controls employee movement.
 			lamp.shadow_enabled = false

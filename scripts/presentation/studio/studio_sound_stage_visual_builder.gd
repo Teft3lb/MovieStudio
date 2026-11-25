@@ -385,6 +385,7 @@ func _build_small_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "DirectorChair", "SmallStageDirectorChair", Vector3(-4.38, 0, 1.78)).rotation.y = PI * .76
 	FURNITURE.place(_interior_root, "CableReel", "SmallStageCableReel", Vector3(4.58, 0, -.29))
 	FURNITURE.place(_interior_root, "WorkshopBench", "SmallStagePrepBench", Vector3(4.37, 0, -1.67), true).rotation.y = -PI * .5
+	_dress_stage_walls(5.0, 4.0)
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.35, 0.0, -1.1),
@@ -479,6 +480,7 @@ func _build_medium_sound_stage_interior() -> void:
 	var stock := FURNITURE.place(_interior_root, "PropStock", "StagePrepStock", Vector3(6.29, 1.02, .16))
 	stock.rotation.y = -PI * .5
 	stock.scale = Vector3.ONE * .56
+	_dress_stage_walls(7.0, 6.0)
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -572,6 +574,7 @@ func _build_large_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "CableReel", "HighBayCableReel", Vector3(9.86, 0, 1.95))
 	FURNITURE.place(_interior_root, "DirectorChair", "HighBayDirectorSeat", Vector3(-10.25, 0, 6.03)).rotation.y = PI * .39
 	FURNITURE.place(_interior_root, "EquipmentRack", "HighBaySceneryStore", Vector3(-9.71, 0, -6.98)).rotation.y = PI * .5
+	_dress_stage_walls(11.0, 9.0)
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-4.0, 0.0, -3.0),
@@ -587,3 +590,17 @@ func _build_large_sound_stage_interior() -> void:
 		Vector3(5.5, 0.0, 6.5),
 		Vector3(0.0, 0.0, 3.8),
 	]
+
+
+func _dress_stage_walls(half_width: float, half_depth: float) -> void:
+	for side in [-1, 1]:
+		var group_id := "left" if side < 0 else "right"
+		var group := _actor.call("get_wall_group_for_visual_builder", group_id) as Node3D
+		for bay in range(2):
+			var x: float = side * (half_width - .22)
+			var z: float = -half_depth * .60 + bay * half_depth * .42
+			FURNITURE.place(group, "AcousticBaffles", "StageAcousticBay_%d" % bay,
+				Vector3(x, 2.51, z)).rotation.y = -side * PI * .5
+	var right := _actor.call("get_wall_group_for_visual_builder", "right") as Node3D
+	FURNITURE.place(right, "StoryBoard", "StageCallboard",
+		Vector3(half_width - .23, 2.36, half_depth * .47)).rotation.y = -PI * .5
