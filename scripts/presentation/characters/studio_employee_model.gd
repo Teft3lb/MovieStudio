@@ -21,6 +21,7 @@ const POSE_BONES: Array[String] = [
 const DISTANT_ANIMATION_DISTANCE_SQUARED: float = 32.0 * 32.0
 const DISTANT_ANIMATION_INTERVAL: float = 1.0 / 30.0
 const HAIR_STYLE_COUNT: int = 8
+const IRIS_TONES := [Color("#986041"), Color("#6b8c7d"), Color("#617d98"), Color("#643f35")]
 
 static var _tinted_materials: Dictionary[String, StandardMaterial3D] = {}
 static var _states: AnimationNodeStateMachine
@@ -63,8 +64,8 @@ func setup(
 	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), HAIR_STYLE_COUNT)
 	_idle_state = &"Idle" if identity_hash % 2 == 0 else &"IdleLook"
 	_phase_offset = float(identity_hash % 997) / 997.0
-	var width := lerpf(0.96, 1.09, _phase_offset)
-	_head_scale = Vector3(width, 1.025, lerpf(1.00, 1.06, face_style)) * facial_scale
+	var width := lerpf(0.98, 1.09, _phase_offset)
+	_head_scale = Vector3(width, 1.045, lerpf(0.98, 1.055, face_style)) * facial_scale
 	_outfit = outfit
 
 	var mouth: MeshInstance3D
@@ -108,6 +109,8 @@ func setup(
 	mouth.owner = null
 	mouth.get_parent().remove_child(mouth)
 	_tint_surfaces("Skin", skin)
+	_tint_surfaces("SkinShade", skin.darkened(.24))
+	_tint_surfaces("Iris", IRIS_TONES[posmod(identity_hash >> 3, IRIS_TONES.size())])
 	_tint_surfaces("Hair", hair)
 	_tint_surfaces("Cloth", outfit)
 	if wardrobe_style == 1:

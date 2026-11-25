@@ -467,7 +467,7 @@ func _build_model(character_payload: Dictionary) -> void:
 	_body_root.add_child(_employee_model)
 	_mouth_node = _employee_model.call("setup", character_payload, skin, _base_hair_color, outfit, head_scale)
 	_mouth_node.name = "Mouth"
-	_mouth_node.position = Vector3(0.0, -0.085, -0.177)
+	_mouth_node.position = Vector3(0.0, -0.085, -0.214)
 	_head_root = _make_pivot(_body_root, "Head", Vector3(0.0, 2.17, 0.0))
 	_head_root.add_child(_mouth_node)
 

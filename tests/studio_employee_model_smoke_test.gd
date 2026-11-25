@@ -73,6 +73,7 @@ func _check_authored_variants() -> void:
 		"id": "EMP-VISUAL-V3", "profession_id": "actor",
 		"appearance": {"hair_style": 7, "wardrobe_style": 2, "cheekbones": 0.75},
 	}
+	var first_iris := Color.TRANSPARENT
 	for instance in range(2):
 		var visual := VISUAL.new()
 		visual.setup(payload)
@@ -85,6 +86,12 @@ func _check_authored_variants() -> void:
 			"Saved appearance should reproduce the same selected hair and collar.")
 		_expect(is_equal_approx(face.get_blend_shape_value(1), 0.75) and skirt.skin != null,
 			"Authored cheeks and skinned skirt must remain available after import.")
+		var iris := _surface_color(face, "Iris")
+		_expect(iris.a > 0.0, "The revised face must import an iris material.")
+		if instance == 0:
+			first_iris = iris
+		else:
+			_expect(iris.is_equal_approx(first_iris), "The same employee ID must retain their iris color.")
 		visual.set_costume("western_costumes")
 		_expect(not skirt.visible, "A production costume should cover the everyday skirt.")
 		visual.set_costume("")

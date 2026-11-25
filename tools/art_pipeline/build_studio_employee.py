@@ -1,6 +1,6 @@
 """Build the original MovieStudio employee source and its runtime glTF."""
 
-from math import cos, sin, tau
+from math import cos, exp, sin, tau
 from pathlib import Path
 
 import bpy
@@ -64,7 +64,7 @@ def mesh(name, vertices, faces, mat, weights, corner_uvs=None):
     return obj
 
 
-def loft(name, rings, mat, weights, sides=12):
+def loft(name, rings, mat, weights, sides=12, deform=None):
     """Shape a closed mesh with horizontal elliptical sections."""
     vertices = []
     faces = []
@@ -72,7 +72,8 @@ def loft(name, rings, mat, weights, sides=12):
     for height, cx, cz, width, depth in rings:
         for index in range(sides):
             angle = tau * index / sides
-            vertices.append((cx + cos(angle) * width, height, cz + sin(angle) * depth))
+            point = (cx + cos(angle) * width, height, cz + sin(angle) * depth)
+            vertices.append(deform(*point) if deform else point)
     for ring in range(len(rings) - 1):
         for index in range(sides):
             a = ring * sides + index
@@ -108,6 +109,38 @@ def sweep(name, sections, mat, bone):
              for base in range(0, len(vertices)-sides, sides) for i in range(sides)]
     faces.extend([tuple(reversed(range(sides))), tuple(range(len(vertices)-sides, len(vertices)))])
     return mesh(name, vertices, faces, mat, bone)
+
+
+def hair_shell(name, mat, brow_height, back_height, sweep_amount, wave, crown_height):
+    """Continuous swept cap with a different hairline for each cut."""
+    sides = 32
+    sections = [
+        (0.0, 1.0), (.19, 1.08), (.38, 1.067), (.57, .97),
+        (.74, .78), (.88, .55), (.965, .30), (1.0, .075),
+    ]
+    vertices = []
+    for t, fullness in sections:
+        for i in range(sides):
+            theta = tau*i/sides
+            front = max(0, -sin(theta))
+            rear = max(0, sin(theta))
+            hairline = 2.229 + (brow_height-2.229)*front**2 + (back_height-2.229)*rear**1.4
+            hairline += sweep_amount*cos(theta)*front + wave * sin(theta*5+.45) * front
+            x = .235 * cos(theta)*fullness - sweep_amount*t*.86
+            z = .021 + .206 * sin(theta)*fullness + .015*t
+            y = hairline + (crown_height-hairline)*t
+            vertices.append((x, y, z))
+    faces = [(base+i, base+i+sides, base+(i+1)%sides+sides, base+(i+1)%sides)
+             for base in range(0, len(vertices)-sides, sides) for i in range(sides)]
+    faces.extend([tuple(range(sides)), tuple(reversed(range(len(vertices)-sides, len(vertices))))])
+    return mesh(name, vertices, faces, mat, "Head")
+
+
+def eye_opening(name, x, y, z, mat):
+    sections = [(-.050, 0, .019, .003), (-.034, .001, .005, .017),
+                (-.013, .002, -.005, .023), (.011, .003, -.005, .022),
+                (.036, .001, .005, .015), (.050, -.001, .019, .003)]
+    return sweep(name, [(x+dx, y+dy, z+dz, width) for dx,dy,dz,width in sections], mat, "Head")
 
 
 def panel(name, points, mat, bone, thickness=0.012):
@@ -234,9 +267,10 @@ def animate(rig):
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     rig = make_rig()
-    skin = material("Skin", (0.62, 0.36, 0.22), .61)
-    cloth = material("Cloth", (0.14, 0.22, 0.26), 0.79)
-    hair = material("Hair", (0.12, 0.07, 0.045), .66)
+    skin = material("Skin", (0.62, 0.36, 0.22), .69)
+    skin_shade = material("SkinShade", (0.42, 0.22, 0.15), .73)
+    cloth = material("Cloth", (0.14, 0.22, 0.26), 0.82)
+    hair = material("Hair", (0.12, 0.07, 0.045), .67)
     trousers = material("Trousers", (0.055, 0.076, 0.09), 0.92)
     leather = material("Leather", (0.064, 0.038, 0.025))
     shoe_upper = material("ShoeUpper", (0.064, 0.038, 0.025), .48)
@@ -244,7 +278,8 @@ def build():
     shirt = material("Cotton", (0.72, 0.66, 0.51), 0.88)
     brass = material("Brass", (0.53, 0.32, 0.095), 0.38, 0.6)
     knit = material("KnitTrim", (.16, .235, .235), .95)
-    pupil = material("Iris", (0.035, 0.018, 0.013), 0.33)
+    iris = material("Iris", (0.12, 0.069, 0.040), .37)
+    pupil = material("Pupil", (.010, .007, .009), .32)
     eye = material("Eye", (0.88, 0.80, 0.67), 0.45)
     lip = material("Lip", (0.18, 0.057, 0.040))
     teal = material("EquipmentTeal", (0.05, 0.20, 0.20))
@@ -256,9 +291,9 @@ def build():
 
     clothes = [loft("TailoredJacket", [
         (0.96, 0, 0.01, .19, .10), (1.01, 0, 0, .245, .155),
-        (1.20, 0, -.009, .229, .161), (1.43, 0, -.012, .263, .177),
+        (1.16, 0, -.007, .218, .157), (1.37, 0, -.014, .252, .188), (1.49, 0, -.014, .271, .190),
         (1.62, 0, -.012, .284, .173), (1.72, 0, -.010, .296, .155),
-        (1.79, 0, .001, .258, .141), (1.84, 0, .005, .179, .124),
+        (1.77, 0, .001, .270, .147), (1.82, 0, .004, .206, .135), (1.875, 0, .005, .145, .111),
         (1.90, 0, .005, .117, .095),
     ], cloth, chest_weight, 18)]
     clothes.append(loft("Waist", [
@@ -267,7 +302,7 @@ def build():
     ], trousers, "Pelvis", 14))
     trim = [loft("Neck", [
         (1.82, 0, .011, .110, .098), (1.91, 0, -.004, .101, .089),
-        (1.980, 0, -.020, .094, .091), (2.055, 0, -.016, .112, .104),
+        (1.980, 0, -.020, .093, .090), (2.055, 0, -.016, .111, .104),
     ], skin, "Chest")]
     trim.append(loft("ShirtNeckband", [
         (1.872, 0, -.005, .115, .108), (1.891, 0, -.004, .106, .100),
@@ -301,32 +336,36 @@ def build():
         trim.append(loft("SleeveCuff", [(1.105, sign*.405, -.008, .057, .058),
                                         (1.145, sign*.408, -.007, .071, .071)],
                          shirt, arm_weight, 10))
-        trim.append(loft("Hand", [
-            (1.003, sign*.405, -.027, .024, .026), (1.022, sign*.409, -.024, .042, .035),
-            (1.063, sign*.412, -.017, .055, .042), (1.096, sign*.410, -.010, .053, .044),
-            (1.143, sign*.404, -.006, .043, .039),
+        trim.append(loft("ShapedPalm", [
+            (1.007, sign*.407, -.031, .027, .025), (1.027, sign*.410, -.027, .042, .031),
+            (1.049, sign*.412, -.020, .051, .036), (1.079, sign*.410, -.013, .055, .042),
+            (1.104, sign*.404, -.009, .047, .041), (1.143, sign*.404, -.006, .041, .037),
+        ], skin, side + "Forearm", 14))
+        trim.append(loft("ShapedThumb", [
+            (1.030, sign*.368, -.048, .012, .013), (1.055, sign*.366, -.041, .021, .021),
+            (1.081, sign*.373, -.028, .028, .022), (1.103, sign*.381, -.019, .026, .018),
         ], skin, side + "Forearm", 10))
-        trim.append(oval("Thumb", (sign*.363, 1.065, -.039), (.025, .041, .03), skin, side + "Forearm", 8))
 
         def leg_weight(point, side=side):
             strength = max(0.0, min(1.0, (0.455 - point[1]) / 0.17))
             return {side + "Thigh": 1.0 - strength, side + "Shin": strength}
 
         clothes.append(loft("TailoredTrouserLeg", [
-            (.086, sign*.142, .004, .078, .082), (.155, sign*.141, .01, .085, .081),
-            (.27, sign*.140, .007, .092, .087), (.39, sign*.138, .007, .099, .096),
-            (.48, sign*.133, .003, .106, .108),
-            (.65, sign*.126, 0, .116, .123), (.82, sign*.128, 0, .126, .129),
+            (.086, sign*.143, .006, .074, .078), (.154, sign*.143, .009, .086, .085),
+            (.269, sign*.141, .013, .094, .092), (.386, sign*.137, .010, .096, .097),
+            (.486, sign*.133, .003, .108, .111),
+            (.65, sign*.127, -.007, .120, .124), (.82, sign*.127, -.003, .127, .133),
             (.89, sign*.119, 0, .111, .108),
         ], trousers, leg_weight))
-        shoe = [(0.013, sign*.143, -.059, .102, .161), (.043, sign*.143, -.064, .108, .169),
-                (.059, sign*.143, -.064, .104, .164)]
-        trim.append(loft("Sole", shoe, rubber, side + "Foot", 12))
+        shoe = [(.013, sign*.146, -.065, .101, .161), (.030, sign*.146, -.069, .109, .173),
+                (.052, sign*.145, -.067, .107, .171), (.063, sign*.145, -.064, .103, .164)]
+        trim.append(loft("Sole", shoe, rubber, side + "Foot", 16))
         trim.append(loft("Shoe", [shoe[-1],
-                                 (.09, sign*.143, -.072, .105, .158),
-                                 (.128, sign*.143, -.054, .098, .115),
-                                 (.153, sign*.143, -.023, .084, .100)],
-                         shoe_upper, side + "Foot", 12))
+                                 (.088, sign*.146, -.074, .103, .158),
+                                 (.111, sign*.145, -.059, .098, .132),
+                                 (.136, sign*.143, -.037, .089, .105),
+                                 (.153, sign*.143, -.023, .082, .092)],
+                         shoe_upper, side + "Foot", 16))
         for row in range(3):
             yy = .134 - row*.008
             zz = -.126 - row*.014
@@ -372,98 +411,73 @@ def build():
         (1.039, 0, 0, .224, .155),
     ], knit, skirt_weight, 16)], rig)
 
-    face = [loft("Face", [
-        (1.993, 0, -.043, .087, .078), (2.027, 0, -.034, .136, .119),
-        (2.077, 0, -.024, .168, .155), (2.125, 0, -.022, .191, .178),
-        (2.169, 0, -.017, .207, .188), (2.222, 0, -.014, .208, .179),
-        (2.278, 0, .001, .198, .164),
-        (2.348, 0, .019, .166, .141), (2.396, 0, .027, .083, .075),
-    ], skin, "Head", 24)]
-    face.append(loft("NoseBridge", [(2.141, 0, -.199, .025, .027),
-                                    (2.157, 0, -.213, .035, .037),
-                                    (2.178, 0, -.207, .029, .035),
-                                    (2.23, 0, -.194, .019, .018)], skin, "Head", 10))
+    def facial_planes(x, y, z):
+        front = min(1.0, max(0.0, (-z-.037)/.115))
+        ax = abs(x)
+        socket = .028 * exp(-((ax-.096)/.055)**2 - ((y-2.239)/.044)**2)
+        cheek = .024 * exp(-((ax-.129)/.071)**2 - ((y-2.147)/.052)**2)
+        bridge = .031 * exp(-(x/.037)**2 - ((y-2.203)/.069)**2)
+        tip = .063 * exp(-(x/.044)**2 - ((y-2.158)/.030)**2)
+        muzzle = .018 * exp(-(x/.089)**2 - ((y-2.088)/.039)**2)
+        return x, y, z + front * (socket-cheek-bridge-tip-muzzle)
+
+    face = [loft("SculptedHead", [
+        (1.969,0,-.025,.065,.073), (1.988,0,-.032,.111,.106),
+        (2.013,0,-.031,.152,.132), (2.044,0,-.026,.180,.156),
+        (2.079,0,-.023,.203,.169), (2.110,0,-.018,.217,.179),
+        (2.137,0,-.012,.231,.184), (2.156,0,-.009,.232,.190),
+        (2.173,0,-.006,.231,.195), (2.192,0,-.004,.230,.198),
+        (2.214,0,.002,.231,.201), (2.232,0,.005,.232,.198),
+        (2.253,0,.008,.232,.195), (2.280,0,.014,.232,.190),
+        (2.316,0,.020,.226,.181), (2.352,0,.026,.205,.160),
+        (2.390,0,.032,.169,.134), (2.425,0,.029,.115,.095),
+        (2.451,0,.024,.051,.053),
+    ], skin, "Head", 48, facial_planes)]
     for sign in (-1, 1):
-        face.append(oval("Ear", (sign*.198, 2.174, .001), (.038, .061, .042), skin, "Head"))
-        face.append(oval("NoseWing", (sign*.028, 2.153, -.215), (.018, .015, .023), skin, "Head", 8))
-        face.append(oval("Eye", (sign*.083, 2.214, -.185), (.038, .017, .022), eye, "Head", 12))
-        face.append(oval("Iris", (sign*.081, 2.214, -.203), (.017, .016, .009), pupil, "Head", 12))
-        face.append(oval("EyeLight", (sign*.080-.003, 2.220, -.211), (.0035, .0035, .003), eye, "Head", 6))
-        face.append(oval("UpperLid", (sign*.082, 2.234, -.190), (.038, .007, .020), skin, "Head"))
-        arch = [(sign*.045, 2.251, -.193, .003), (sign*.068, 2.258, -.190, .006),
-                (sign*.090, 2.261, -.185, .0058), (sign*.11, 2.257, -.178, .0046),
-                (sign*.129, 2.249, -.168, .002)]
-        face.append(sweep("Eyebrow", sorted(arch), hair, "Head"))
+        x = sign*.098
+        face.append(oval("Ear", (sign*.229, 2.179, .016), (.034, .057, .029), skin, "Head", 12))
+        face.append(oval("Concha", (sign*.244, 2.181, -.006), (.017, .035, .009), skin_shade, "Head"))
+        face.append(eye_opening("AlmondEye", x, 2.233, -.168, eye))
+        face.append(oval("ColoredIris", (x, 2.235, -.189), (.021, .021, .008), iris, "Head", 14))
+        face.append(oval("Pupil", (x, 2.236, -.196), (.012, .015, .005), pupil, "Head", 12))
+        face.append(oval("Catchlight", (x-.006, 2.245, -.200), (.0044, .0044, .0028), eye, "Head", 8))
+        lid = [(x-.049,2.234,-.153,.0035), (x-.030,2.251,-.176,.0058),
+               (x,2.256,-.182,.0061), (x+.028,2.251,-.175,.0055), (x+.049,2.233,-.153,.003)]
+        face.append(sweep("UpperLidFold", lid, skin_shade, "Head"))
+        arch = [(sign*.049,2.273,-.184,.0035),(sign*.078,2.284,-.184,.008),
+                (sign*.110,2.286,-.173,.0077),(sign*.139,2.279,-.159,.0061),
+                (sign*.157,2.269,-.143,.0025)]
+        face.append(sweep("ExpressiveBrow", sorted(arch), hair, "Head"))
     face_mesh = join("Face", face, rig)
-    shape(face_mesh, "SoftJaw", lambda x, y, z: (
-        x * (1.0 - 0.16 * max(0.0, 1 - abs(y - 2.055) / 0.16)), y, z,
+    shape(face_mesh, "SoftJaw", lambda x,y,z: (
+        x * (1-.14*max(0,1-abs(y-2.038)/.145)), y, z,
     ))
-    shape(face_mesh, "HighCheekbones", lambda x, y, z: (
-        x * (1 + .082 * max(0, 1 - abs(y - 2.17) / .07)), y, z,
+    shape(face_mesh, "HighCheekbones", lambda x,y,z: (
+        x * (1+.065*max(0,1-abs(y-2.163)/.062)), y, z,
     ))
     join("MouthShape", [sweep("Smile", [
-        (-.047, .009, .002, .0028), (-.033, .002, -.003, .0053),
-        (-.015, -.002, -.006, .0064), (0, -.004, -.007, .0067),
-        (.016, -.002, -.006, .0063), (.032, .002, -.003, .0051),
-        (.047, .009, .002, .0028),
+        (-.056,.010,.015,.003),(-.041,.004,.006,.0061),(-.019,-.001,-.002,.0072),
+        (0,-.004,-.005,.0076),(.019,-.001,-.002,.0072),(.042,.004,.006,.0061),(.056,.010,.015,.003),
     ], lip, None)], None)
 
-    for style in range(8):
-        shapes = [loft("Scalp", [
-            (2.21, 0, .079, .205, .094), (2.27, 0, .053, .216, .145),
-            (2.35, 0, .022, .221, .181), (2.413, -.025, .007, .170, .130),
-            (2.437 + (style%3)*.012, -.054, -.028, .088, .072),
-        ], hair, "Head", 18)]
-        if style == 0:
-            shapes.append(loft("SweptFringe", [
-                (2.317, -.103, -.117, .085, .058), (2.343, -.071, -.118, .138, .097),
-                (2.374, -.032, -.105, .182, .121), (2.412, -.022, -.076, .173, .136),
-                (2.444, -.047, -.051, .139, .105), (2.458, -.079, -.041, .082, .068),
-            ], hair, "Head", 22))
-        elif style == 1:
-            shapes.append(loft("Bob", [(2.046, 0, .100, .201, .078), (2.103, 0, .086, .218, .118),
-                                        (2.249, 0, .080, .233, .118), (2.382, 0, .06, .191, .16)],
-                               hair, "Head", 16))
-            for sign in (-1, 1):
-                shapes.append(loft("TempleLock", [
-                    (2.125, sign*.185, -.074, .034, .044), (2.199, sign*.182, -.093, .051, .072),
-                    (2.273, sign*.170, -.091, .071, .092), (2.356, sign*.124, -.065, .080, .091),
-                ], hair, "Head", 14))
-        elif style == 2:
-            for x, h in [(-.132, 2.37), (-.061, 2.422), (.025, 2.43), (.11, 2.389)]:
-                shapes.append(oval("Curl", (x, h, -.114), (.087, .065, .091), hair, "Head"))
-        elif style == 3:
-            shapes.append(oval("NapeBun", (.073, 2.225, .214), (.122, .115, .102), hair, "Head"))
-            shapes.append(oval("SideSweep", (-.076, 2.352, -.117), (.16, .053, .111), hair, "Head"))
-        elif style == 4:
-            shapes.append(loft("Crop", [(2.323, 0, -.048, .199, .163),
-                                        (2.407, -.014, -.044, .196, .153),
-                                        (2.466, -.028, -.058, .135, .109),
-                                        (2.485, -.031, -.040, .070, .065)], hair, "Head", 16))
-        elif style == 5:
-            shapes.append(loft("Layers", [(1.957, 0, .159, .144, .040),
-                                           (2.040, 0, .112, .211, .103),
-                                           (2.220, 0, .066, .225, .143),
-                                           (2.390, 0, .021, .189, .161)], hair, "Head", 16))
-            shapes.append(oval("Wave", (-.145, 2.300, -.127), (.100, .123, .071), hair, "Head"))
-            shapes.append(oval("Wave", (.162, 2.336, -.106), (.086, .087, .076), hair, "Head"))
-        elif style == 6:
-            shapes.append(loft("RoundedRoll", [
-                (2.323, .045, -.091, .161, .090), (2.371, .020, -.086, .190, .135),
-                (2.437, .016, -.058, .166, .156), (2.488, -.021, -.005, .098, .088),
-            ], hair, "Head", 18))
-            shapes.append(oval("RearTaper", (0, 2.246, .103), (.192, .102, .080), hair, "Head", 14))
-        else:
-            shapes.append(loft("AsymmetricBob", [
-                (2.016, -.035, .088, .137, .079), (2.079, -.031, .077, .216, .129),
-                (2.195, -.012, .057, .229, .153), (2.324, .022, .031, .211, .168),
-                (2.419, .014, .019, .138, .119),
-            ], hair, "Head", 18))
-            shapes.append(loft("LongSideSweep", [
-                (2.108, -.177, -.080, .043, .060), (2.207, -.172, -.092, .063, .080),
-                (2.326, -.124, -.104, .117, .088), (2.400, -.067, -.068, .135, .081),
-            ], hair, "Head", 14))
-        join(f"Hair{style}", shapes, rig)
+    hair_profiles = [
+        (2.340,2.183,.052,.007,2.514), (2.370,2.061,-.036,.004,2.514),
+        (2.335,2.201,.013,.029,2.543), (2.355,2.198,.031,.008,2.510),
+        (2.366,2.217,-.005,.005,2.488), (2.352,1.991,.038,.009,2.519),
+        (2.378,2.174,-.040,.005,2.557), (2.375,2.043,.063,.005,2.524),
+    ]
+    for style,profile in enumerate(hair_profiles):
+        pieces = [hair_shell("SculptedHair", hair, *profile)]
+        if style == 2:
+            for x,y,z in [(-.145,2.441,-.102),(-.077,2.481,-.132),(.017,2.504,-.117),(.105,2.477,-.098)]:
+                pieces.append(oval("Coil",(x,y,z),(.072,.051,.073),hair,"Head",12))
+        if style == 3:
+            pieces.append(oval("TiedChignon",(.021,2.260,.232),(.111,.111,.094),hair,"Head",18))
+        if style in (1,5,7):
+            for sign in (-1,1):
+                length = .157 if style == 5 else .111
+                pieces.append(oval("SideSweep",(sign*.196,2.213,-.048),(.063,length,.093),hair,"Head",14))
+        join(f"Hair{style}", pieces, rig)
 
     cap = [loft("CapCrown", [(2.306, 0, .001, .221, .18), (2.34, 0, 0, .24, .205),
                              (2.437, 0, .02, .193, .17), (2.47, 0, .04, .09, .09)],
@@ -472,14 +486,24 @@ def build():
                               (.106, 2.30, -.345), (-.106, 2.30, -.345),
                               (-.169, 2.313, -.27)], teal, "Head", .025)]
     join("RoleDirector", cap, rig)
+    canvas = material("WorkwearCanvas", (.16,.185,.149), .89)
+    washed_wool = material("WoolWaistcoat", (.26,.123,.069), .87)
     for role, accent, bag_side in [("Camera", teal, -1), ("Technician", orange, 1),
                                    ("Writer", leather, 1), ("Editor", teal, 1),
                                    ("Office", brass, -1), ("Actor", shirt, -1)]:
         pieces = []
+        if role in ("Technician", "Camera", "Writer"):
+            finish = washed_wool if role == "Writer" else canvas
+            pieces.append(loft("TailoredWorkVest", [
+                (1.106,0,-.007,.251,.184), (1.175,0,-.013,.271,.203),
+                (1.340,0,-.013,.286,.233), (1.510,0,-.018,.309,.232),
+                (1.671,0,-.011,.328,.216), (1.772,0,.002,.306,.180),
+                (1.827,0,.004,.223,.155),
+            ], finish, chest_weight, 22))
         if role in ("Camera", "Writer"):
-            pieces.append(panel("Strap", [(-.21, 1.80, -.152), (-.145, 1.82, -.174),
-                                          (.033, 1.53, -.233), (.22, 1.205, -.161),
-                                          (.172, 1.168, -.173), (-.025, 1.505, -.230)],
+            pieces.append(panel("Strap", [(-.21, 1.80, -.173), (-.145, 1.82, -.189),
+                                          (.033, 1.53, -.263), (.24, 1.205, -.179),
+                                          (.187, 1.168, -.190), (-.025, 1.505, -.263)],
                                 accent, "Chest", .034))
         if role in ("Camera", "Technician", "Writer"):
             x = bag_side * .23
@@ -490,17 +514,23 @@ def build():
             pieces.append(oval("Fastener", (x, 1.292, -.167), (.019, .016, .01), brass, "Pelvis"))
         if role == "Technician":
             for sign in (-1, 1):
-                pieces.append(panel("HighVisibilityStripe", [(sign*.124, 1.78, -.177),
-                                     (sign*.168, 1.77, -.172), (sign*.165, 1.37, -.176),
-                                     (sign*.115, 1.37, -.184)], orange, "Chest", .025))
+                pieces.append(panel("HighVisibilityStripe", [(sign*.124, 1.78, -.182),
+                                     (sign*.168, 1.77, -.178), (sign*.165, 1.37, -.222),
+                                     (sign*.115, 1.37, -.242)], orange, "Chest", .025))
         if role == "Editor":
             for sign in (-1, 1):
                 pieces.append(oval("Headphones", (sign*.138, 1.912, -.075), (.041, .060, .050), teal, "Chest"))
-        if role in ("Office", "Actor"):
-            pieces.append(panel("Scarf", [(-.10, 1.925, -.117), (.11, 1.925, -.117),
-                                          (.051, 1.82, -.190), (.08, 1.71, -.219),
-                                          (-.014, 1.75, -.214), (-.07, 1.84, -.170)],
-                                accent, "Chest", .028))
+        if role == "Office":
+            pieces.append(panel("Credential", [( .091,1.702,-.181),(.168,1.709,-.163),
+                                               (.171,1.578,-.182),(.098,1.572,-.199)],
+                                brass, "Chest", .018))
+        if role == "Actor":
+            pieces.append(loft("WrappedScarf", [(1.874,0,-.004,.117,.111),
+                                                (1.913,0,-.010,.119,.108),
+                                                (1.949,0,-.009,.109,.099)], knit, "Chest", 18))
+            pieces.append(panel("ScarfFold", [(-.037,1.901,-.133),(.038,1.901,-.132),
+                                              (.062,1.777,-.175),(.008,1.746,-.185)],
+                                knit, "Chest", .026))
         join("Role" + role, pieces, rig)
 
     join("CostumeWestern", [
