@@ -11,6 +11,7 @@ sys.path.insert(0, str(HERE))
 sys.dont_write_bytecode = True
 from build_stage_equipment import assemble, box, rod
 from build_studio_employee import material, oval
+from build_interior_details import build_room_details
 
 
 def build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent):
@@ -268,6 +269,7 @@ def build():
     assemble("BedMattress", mattress)
     assemble("BedPillow", [box("Cushion", (0, 0, 0), (.78, .154, .46), paper, .068)])
     build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent)
+    build_room_details(oak, edge, steel, charcoal, teal, paper, screen, accent)
 
     root = HERE.parents[1]
     source = root / "art_source" / "furniture" / "office_furniture.blend"
