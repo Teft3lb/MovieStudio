@@ -34,6 +34,7 @@
 - [Visual Overhaul v1 и конвейер Blender → Godot](docs/architecture/visual_overhaul_v1.md)
 - [Visual Overhaul v2, рабочие места и замеры](docs/architecture/visual_overhaul_v2.md)
 - [Visual Overhaul v3, интерьеры, сотрудники и карта ресурсов](docs/architecture/visual_overhaul_v3.md)
+- [Interior Design Overhaul v4, планировки и визуальная проверка](docs/architecture/interior_design_v4.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии
