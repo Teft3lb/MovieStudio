@@ -96,6 +96,23 @@ func _capture() -> void:
 	await _save_frame("full-length")
 	_aim(camera, gallery.position + Vector3(.58, 1.65, 0), Vector3(-1.12, 1.33, -6.50))
 	await _save_frame("crew-close")
+	var second_portrait := samples[8].global_position + Vector3.UP * 2.10
+	_aim(camera, second_portrait, Vector3(0.59, 0.05, -1.82))
+	await _save_frame("second-portrait")
+	_aim(camera, samples[0].global_position + Vector3.UP * 1.20, Vector3(-2.25, 0.62, -4.10))
+	for step in range(15):
+		samples[0].call("advance_simulation", 0.025)
+	await _save_frame("idle-character")
+	samples[0].call("set_walking", true)
+	for step in range(19):
+		samples[0].call("advance_simulation", 0.025)
+	await _save_frame("walking-character")
+	samples[0].call("set_walking", false)
+	var entrance := stage.global_position + Vector3(0.0, 0.0, 5.1)
+	var scale_reference := _add_preview_actor(world, clock, entrance)
+	_aim(camera, entrance + Vector3.UP * 1.80, Vector3(-4.20, 2.20, 9.2))
+	await _save_frame("building-scale")
+	scale_reference.free()
 
 	samples[0].call("set_performance_action", "speaking")
 	samples[6].call("set_performance_action", "directing")
