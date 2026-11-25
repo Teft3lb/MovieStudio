@@ -387,6 +387,9 @@ func _build_small_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "WorkshopBench", "SmallStagePrepBench", Vector3(4.37, 0, -1.67), true).rotation.y = -PI * .5
 	_dress_stage_walls(5.0, 4.0)
 	_build_scenic_backdrop(3, 2.92, -3.16)
+	_add_scenic_cart(Vector3(-4.53, 0, -3.03))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "ScenicStorageApron",
+		Vector2(-4.38, -2.18), Vector2(1.01, 3.39))
 	FURNITURE.place(_interior_root, "StageWaitBench", "SmallStageHoldingBench", Vector3(-4.53, 0, -1.22), true).rotation.y = PI * .5
 	_create_film_slate()
 	_workplace_points = [
@@ -484,6 +487,9 @@ func _build_medium_sound_stage_interior() -> void:
 	stock.scale = Vector3.ONE * .56
 	_dress_stage_walls(7.0, 6.0)
 	_build_scenic_backdrop(4, 3.64, -4.84)
+	_add_scenic_cart(Vector3(-6.44, 0, -.08))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "ScenicStorageApron",
+		Vector2(-6.37, 1.09), Vector2(1.18, 4.59))
 	FURNITURE.place(_interior_root, "StageWaitBench", "StageHoldingBench", Vector3(-3.18, 0, 5.56), true).rotation.y = PI
 	_create_film_slate()
 	_workplace_points = [
@@ -580,6 +586,9 @@ func _build_large_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "EquipmentRack", "HighBaySceneryStore", Vector3(-9.71, 0, -6.98)).rotation.y = PI * .5
 	_dress_stage_walls(11.0, 9.0)
 	_build_scenic_backdrop(7, 4.64, -7.02)
+	_add_scenic_cart(Vector3(-9.81, 0, -.84))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "ScenicStorageApron",
+		Vector2(-9.60, -1.29), Vector2(2.05, 4.82))
 	FURNITURE.place(_interior_root, "StageWaitBench", "HighBayHoldingBench", Vector3(-10.40, 0, 3.29), true).rotation.y = PI * .5
 	_create_film_slate()
 	_workplace_points = [
@@ -614,8 +623,20 @@ func _dress_stage_walls(half_width: float, half_depth: float) -> void:
 
 func _build_scenic_backdrop(count: int, height: float, z: float) -> void:
 	var bays: Array[Transform3D] = []
+	var gantry: Array[Transform3D] = []
 	var basis := Basis.from_scale(Vector3(1.0, height / 2.35, 1.0))
+	var rail_basis := Basis.from_scale(Vector3(.92, 1.0, 1.0))
 	for index in count:
 		var x := (index - (count - 1) * .5) * 1.84
 		bays.append(Transform3D(basis, Vector3(x, .035, z)))
+		gantry.append(Transform3D(rail_basis, Vector3(x, height - .132, z + .255)))
 	FURNITURE.place_batch(_interior_root, "ScenicBackdropBay", "ScenicBackdropPanels", bays)
+	FURNITURE.place_batch(_interior_root, "GantryBatten", "ScenicHeaderGantry", gantry)
+	for side in [-1, 1]:
+		var x: float = side * (count * .92 - .062)
+		_visual_factory.call("create_box", _interior_root, "ScenicGantrySupport_%d" % side,
+			Vector3(.115, height - .18, .185), Color("#53656e"), Vector3(x, height * .5 - .07, z + .18))
+
+
+func _add_scenic_cart(location: Vector3) -> void:
+	FURNITURE.place(_interior_root, "ScenicCart", "ScenicFlatStorage", location, true).rotation.y = PI * .5

@@ -109,10 +109,61 @@ func _ready() -> void:
 	signboard.modulate = Color("#f3ddae")
 	add_child(signboard)
 	_build_yards(cube, foliage)
+	_build_creative_walk(cube, foliage)
+	_build_stage_entry(cube, stem, foliage)
 	var manager := get_node_or_null("../StudioBuildingManager") as StudioBuildingManager
 	if manager != null:
 		manager.buildings_changed.connect(_update_yards.bind(manager))
 		_update_yards.call_deferred(manager)
+
+
+func _build_stage_entry(cube: Mesh, stem: Mesh, foliage: Mesh) -> void:
+	var site := _site("StageEntryPocket", Rect2(2.64, 8.65, 3.95, 4.18))
+	_batch("StageEntryStone", cube, [
+		_piece(Vector3(4.58, .034, 10.56), Vector3(3.84, .057, 4.02)),
+		_piece(Vector3(5.92, .20, 10.82), Vector3(.82, .40, 2.70)),
+		_piece(Vector3(3.28, .21, 11.81), Vector3(.77, .42, .94)),
+	], PALETTE.finish(Color("#9c9075"), "concrete"), false).reparent(site, false)
+	_batch("EntryTreeTrunk", stem, [
+		_piece(Vector3(5.96, 1.38, 11.48), Vector3(.31, 2.08, .31)),
+	], PALETTE.finish(Color("#69583e"))).reparent(site, false)
+	_batch("EntryTreeCanopy", foliage, [
+		_piece(Vector3(5.91, 2.81, 11.48), Vector3(1.66, 2.04, 1.62)),
+		_piece(Vector3(5.56, 2.55, 11.12), Vector3(1.30, 1.40, 1.19)),
+		_piece(Vector3(6.19, 2.52, 11.83), Vector3(1.24, 1.37, 1.23)),
+		_piece(Vector3(3.28, .64, 11.81), Vector3(.71, .57, .81)),
+		_piece(Vector3(5.92, .57, 10.12), Vector3(.73, .43, .78)),
+	], PALETTE.finish(Color("#637949"))).reparent(site, false)
+	_add_sign(site, "ПАВИЛЬОНЫ", Vector3(3.43, 1.33, 9.03))
+
+
+func _build_creative_walk(cube: Mesh, canopy: Mesh) -> void:
+	var site := _site("CreativeWalk", Rect2(-15.68, -10.77, 7.43, 4.23))
+	_batch("CreativePaving", cube, [
+		_piece(Vector3(-11.95, .031, -8.48), Vector3(7.35, .054, 3.23)),
+		_piece(Vector3(-15.14, .031, -9.50), Vector3(1.02, .055, 2.35)),
+	], PALETTE.finish(Color("#aa9478"), "concrete"), false).reparent(site, false)
+	_batch("PergolaSteel", cube, [
+		_piece(Vector3(-14.79, 1.16, -9.58), Vector3(.10, 2.30, .12)),
+		_piece(Vector3(-9.44, 1.16, -9.58), Vector3(.10, 2.30, .12)),
+		_piece(Vector3(-14.79, 1.16, -10.42), Vector3(.10, 2.30, .12)),
+		_piece(Vector3(-9.44, 1.16, -10.42), Vector3(.10, 2.30, .12)),
+		_piece(Vector3(-12.11, 2.31, -9.57), Vector3(5.55, .17, .12)),
+		_piece(Vector3(-12.11, 2.31, -10.42), Vector3(5.55, .17, .12)),
+	], PALETTE.finish(Color("#52625f"), "metal")).reparent(site, false)
+	var slats: Array[Transform3D] = []
+	for strip in range(15):
+		slats.append(_piece(Vector3(-14.70 + strip * .369, 2.43, -10.0), Vector3(.075, .09, 1.07)))
+	_batch("PergolaTimber", cube, slats, PALETTE.finish(Color("#967049"), "wood")).reparent(site, false)
+	_batch("CreativePlanters", cube, [
+		_piece(Vector3(-13.4, .32, -10.10), Vector3(2.0, .62, .66)),
+		_piece(Vector3(-10.5, .32, -10.10), Vector3(1.62, .62, .66)),
+	], PALETTE.finish(Color("#817060"), "concrete"), false).reparent(site, false)
+	var hedges: Array[Transform3D] = []
+	for x in [-14.05, -13.45, -12.85, -11.02, -10.50, -9.99]:
+		hedges.append(_piece(Vector3(x, .81, -10.10), Vector3(.67, .40, .51)))
+	_batch("CreativeHedge", canopy, hedges, PALETTE.finish(Color("#667a45")), false).reparent(site, false)
+	_add_sign(site, "СЦЕНАРНЫЙ ОТДЕЛ", Vector3(-15.1, 1.24, -7.32))
 
 
 func _build_yards(cube: Mesh, foliage: Mesh) -> void:

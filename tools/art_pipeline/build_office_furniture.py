@@ -13,6 +13,7 @@ from build_stage_equipment import assemble, box, rod
 from build_studio_employee import material, oval
 from build_interior_details import build_room_details
 from build_look_details import build_look_details
+from build_coverage_props import build_coverage_props
 
 
 def tint_with_grain(finish, color, name, textile=False):
@@ -296,6 +297,7 @@ def build():
     build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent)
     build_room_details(oak, edge, steel, charcoal, teal, paper, screen, accent)
     build_look_details(oak, steel, charcoal, teal, paper, screen, accent)
+    build_coverage_props(oak, edge, steel, charcoal, teal, paper, accent)
 
     root = HERE.parents[1]
     source = root / "art_source" / "furniture" / "office_furniture.blend"

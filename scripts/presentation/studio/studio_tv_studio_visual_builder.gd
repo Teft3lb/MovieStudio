@@ -230,6 +230,8 @@ func _build_interior(_footprint: Vector2) -> void:
 			Vector3(.15, 1.63, .16), metal_color, Vector3(side * 6.9, 7.29, -1.0))
 
 	FURNITURE.place(host_desk, "CupService", "HostDeskService", Vector3(-1.55, 1.13, .11))
+	FURNITURE.place(_interior_root, "TechnicalInset", "TVStudioStageFinish",
+		Vector3(0, .214, -3.8)).scale = Vector3(13.04, 1, 4.55)
 	FURNITURE.place(_interior_root, "DirectorChair", "TVHostChair", Vector3(1.1, .23, -3.54)).rotation.y = PI
 	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "TVAudienceFloor", Vector2(0, 3.64), Vector2(12.3, 3.68))
 	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "TVControlFloor", Vector2(-5.7, 6.47), Vector2(4.73, 1.91))
@@ -243,10 +245,12 @@ func _build_interior(_footprint: Vector2) -> void:
 	FURNITURE.place(_interior_root, "WaterCooler", "TVGreenRoomWater", Vector3(9.18, 0, 4.81)).rotation.y = -PI * .5
 	for side in [-1, 1]:
 		var group := _get_wall_group("left" if side < 0 else "right")
+		FURNITURE.place(_interior_root, "BroadcastWing", "TVScenicWing_%d" % side,
+			Vector3(side * 8.10, 0, -6.80), true)
 		for panel in range(3):
 			FURNITURE.place(group, "AcousticBaffles", "TVAcousticPanel_%d" % panel,
 				Vector3(side * 9.77, 2.69, -4.32 + panel * 2.08)).rotation.y = -side * PI * .5
-		_visual_factory.call("create_light_stand", _interior_root, Vector3(side * 8.41, 0, -6.32), metal_color)
+		_visual_factory.call("create_light_stand", _interior_root, Vector3(side * 8.82, 0, -5.87), metal_color)
 	_workplace_points = [
 		Vector3(0.0, 0.0, -0.75),
 		Vector3(-2.3, 0.0, -0.8),
