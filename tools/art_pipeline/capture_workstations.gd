@@ -23,7 +23,7 @@ func _capture() -> void:
 	clock.set_speed_mode(GameClock.SpeedMode.PAUSED)
 	world.get_node("StudioHUD").hide()
 	var buildings := world.get_node("StudioBuildingManager") as StudioBuildingManager
-	var edit: Variant = buildings.call("_create_building", "editing_suite", Vector3(-14, 0, 11), 90.0)
+	var edit: Variant = buildings.call("_create_building", "editing_suite", Vector3(41, 0, 14), 0.0)
 	var writer_id: String
 	for building in buildings.get_buildings():
 		if str(building.building_type_id) == "script_department":
@@ -43,6 +43,10 @@ func _capture_station(
 ) -> void:
 	var building := building_node as StudioBuildingActor
 	building.set_selected(true)
+	var target := building.global_position + Vector3.UP * 0.54
+	camera.global_position = target + building.global_basis * Vector3(3.3, 8.8, 8)
+	camera.look_at(target)
+	await _save_frame(profession + "-department")
 	var slot: int = 1
 	var route := building.get_workplace_path(slot)
 	var seat: Vector3 = route.back()
@@ -54,6 +58,8 @@ func _capture_station(
 	data.id = "PREVIEW-" + profession
 	data.first_name = "Avery"
 	data.profession_id = profession
+	if profession == "film_editor":
+		data.appearance.merge({"hair_style": 5, "skin_tone": 2, "outfit_color": 2, "wardrobe_style": 1}, true)
 	var actor := CharacterActor.new()
 	var inbound: Array[Vector3] = [route[route.size() - 2], seat]
 	actor.setup(data, inbound, clock, 1.3)
@@ -109,6 +115,9 @@ func _capture_lounge(world: Node3D, clock: GameClock, manager: StudioBuildingMan
 	camera.global_position = target + Vector3(2.5, 4.5, 6.5)
 	camera.look_at(target)
 	await _save_frame("lounge")
+	camera.global_position = target + Vector3(4.8, 13, 11)
+	camera.look_at(target)
+	await _save_frame("lounge-overview")
 
 
 func _save_frame(

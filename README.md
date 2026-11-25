@@ -33,6 +33,7 @@
 - [Экономика реквизита, реклама и прокат](docs/architecture/studio_business_system_v1.md)
 - [Visual Overhaul v1 и конвейер Blender → Godot](docs/architecture/visual_overhaul_v1.md)
 - [Visual Overhaul v2, рабочие места и замеры](docs/architecture/visual_overhaul_v2.md)
+- [Visual Overhaul v3, интерьеры, сотрудники и карта ресурсов](docs/architecture/visual_overhaul_v3.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии
@@ -52,6 +53,8 @@
 - Сохраняйте пользовательские наработки. `git reset --hard`, `git clean -fd` и force push запрещены.
 
 Подробные правила собраны в [AGENTS.md](AGENTS.md) и [Git workflow](docs/architecture/git_workflow.md).
+
+Visual Overhaul v3 обновляет сценарный и монтажный отделы, столовую, жильё и клуб, отдел продвижения и три типоразмера съёмочных павильонов. Сотрудники получили шесть причёсок, вариации лица и одежды поверх общего рига. Команды для скриншотов, пересборки моделей и замеров собраны в [документации v3](docs/architecture/visual_overhaul_v3.md).
 
 Для локальной проверки в PowerShell укажите путь к консольному исполняемому файлу Godot 4.7.2 и выполните команды из корня проекта.
 

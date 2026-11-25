@@ -4,7 +4,7 @@ const MAIN_SCENE = preload("res://scenes/main.tscn")
 const VISUAL_SCRIPT = preload("res://scripts/presentation/characters/character_visual.gd")
 
 const PROFESSIONS: Array[String] = [
-	"actor", "director", "camera_operator", "technician", "screenwriter", "film_editor",
+	"actor", "camera_operator", "technician", "screenwriter", "film_editor", "producer", "director",
 ]
 
 var _output: String
@@ -42,6 +42,15 @@ func _capture() -> void:
 	await _save_frame("equipment")
 	_aim(camera, stage.global_position + Vector3.UP, Vector3(6.8, 11.0, 9.0))
 	await _save_frame("stage")
+	for tier in [1, 2, 3]:
+		var location: Vector3 = [Vector3(32, 0, -28), Vector3(50, 0, -34), Vector3(-36, 0, -29)][tier - 1]
+		var data: Variant = manager.call("_create_building", "sound_stage", location, 0.0, "", true, tier)
+		var review_stage := manager.get_building_actor_by_id(str(data.id)) as StudioBuildingActor
+		review_stage.set_selected(true)
+		var camera_scale: float = [0.72, 1.0, 1.53][tier - 1]
+		_aim(camera, review_stage.global_position + Vector3.UP * 0.85,
+			Vector3(7.4, 16.2, 12.7) * camera_scale)
+		await _save_frame("stage-tier-%d" % tier)
 
 	var gallery := Node3D.new()
 	world.add_child(gallery)
@@ -55,16 +64,17 @@ func _capture() -> void:
 			"appearance": {
 				"skin_tone": index,
 				"hair_color": index,
-				"hair_style": index % 3,
+				"hair_style": index,
 				"outfit_color": index,
 				"silhouette": index % 2,
+				"wardrobe_style": 2 if index == 0 else index % 3,
 			},
 		})
 		gallery.add_child(visual)
-		visual.position = Vector3((index - 2.5) * 1.15, 0.0, 0.0)
+		visual.position = Vector3((index - 3.0) * 1.15, 0.0, 0.0)
 		visual.call("advance_simulation", 0.0)
 		samples.append(visual)
-	gallery.position = Vector3(-57.0, 0.0, -57.0)
+	gallery.position = Vector3(-51.0, 0.0, 41.0)
 	var target := gallery.position + Vector3.UP * 1.2
 	_aim(camera, target, Vector3(0.0, 0.45, -10.0))
 	await _save_frame("front")
@@ -76,12 +86,12 @@ func _capture() -> void:
 	await _save_frame("portrait")
 
 	samples[0].call("set_performance_action", "speaking")
-	samples[1].call("set_performance_action", "directing")
-	samples[2].call("set_performance_action", "operating_camera")
-	samples[3].call("set_carrying_prop", true)
-	samples[3].call("set_walking", true)
-	samples[4].call("set_performance_action", "eating")
-	samples[5].call("set_performance_action", "sleeping")
+	samples[6].call("set_performance_action", "directing")
+	samples[1].call("set_performance_action", "operating_camera")
+	samples[2].call("set_carrying_prop", true)
+	samples[2].call("set_walking", true)
+	samples[3].call("set_performance_action", "eating")
+	samples[4].call("set_performance_action", "sleeping")
 	for visual in samples:
 		for step in range(20):
 			visual.call("advance_simulation", 0.025)
@@ -113,6 +123,10 @@ func _capture() -> void:
 	await _save_frame("rehearsal")
 	await _capture_facility(world, manager, clock, camera, "cafeteria", "eating", Vector3(41, 0, 3))
 	await _capture_facility(world, manager, clock, camera, "staff_housing", "sleeping", Vector3(41, 0, 20))
+	gallery.free()
+	(world.get_node("StudioHUD") as CanvasLayer).show()
+	_aim(camera, Vector3(5, 0, 2), Vector3(31, 42, 52))
+	await _save_frame("studio-overview")
 	quit(1 if _capture_failed else 0)
 
 
@@ -145,6 +159,8 @@ func _capture_facility(
 	(preview.get_node("NameTag") as Label3D).hide()
 	_aim(camera, mark + Vector3.UP * 0.60, Vector3(2.55, 3.6, 2.15))
 	await _save_frame(action)
+	_aim(camera, building.global_position + Vector3.UP * 0.65, Vector3(5.6, 14, 11))
+	await _save_frame(facility_type)
 
 
 func _aim(camera: Camera3D, target: Vector3, offset: Vector3) -> void:
