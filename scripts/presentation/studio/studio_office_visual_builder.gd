@@ -109,6 +109,7 @@ func _build_editing_suite(
 	_build_editing_suite_interior(width, depth)
 
 func _build_editing_suite_interior(width: float, depth: float) -> void:
+	var reels: Array[Transform3D] = []
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 3.0
 		var keyboard := Vector3(desk_x, 0.9, -0.17)
@@ -121,6 +122,8 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		FURNITURE.place(_interior_root, "OfficeKeyboard", "EditingKeyboard_%d" % slot_index, keyboard)
 		FURNITURE.place(_interior_root, "AudioMixer", "AudioMixer_%d" % slot_index,
 			Vector3(desk_x + 0.77, 0.9, -0.31))
+		if slot_index != 0:
+			reels.append(Transform3D(Basis.IDENTITY, Vector3(desk_x - .71, .90, -.30)))
 		for side in [-1, 1]:
 			FURNITURE.place(_interior_root, "StudioSpeaker", "EditingSpeaker_%d_%d" % [slot_index, side],
 				Vector3(desk_x + side * 1.02, 0.9, -0.87))
@@ -128,6 +131,7 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 			FURNITURE.place(_interior_root, "TaskLamp", "EditingLamp_%d" % slot_index,
 				Vector3(desk_x - 0.91, 0.9, -0.68))
 		_add_workstation(slot_index, Vector3(desk_x, 0, 0.47), keyboard)
+	FURNITURE.place_batch(_interior_root, "FoleyReels", "EditingReels", reels, 38.0)
 
 	FURNITURE.place(_interior_root, "PreviewWall", "EditingReferenceDisplay",
 		Vector3(0.0, 2.25, -depth * 0.5 + 0.25))
@@ -221,6 +225,7 @@ func _build_script_department(
 	_build_script_department_interior(width, depth)
 
 func _build_script_department_interior(width: float, depth: float) -> void:
+	var drafts: Array[Transform3D] = []
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 2.35
 		var desk_name: String = "WriterDesk" if slot_index == 0 else "WriterDesk%d" % (slot_index + 1)
@@ -232,7 +237,11 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 		FURNITURE.place(_interior_root, "OfficeKeyboard", "WriterKeyboard_%d" % slot_index, keyboard)
 		FURNITURE.place(_interior_root, "TaskLamp", "WriterLamp_%d" % slot_index,
 			Vector3(desk_x - 0.63, 0.9, -1.13))
+		if slot_index != 1:
+			var heading := Basis(Vector3.UP, .16 * (slot_index - 1))
+			drafts.append(Transform3D(heading, Vector3(desk_x + .62, .90, -.71)))
 		_add_workstation(slot_index, Vector3(desk_x, 0, 0.04), keyboard)
+	FURNITURE.place_batch(_interior_root, "ScriptFolio", "WriterDrafts", drafts, 38.0)
 
 	FURNITURE.place(_interior_root, "ScriptLibrary", "Bookshelf",
 		Vector3(-width * 0.5 + 0.46, 0, -0.72)).rotation.y = PI / 2.0

@@ -125,7 +125,6 @@ func _build_interior(_footprint: Vector2) -> void:
 	var stage_color: Color = Color(0.18, 0.22, 0.27)
 	var metal_color: Color = Color(0.34, 0.42, 0.48)
 	var equipment_color: Color = Color(0.07, 0.10, 0.14)
-	var accent_color: Color = Color(0.10, 0.48, 0.62)
 
 	_create_box(
 		_interior_root,
@@ -148,39 +147,15 @@ func _build_interior(_footprint: Vector2) -> void:
 	)
 	for panel_index in range(5):
 		var panel_x: float = -5.6 + float(panel_index) * 2.8
-		_create_box(
-			led_wall,
-			"TVStudioLEDPanel_%d" % panel_index,
-			Vector3(2.65, 3.55, 0.08),
-			Color(0.08, 0.24 + float(panel_index % 2) * 0.06, 0.34, 1.0),
-			Vector3(panel_x, 3.05, 0.18)
-		)
+		var panel_asset := "BroadcastPanelWarm" if panel_index == 2 else "BroadcastPanelCool"
+		FURNITURE.place(led_wall, panel_asset, "TVStudioLEDPanel_%d" % panel_index,
+			Vector3(panel_x, 3.05, .18))
 
 	var host_desk := Node3D.new()
 	host_desk.name = "TVStudioHostDesk"
 	host_desk.position = Vector3(0.0, 0.0, -2.5)
 	_interior_root.add_child(host_desk)
-	_create_box(
-		host_desk,
-		"TVStudioHostDeskBase",
-		Vector3(4.6, 0.88, 1.15),
-		equipment_color,
-		Vector3(0.0, 0.55, 0.0)
-	)
-	_create_box(
-		host_desk,
-		"TVStudioHostDeskTop",
-		Vector3(4.9, 0.16, 1.3),
-		metal_color,
-		Vector3(0.0, 1.05, 0.0)
-	)
-	_create_box(
-		host_desk,
-		"TVStudioHostDeskFront",
-		Vector3(3.2, 0.32, 0.08),
-		accent_color,
-		Vector3(0.0, 0.55, 0.59)
-	)
+	FURNITURE.place(host_desk, "BroadcastDesk", "TVStudioHostDeskTop", Vector3.ZERO)
 
 	for guest_index in range(2):
 		var guest_x: float = -2.3 if guest_index == 0 else 2.3
@@ -206,13 +181,8 @@ func _build_interior(_footprint: Vector2) -> void:
 	)
 	for light_index in range(6):
 		var light_x: float = -6.0 + float(light_index) * 2.4
-		_create_box(
-			_interior_root,
-			"TVStudioSoftbox_%d" % light_index,
-			Vector3(1.25, 0.2, 0.8),
-			Color(0.78, 0.82, 0.78),
-			Vector3(light_x, 5.85, -1.0)
-		)
+		FURNITURE.place(_interior_root, "BroadcastSoftbox", "TVStudioSoftbox_%d" % light_index,
+			Vector3(light_x, 5.87, -1.0))
 		_create_box(
 			_interior_root,
 			"TVStudioLightMount_%d" % light_index,
@@ -252,13 +222,12 @@ func _build_interior(_footprint: Vector2) -> void:
 	)
 	for monitor_index in range(4):
 		var monitor_x: float = -1.45 + float(monitor_index) * 0.96
-		_create_box(
-			control_desk,
-			"TVStudioControlMonitor_%d" % monitor_index,
-			Vector3(0.82, 0.62, 0.08),
-			Color(0.08, 0.34, 0.43),
-			Vector3(monitor_x, 1.58, -0.39)
-		)
+		FURNITURE.place(control_desk, "PlaybackMonitor", "TVStudioControlMonitor_%d" % monitor_index,
+			Vector3(monitor_x, 1.27, -.38)).scale = Vector3(.99, 1.35, 1.0)
+
+	for side in [-1, 1]:
+		_create_box(_interior_root, "TVStudioTrussUpright_%d" % side,
+			Vector3(.15, 1.63, .16), metal_color, Vector3(side * 6.9, 7.29, -1.0))
 
 	FURNITURE.place(host_desk, "CupService", "HostDeskService", Vector3(-1.55, 1.13, .11))
 	FURNITURE.place(_interior_root, "DirectorChair", "TVHostChair", Vector3(1.1, .23, -3.54)).rotation.y = PI

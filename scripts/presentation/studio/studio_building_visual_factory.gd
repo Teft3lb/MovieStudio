@@ -23,6 +23,7 @@ func create_floor(
 	instance.name = node_name
 	instance.mesh = mesh
 	instance.position.y = 0.02
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var hard_floor := node_name.contains("Stage") or node_name.contains("Warehouse") or node_name.contains("Editing")
 	instance.material_override = PALETTE.finish(color, "concrete" if hard_floor else "wood")
 	interior_root.add_child(instance)

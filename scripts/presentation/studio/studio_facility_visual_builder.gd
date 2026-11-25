@@ -124,6 +124,7 @@ func _build_film_promotion(
 		FURNITURE.place(_interior_root, "OfficeChair", "CampaignSeat_%d" % side, Vector3(x, 0, -1.75))
 	FURNITURE.place(_interior_root, "PrintStation", "CampaignPlotter", Vector3(4.58, 0, -3.40)).rotation.y = -PI * .5
 	FURNITURE.place(_interior_root, "ServiceCredenza", "CampaignMockupArchive", Vector3(-4.79, 0, -1.65)).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "ScriptFolio", "CampaignProofs", Vector3(-4.79, .90, -1.37)).rotation.y = PI * .39
 	FURNITURE.place(_get_wall_group("left"), "StoryBoard", "CampaignPlan", Vector3(-5.72, 1.90, 1.45)).rotation.y = PI * .5
 
 
@@ -211,6 +212,7 @@ func _build_costume_wardrobe(
 		FURNITURE.place(_get_wall_group("back"), "WallSconce", "WardrobeSconce_%d" % side,
 			Vector3(side * 1.58, 2.62, -depth * .5 + .23))
 	FURNITURE.place(_interior_root, "ServiceCredenza", "WardrobeTextileTable", Vector3(2.92, 0, .14)).rotation.y = -PI * .5
+	FURNITURE.place(_interior_root, "WardrobeNotions", "WardrobeSwatches", Vector3(2.92, .90, .08)).rotation.y = -PI * .5
 	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "WardrobeSewingMat", Vector2(-2.74, -.42), Vector2(2.10, 1.67))
 	_wardrobe_inventory_root = Node3D.new()
 	_wardrobe_inventory_root.name = "WardrobeInventory"
@@ -647,6 +649,8 @@ func _build_studio_lounge(
 	FURNITURE.place(_interior_root, "WaterCooler", "LoungeWaterCooler", Vector3(3.0, 0, -4.45))
 	FURNITURE.place(_interior_root, "CupService", "LoungeCupService", Vector3(-0.67, 1.12, -4.34))
 	FURNITURE.place(_interior_root, "ServiceCredenza", "LoungeRefreshmentStorage", Vector3(4.53, 0, -4.63))
+	FURNITURE.place(_interior_root, "CanteenTray", "LoungeSnackTray", Vector3(4.31, .90, -4.58))
+	FURNITURE.place(_interior_root, "ScriptFolio", "LoungeReadingFolio", Vector3(.46, .65, .34)).rotation.y = -.32
 	FURNITURE.place(_get_wall_group("back"), "StoryboardFrames", "LoungeFilmStills", Vector3(0, 2.20, -depth * 0.5 + 0.23))
 	FURNITURE.place(_get_wall_group("back"), "WallClock", "LoungeClock", Vector3(2.2, 2.5, -depth * 0.5 + 0.22))
 	for side in [-1, 1]:
@@ -763,6 +767,8 @@ func _build_cafeteria(
 		var end_x: float = side * (width * 0.5 - 1.45)
 		FURNITURE.place(_interior_root, "ClubTable", "CafeteriaBreakTable_%d" % side,
 			Vector3(end_x, 0, 3.94))
+		FURNITURE.place(_interior_root, "CanteenTray", "CafeteriaBreakTray_%d" % side,
+			Vector3(end_x - .42, .65, 4.15)).rotation.y = side * .25
 		FURNITURE.place(_interior_root, "ClubChair", "CafeteriaBreakChair_%d" % side,
 			Vector3(end_x, 0, 2.94))
 

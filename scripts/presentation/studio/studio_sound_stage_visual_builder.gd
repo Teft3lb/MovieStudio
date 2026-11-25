@@ -377,7 +377,7 @@ func _build_small_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "EquipmentRack", "SmallStageEquipmentRack",
 		Vector3(3.75, 0, 2.55)).scale.x = 0.7
 	_place_director_desk("SmallStageDirectorDesk", Vector3(-3.65, 0.42, 2.55), 0.71)
-	FURNITURE.place(_interior_root, "OfficeMonitor", "SmallStageMonitor", Vector3(-3.65, 0.90, 2.72)).rotation.y = PI
+	FURNITURE.place(_interior_root, "PlaybackMonitor", "SmallStageMonitor", Vector3(-3.65, 0.90, 2.72)).rotation.y = PI
 	FURNITURE.place(_interior_root, "CableRun", "SmallStageCableRun", Vector3(4.13, 0, 0.90))
 	FURNITURE.place(_interior_root, "FlightCaseCart", "SmallStageFlightCase", Vector3(2.47, 0, 2.88))
 	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "SmallStagePrepZone", Vector2(3.57, 2.74), Vector2(2.64, 1.82))
@@ -386,6 +386,8 @@ func _build_small_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "CableReel", "SmallStageCableReel", Vector3(4.58, 0, -.29))
 	FURNITURE.place(_interior_root, "WorkshopBench", "SmallStagePrepBench", Vector3(4.37, 0, -1.67), true).rotation.y = -PI * .5
 	_dress_stage_walls(5.0, 4.0)
+	_build_scenic_backdrop(3, 2.92, -3.16)
+	FURNITURE.place(_interior_root, "StageWaitBench", "SmallStageHoldingBench", Vector3(-4.53, 0, -1.22), true).rotation.y = PI * .5
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.35, 0.0, -1.1),
@@ -466,7 +468,7 @@ func _build_medium_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "EquipmentRack", "TechnicalEquipmentRack",
 		Vector3(6.0, 0, 5.0)).scale.x = 1.0
 	_place_director_desk("DirectorMonitorDesk", Vector3(-5.9, 0.48, 5.0), 1.0)
-	FURNITURE.place(_interior_root, "OfficeMonitor", "DirectorMonitor", Vector3(-5.9, 0.9, 5.19)).rotation.y = PI
+	FURNITURE.place(_interior_root, "PlaybackMonitor", "DirectorMonitor", Vector3(-5.9, 0.9, 5.19)).rotation.y = PI
 	FURNITURE.place(_interior_root, "CableRun", "StageCableRun", Vector3(6.4, 0, 1.5))
 	FURNITURE.place(_interior_root, "FlightCaseCart", "StageFlightCase", Vector3(5.9, 0, 3.65))
 	FURNITURE.place(_interior_root, "CostumeRail", "StageCostumeRail", Vector3(-6.25, 0, 2.2)).rotation.y = PI * 0.5
@@ -481,6 +483,8 @@ func _build_medium_sound_stage_interior() -> void:
 	stock.rotation.y = -PI * .5
 	stock.scale = Vector3.ONE * .56
 	_dress_stage_walls(7.0, 6.0)
+	_build_scenic_backdrop(4, 3.64, -4.84)
+	FURNITURE.place(_interior_root, "StageWaitBench", "StageHoldingBench", Vector3(-3.18, 0, 5.56), true).rotation.y = PI
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -556,7 +560,7 @@ func _build_large_sound_stage_interior() -> void:
 		Vector3(9.2, 0, 6.8)).scale.x = 1.3
 	_place_director_desk("HighBayDirectorControlDesk", Vector3(-9.2, 0.55, 6.8), 1.36)
 	for index in range(2):
-		FURNITURE.place(_interior_root, "OfficeMonitor", "HighBayDirectorControlMonitor_%d" % index,
+		FURNITURE.place(_interior_root, "PlaybackMonitor", "HighBayDirectorControlMonitor_%d" % index,
 			Vector3(-9.2 + (index - 0.5) * 0.88, 0.9, 6.99)).rotation.y = PI
 	for side in [-1, 1]:
 		FURNITURE.place(_interior_root, "CableRun", "HighBayCableRun_%d" % side, Vector3(side * 9.5, 0, 3.2))
@@ -575,6 +579,8 @@ func _build_large_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "DirectorChair", "HighBayDirectorSeat", Vector3(-10.25, 0, 6.03)).rotation.y = PI * .39
 	FURNITURE.place(_interior_root, "EquipmentRack", "HighBaySceneryStore", Vector3(-9.71, 0, -6.98)).rotation.y = PI * .5
 	_dress_stage_walls(11.0, 9.0)
+	_build_scenic_backdrop(7, 4.64, -7.02)
+	FURNITURE.place(_interior_root, "StageWaitBench", "HighBayHoldingBench", Vector3(-10.40, 0, 3.29), true).rotation.y = PI * .5
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-4.0, 0.0, -3.0),
@@ -602,5 +608,14 @@ func _dress_stage_walls(half_width: float, half_depth: float) -> void:
 			FURNITURE.place(group, "AcousticBaffles", "StageAcousticBay_%d" % bay,
 				Vector3(x, 2.51, z)).rotation.y = -side * PI * .5
 	var right := _actor.call("get_wall_group_for_visual_builder", "right") as Node3D
-	FURNITURE.place(right, "StoryBoard", "StageCallboard",
+	FURNITURE.place(right, "StageReadinessBoard", "StageCallboard",
 		Vector3(half_width - .23, 2.36, half_depth * .47)).rotation.y = -PI * .5
+
+
+func _build_scenic_backdrop(count: int, height: float, z: float) -> void:
+	var bays: Array[Transform3D] = []
+	var basis := Basis.from_scale(Vector3(1.0, height / 2.35, 1.0))
+	for index in count:
+		var x := (index - (count - 1) * .5) * 1.84
+		bays.append(Transform3D(basis, Vector3(x, .035, z)))
+	FURNITURE.place_batch(_interior_root, "ScenicBackdropBay", "ScenicBackdropPanels", bays)

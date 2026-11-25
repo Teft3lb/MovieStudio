@@ -88,6 +88,28 @@ static func _front_mesh(
 			trim.append([at + Vector3(side * pane.size.x * .5, 0, 0), Vector3(.095, pane.size.y + .14, .055)])
 			trim.append([at + Vector3(0, side * pane.size.y * .5, 0), Vector3(pane.size.x + .09, .078, .065)])
 		trim.append([at, Vector3(.061, pane.size.y, .052)])
+	match type:
+		"cafeteria", "studio_lounge":
+			masonry.append([Vector3(0, lintel + .042, overhang + .014), Vector3(canopy + .045, .19, .074)])
+			for index in range(7):
+				var x: float = (index - 3) * canopy / 7.3
+				trim.append([Vector3(x, lintel + .042, overhang + .055), Vector3(canopy / 17.0, .18, .027)])
+		"costume_wardrobe", "film_promotion":
+			for side in [-1, 1]:
+				var x: float = side * (door * .5 + (span - door) * .29)
+				masonry.append([Vector3(x, 2.28, .172), Vector3(1.08, 2.38, .10)])
+				trim.append([Vector3(x, 2.28, .231), Vector3(.81, 2.08, .065)])
+				trim.append([Vector3(x, 1.21, .256), Vector3(1.10, .092, .125)])
+		"tv_studio":
+			for side in [-1, 1]:
+				for fin in range(3):
+					var x: float = side * (span * .38 + fin * .31)
+					trim.append([Vector3(x, height * .58, .195), Vector3(.10, height * .56, .135)])
+		"staff_housing", "star_bungalow":
+			for side in [-1, 1]:
+				var x: float = side * span * .42
+				trim.append([Vector3(x, 1.39, .245), Vector3(.51, .080, .23)])
+				trim.append([Vector3(x, 2.40, .225), Vector3(.64, .073, .21)])
 	var result := ArrayMesh.new()
 	_append(result, masonry, PALETTE.finish(profile[0], "concrete"))
 	_append(result, trim, PALETTE.finish(profile[1], "metal" if industrial else "paint"))
@@ -140,6 +162,9 @@ static func _roof_mesh(type: String, profile: Array, footprint: Vector2, height:
 					Vector3(.056, .048, length * .84)])
 	elif type in ["cafeteria", "studio_lounge"]:
 		housings.append([Vector3(0, height + .13, -footprint.y * .12), Vector3(footprint.x * .46, .24, 1.05)])
+	elif type in ["staff_housing", "star_bungalow"]:
+		housings.append([Vector3(-footprint.x * .25, height + .45, -.41), Vector3(.57, .93, .64)])
+		supports.append([Vector3(-footprint.x * .25, height + .95, -.41), Vector3(.71, .10, .77)])
 	var result := ArrayMesh.new()
 	_append(result, supports, PALETTE.finish(profile[0].darkened(.25), "metal"))
 	_append(result, housings, PALETTE.finish(profile[2].lightened(.18), "metal"))

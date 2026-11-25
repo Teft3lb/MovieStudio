@@ -26,7 +26,7 @@ roughness = 1.0
 background_mode = 1
 background_color = Color(0.28, 0.40, 0.49, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.84, 0.91, 1, 1)
+ambient_light_color = Color(0.89, 0.93, 1, 1)
 ambient_light_energy = 0.49
 tonemap_mode = 2
 tonemap_exposure = 0.96
@@ -57,13 +57,15 @@ directional_shadow_max_distance = 83.0
 [node name="PortraitFill" type="DirectionalLight3D" parent="."]
 rotation = Vector3(-0.43, 2.27, 0)
 light_color = Color(0.83, 0.91, 1, 1)
-light_energy = 0.24
+light_energy = 0.27
 
 [node name="Ground" type="MeshInstance3D" parent="."]
+cast_shadow = 0
 mesh = SubResource("PlaneMesh_ground")
 material_override = SubResource("Material_ground")
 
 [node name="AccessRoad" type="MeshInstance3D" parent="."]
+cast_shadow = 0
 position = Vector3(10, 0.02, 0)
 mesh = SubResource("BoxMesh_road")
 material_override = SubResource("Material_road")

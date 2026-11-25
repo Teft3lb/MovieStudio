@@ -73,6 +73,10 @@ func _run_tests() -> void:
 		bool(building_manager.call("is_startup_content_ready")),
 		"The building manager must report a complete world and UI bootstrap."
 	)
+	var courtyard := game_root.get_node("Backlot/CrewCourtyard") as Node3D
+	_expect(courtyard.visible, "The unoccupied backlot courtyard should be visible.")
+	building_manager.call("_create_building", "script_department", Vector3(-7, 0, 11.6), 90.0)
+	_expect(not courtyard.visible, "A placed building should take precedence over decorative yards.")
 
 	game_root.queue_free()
 	await process_frame

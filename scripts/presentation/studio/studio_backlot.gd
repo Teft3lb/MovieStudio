@@ -1,6 +1,10 @@
 extends Node3D
 
 const PALETTE = preload("res://scripts/presentation/studio/studio_surface_palette.gd")
+const RULES = preload("res://scripts/domain/studio/studio_building_placement_rules.gd")
+const FURNITURE = preload("res://scripts/presentation/studio/studio_office_furniture.gd")
+
+var _sites: Array[Node3D] = []
 
 
 func _ready() -> void:
@@ -16,6 +20,7 @@ func _ready() -> void:
 	var crowns: Array[Transform3D] = []
 	for side in [-1, 1]:
 		var edge: float = 10.0 + side * 2.39
+		pavers.append(_piece(Vector3(edge - side * .40, .042, 0), Vector3(.12, .105, 137.8)))
 		for tile in range(69):
 			pavers.append(_piece(Vector3(edge, .035, tile * 2.0 - 68.0), Vector3(.77, .07, 1.94)))
 		for pole in range(11):
@@ -103,6 +108,110 @@ func _ready() -> void:
 	signboard.outline_size = 2
 	signboard.modulate = Color("#f3ddae")
 	add_child(signboard)
+	_build_yards(cube, foliage)
+	var manager := get_node_or_null("../StudioBuildingManager") as StudioBuildingManager
+	if manager != null:
+		manager.buildings_changed.connect(_update_yards.bind(manager))
+		_update_yards.call_deferred(manager)
+
+
+func _build_yards(cube: Mesh, foliage: Mesh) -> void:
+	var courtyard := _site("CrewCourtyard", Rect2(-10, 8.5, 5.6, 6.2))
+	_batch("CourtyardPaving", cube, [
+		_piece(Vector3(-7.2, .032, 11.55), Vector3(5.6, .056, 6.1)),
+		_piece(Vector3(-2.03, .027, 8.76), Vector3(4.91, .053, 1.24)),
+	], PALETTE.finish(Color("#b39d80"), "concrete"), false).reparent(courtyard, false)
+	var beds: Array[Transform3D] = []
+	var boards: Array[Transform3D] = []
+	var leaves: Array[Transform3D] = []
+	var flowers: Array[Transform3D] = []
+	for x in [-9.36, -5.00]:
+		beds.append(_piece(Vector3(x, .30, 10.40), Vector3(.62, .60, 2.31)))
+		beds.append(_piece(Vector3(x, .245, 13.29), Vector3(.64, .49, 2.20)))
+		boards.append(_piece(Vector3(x, .51, 13.29), Vector3(.73, .085, 2.24)))
+		boards.append(_piece(Vector3(x, .87, 13.29), Vector3(.13, .14, 2.24)))
+		for index in range(6):
+			var z := 9.50 + index * .36
+			leaves.append(_piece(Vector3(x, .69, z), Vector3(.52, .33 + .07 * (index % 2), .47)))
+			flowers.append(_piece(Vector3(x + .08 * (-1 if index % 2 == 0 else 1), .87, z), Vector3(.23, .18, .22)))
+	_batch("CourtyardMasonry", cube, beds, PALETTE.finish(Color("#8d8775"), "concrete"), false).reparent(courtyard, false)
+	_batch("CourtyardBenches", cube, boards, PALETTE.finish(Color("#a67448"), "wood"), false).reparent(courtyard, false)
+	_batch("CourtyardFoliage", foliage, leaves, PALETTE.finish(Color("#587449")), false).reparent(courtyard, false)
+	var planting := StandardMaterial3D.new()
+	planting.vertex_color_use_as_albedo = true
+	planting.roughness = .88
+	_batch("CourtyardBlooms", foliage, flowers, planting, false, [
+		Color("#dd9e60"), Color("#c87887"), Color("#dbc486"), Color("#be6886"),
+	]).reparent(courtyard, false)
+
+	var parking := _site("VisitorLayby", Rect2(13.18, -21, 4.50, 9.0))
+	_batch("LaybyPaving", cube, [
+		_piece(Vector3(15.4, .033, -16.5), Vector3(4.5, .061, 9)),
+		_piece(Vector3(12.78, .032, -19.35), Vector3(1.47, .061, 1.80)),
+	],
+		PALETTE.finish(Color("#5c625e"), "concrete"), false).reparent(parking, false)
+	var lines: Array[Transform3D] = []
+	for bay in range(4):
+		lines.append(_piece(Vector3(15.91, .07, -20.32 + bay * 2.50), Vector3(3.2, .012, .08)))
+	lines.append(_piece(Vector3(17.45, .07, -16.52), Vector3(.11, .013, 7.58)))
+	_batch("VisitorBayStripes", cube, lines, PALETTE.finish(Color("#e3c68e")), false).reparent(parking, false)
+	_add_sign(parking, "P · ГОСТИ", Vector3(17.39, 1.31, -12.12))
+
+	var cargo := _site("ServiceYard", Rect2(15.3, -38.2, 10.8, 6.6))
+	_batch("ServicePaving", cube, [
+		_piece(Vector3(20.7, .031, -34.90), Vector3(10.8, .059, 6.6)),
+		_piece(Vector3(13.70, .031, -35.30), Vector3(3.42, .058, 2.34)),
+	],
+		PALETTE.finish(Color("#837b6d"), "concrete"), false).reparent(cargo, false)
+	_batch("LoadingMarkings", cube, [
+		_piece(Vector3(19.05, .068, -33.06), Vector3(6.44, .014, .10)),
+		_piece(Vector3(19.05, .068, -36.86), Vector3(6.44, .014, .10)),
+		_piece(Vector3(22.22, .068, -34.96), Vector3(.10, .014, 3.77)),
+	], PALETTE.finish(Color("#efbb5d")), false).reparent(cargo, false)
+	FURNITURE.place(cargo, "PropStock", "CargoStaging", Vector3(24.24, .060, -36.87)).scale = Vector3.ONE * 1.29
+	FURNITURE.place(cargo, "FlightCaseCart", "CargoCart", Vector3(24.41, .060, -33.10)).rotation.y = -PI * .5
+	_batch("CargoBarriers", cube, [
+		_piece(Vector3(25.47, .54, -36.31), Vector3(.13, 1.08, .13)),
+		_piece(Vector3(25.47, .54, -34.48), Vector3(.13, 1.08, .13)),
+		_piece(Vector3(25.47, .72, -35.40), Vector3(.12, .19, 1.90)),
+	], PALETTE.finish(Color("#9d7547"), "metal")).reparent(cargo, false)
+	_add_sign(cargo, "ПОГРУЗКА", Vector3(24.73, 1.36, -32.06))
+
+
+func _site(label: String, area: Rect2) -> Node3D:
+	var site := Node3D.new()
+	site.name = label
+	site.set_meta("site_area", area)
+	add_child(site)
+	_sites.append(site)
+	return site
+
+
+func _add_sign(parent: Node3D, title: String, at: Vector3) -> void:
+	_batch("WayfindingPost", BoxMesh.new(), [
+		_piece(Vector3(at.x, at.y * .5, at.z), Vector3(.067, at.y, .068)),
+		_piece(at, Vector3(1.16, .29, .075)),
+	], PALETTE.finish(Color("#4d5b56"), "metal")).reparent(parent, false)
+	var signboard := Label3D.new()
+	signboard.text = title
+	signboard.position = at + Vector3(0, 0, .049)
+	signboard.font_size = 30
+	signboard.outline_size = 5
+	signboard.pixel_size = .006
+	signboard.modulate = Color("#ead0a0")
+	parent.add_child(signboard)
+
+
+func _update_yards(manager: StudioBuildingManager) -> void:
+	for site in _sites:
+		site.visible = true
+		var area: Rect2 = site.get_meta("site_area")
+		for data in manager.get_buildings():
+			var size := RULES.get_footprint(data.building_type_id, data.rotation_degrees, data.stage_size_tier)
+			var origin := Vector2(data.position.x, data.position.z) - size * .5
+			if area.intersects(Rect2(origin, size)):
+				site.hide()
+				break
 
 
 func _tree(at: Vector3, index: int, trunks: Array[Transform3D], crowns: Array[Transform3D]) -> void:
@@ -137,7 +246,7 @@ func _batch_by_area(
 func _batch(
 	label: String, mesh: Mesh, transforms: Array[Transform3D], material: Material,
 	shadows: bool = true, colors: Array = []
-) -> void:
+) -> MultiMeshInstance3D:
 	var instances := MultiMesh.new()
 	instances.transform_format = MultiMesh.TRANSFORM_3D
 	instances.use_colors = not colors.is_empty()
@@ -155,3 +264,4 @@ func _batch(
 	if not shadows:
 		node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(node)
+	return node
