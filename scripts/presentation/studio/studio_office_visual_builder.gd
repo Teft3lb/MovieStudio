@@ -109,7 +109,6 @@ func _build_editing_suite(
 	_build_editing_suite_interior(width, depth)
 
 func _build_editing_suite_interior(width: float, depth: float) -> void:
-	var metal_color: Color = Color(0.15, 0.17, 0.19)
 	for slot_index in range(3):
 		var desk_x: float = float(slot_index - 1) * 3.0
 		var keyboard := Vector3(desk_x, 0.9, -0.17)
@@ -122,22 +121,15 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		FURNITURE.place(_interior_root, "OfficeKeyboard", "EditingKeyboard_%d" % slot_index, keyboard)
 		FURNITURE.place(_interior_root, "AudioMixer", "AudioMixer_%d" % slot_index,
 			Vector3(desk_x + 0.77, 0.9, -0.31))
+		if slot_index != 1:
+			FURNITURE.place(_interior_root, "TaskLamp", "EditingLamp_%d" % slot_index,
+				Vector3(desk_x - 0.91, 0.9, -0.68))
 		_add_workstation(slot_index, Vector3(desk_x, 0, 0.47), keyboard)
 
-	_create_box(
-		_interior_root,
-		"EditingReferenceDisplay",
-		Vector3(3.4, 1.8, 0.12),
-		Color(0.07, 0.17, 0.22),
-		Vector3(0.0, 2.25, -depth * 0.5 + 0.18)
-	)
-	_create_box(
-		_interior_root,
-		"AudioEquipmentRack",
-		Vector3(0.82, 1.85, 0.72),
-		metal_color,
-		Vector3(width * 0.5 - 0.55, 0.93, -2.55)
-	)
+	FURNITURE.place(_interior_root, "PreviewWall", "EditingReferenceDisplay",
+		Vector3(0.0, 2.25, -depth * 0.5 + 0.25))
+	FURNITURE.place(_interior_root, "EquipmentRack", "AudioEquipmentRack",
+		Vector3(width * 0.5 - 0.72, 0, -2.55))
 
 func _build_script_department(
 	footprint: Vector2,
@@ -223,22 +215,18 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 		FURNITURE.place(_interior_root, "OfficeMonitor", monitor_name,
 			Vector3(desk_x, 0.9, -1.20))
 		FURNITURE.place(_interior_root, "OfficeKeyboard", "WriterKeyboard_%d" % slot_index, keyboard)
+		FURNITURE.place(_interior_root, "TaskLamp", "WriterLamp_%d" % slot_index,
+			Vector3(desk_x - 0.63, 0.9, -1.13))
 		_add_workstation(slot_index, Vector3(desk_x, 0, 0.04), keyboard)
 
-	_create_box(
-		_interior_root,
-		"Bookshelf",
-		Vector3(0.55, 2.1, 2.2),
-		Color(0.28, 0.20, 0.15),
-		Vector3(-width * 0.5 + 0.45, 1.08, -0.55)
-	)
-	_create_box(
-		_interior_root,
-		"ResearchBoard",
-		Vector3(2.1, 1.3, 0.10),
-		Color(0.38, 0.40, 0.36),
-		Vector3(width * 0.5 - 1.2, 2.0, -depth * 0.5 + 0.12)
-	)
+	FURNITURE.place(_interior_root, "ScriptLibrary", "Bookshelf",
+		Vector3(-width * 0.5 + 0.46, 0, -0.72)).rotation.y = PI / 2.0
+	FURNITURE.place(_interior_root, "StoryBoard", "ResearchBoard",
+		Vector3(width * 0.5 - 1.28, 1.92, -depth * 0.5 + 0.23))
+	FURNITURE.place(_interior_root, "ClubTable", "ScriptReviewTable",
+		Vector3(width * 0.5 - 1.52, 0, depth * 0.5 - 1.75))
+	FURNITURE.place(_interior_root, "ClubChair", "ScriptReviewChair",
+		Vector3(width * 0.5 - 1.52, 0, depth * 0.5 - 0.45)).rotation.y = PI
 
 
 func _add_workstation(index: int, seat: Vector3, keyboard: Vector3) -> void:

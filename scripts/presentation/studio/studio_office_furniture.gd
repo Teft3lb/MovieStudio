@@ -1,6 +1,7 @@
 extends RefCounted
 
 const LIBRARY: PackedScene = preload("res://assets/models/furniture/office_furniture.glb")
+const SMALL_DETAILS: Array[String] = ["CableRun", "StoryBoard", "TaskLamp", "PreviewWall", "ServingLine"]
 
 static var _meshes: Dictionary[String, Mesh] = {}
 
@@ -15,5 +16,7 @@ static func place(parent: Node3D, asset: String, node_name: String, location: Ve
 	piece.name = node_name
 	piece.mesh = _meshes[asset]
 	piece.position = location
+	if asset in SMALL_DETAILS:
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(piece)
 	return piece

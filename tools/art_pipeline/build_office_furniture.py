@@ -10,7 +10,144 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.dont_write_bytecode = True
 from build_stage_equipment import assemble, box, rod
-from build_studio_employee import material
+from build_studio_employee import material, oval
+
+
+def build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent):
+    rust = material("TerracottaUpholstery", (.42, .13, .077), .92)
+    leaf = material("BroadLeaf", (.10, .27, .095), .86)
+    brass = material("BrushedBrass", (.52, .32, .117), .44, .42)
+    assemble("ScriptLibrary", [
+        box("Back", (0, 1.04, -.21), (2.08, 2.03, .10), edge),
+        *[box("Side", (x, 1.04, 0), (.08, 2.06, .48), oak) for x in (-1.03, 1.03)],
+        *[box("Shelf", (0, y, 0), (2.12, .073, .50), oak)
+          for y in (.14, .54, .97, 1.39, 1.80, 2.08)],
+        *[box("Binder", (-.88 + i*.178, y + .155 + (i%3)*.013, .015),
+              (.12, .238 + (i%3)*.026, .33), (paper, teal, rust, edge)[(i+j)%4], .009)
+          for j, y in enumerate((.14, .54, .97, 1.39)) for i in range(11) if (i+j)%5 != 4],
+    ])
+    assemble("StoryBoard", [
+        box("Frame", (0, 0, 0), (2.12, 1.3, .095), oak, .035),
+        box("Cork", (0, 0, .049), (1.96, 1.14, .024), edge),
+        *[box("BeatCard", ((i%4-1.5)*.435, .28-(i//4)*.49 + (i%3)*.032, .069),
+              (.32, .29, .012), (paper, paper, accent, teal)[i%4], .008) for i in range(8)],
+        *[box("NoteLine", ((i%4-1.5)*.435, .30-(i//4)*.49 + (i%3)*.032, .078),
+              (.22, .018, .005), edge, .001) for i in range(8)],
+    ])
+    assemble("TaskLamp", [
+        rod("Foot", (0, .005, 0), (0, .043, 0), .118, .104, charcoal),
+        rod("LowerArm", (0, .041, 0), (0, .31, -.08), .017, .019, brass),
+        rod("UpperArm", (0, .31, -.08), (0, .41, .12), .019, .018, brass),
+        rod("Shade", (0, .36, .15), (0, .48, .11), .106, .043, teal),
+        rod("Diffuser", (0, .356, .152), (0, .369, .148), .078, .078, paper),
+    ])
+    assemble("EquipmentRack", [
+        box("Chassis", (0, .87, 0), (1.20, 1.74, .58), charcoal, .028),
+        *[box("Rail", (x, .89, .29), (.057, 1.64, .06), steel) for x in (-.55, .55)],
+        *[box("Case", (0, y, .296), (1.01, .23, .06), steel, .014) for y in (.27, .57, .87, 1.17, 1.47)],
+        *[box("Pull", (0, y, .341), (.26, .041, .049), edge) for y in (.27, .57, .87, 1.17, 1.47)],
+        *[box("Status", (.39, y, .334), (.078, .036, .022), accent) for y in (.27, .57, .87, 1.17, 1.47)],
+    ])
+    assemble("PreviewWall", [
+        box("Housing", (0, 0, 0), (3.38, 1.52, .13), charcoal, .06),
+        box("Glass", (0, .05, .076), (3.24, 1.31, .025), screen, .025),
+        *[box("Track", (-1.4+w*.5, -0.04-i*.128, .094),
+              (w, .067, .008), (teal, accent, paper)[i%3], .005)
+          for i, w in enumerate((2.25, 1.70, 2.78, 1.23))],
+        box("Playhead", (.28, -.24, .106), (.028, .56, .007), paper, .001),
+    ])
+    assemble("CoffeeMachine", [
+        box("Base", (0, .065, 0), (.69, .13, .57), charcoal, .034),
+        box("Boiler", (0, .37, -.13), (.68, .63, .32), steel, .06),
+        box("Header", (0, .60, .063), (.69, .17, .39), teal, .038),
+        box("Buttons", (.14, .602, .269), (.26, .055, .021), charcoal),
+        box("Display", (-.145, .6, .271), (.13, .063, .023), accent),
+        *[rod("Cup", (x, .131, .16), (x, .25, .16), .047, .062, paper) for x in (-.14, .12)],
+        *[rod("Nozzle", (x, .47, .13), (x, .54, .13), .034, .043, charcoal) for x in (-.14, .12)],
+    ])
+    assemble("WaterCooler", [
+        box("Pedestal", (0, .49, 0), (.45, .98, .48), paper, .048),
+        box("TapTray", (0, .67, .25), (.36, .073, .17), charcoal, .017),
+        box("Tap", (0, .865, .263), (.10, .09, .095), teal),
+        rod("Bottle", (0, .98, -.035), (0, 1.40, -.035), .189, .183, screen, 14),
+        rod("BottleShoulder", (0, 1.40, -.035), (0, 1.46, -.035), .183, .092, teal, 14),
+    ])
+    assemble("WasteStation", [
+        box("Bin", (0, .38, 0), (.79, .75, .47), steel, .042),
+        box("Lid", (0, .77, 0), (.83, .10, .51), charcoal, .025),
+        *[box("Slot", (x, .802, .07), (.22, .052, .16), m, .016)
+          for x, m in ((-.20, teal), (.20, accent))],
+    ])
+    assemble("ServingLine", [
+        *[box("Insert", (x, .027, 0), (.57, .054, .39), steel, .023) for x in (-.64, 0, .64)],
+        *[box("FoodPan", (x, .059, 0), (.47, .026, .29), m, .021)
+          for x, m in ((-.64, leaf), (0, accent), (.64, rust))],
+        *[rod("Upright", (x, 0, -.22), (x, .36, -.22), .025, .025, steel) for x in (-1.0, 1.0)],
+        box("Rail", (0, .36, -.22), (2.07, .063, .068), steel),
+    ])
+    for name, width, upholstery in [("ClubSofa", 1.94, rust), ("ClubChair", 1.03, teal)]:
+        assemble(name, [
+            box("Frame", (0, .32, 0), (width, .21, .87), oak, .048),
+            box("Back", (0, .73, -.33), (width-.07, .62, .22), upholstery, .087),
+            *[box("Seat", (x, .465, .035), (width/(2 if width > 1.1 else 1)-.22, .19, .65),
+                  upholstery, .075) for x in ((-.43, .43) if width > 1.1 else (0,))],
+            *[box("Arm", (x, .55, .06), (.16, .46, .77), upholstery, .066)
+              for x in (-width/2+.084, width/2-.084)],
+            *[box("Foot", (x, .109, z), (.095, .21, .093), charcoal, .021)
+              for x in (-width/2+.17, width/2-.17) for z in (-.31,.31)],
+        ])
+    for name, width, height, depth, finish in [
+        ("Locker", .79, 1.88, .55, steel),
+        ("Wardrobe", 1.15, 2.15, .80, oak),
+        ("Nightstand", .76, .70, .65, oak),
+    ]:
+        assemble(name, [
+            box("Carcass", (0, height*.5, 0), (width, height, depth), edge, .028),
+            *[box("Door", (0, y, depth*.5), (width-.072, height*.43, .073), finish, .03)
+              for y in (height*.26, height*.74)],
+            *[box("Handle", (width*.20, y, depth*.5+.058), (.17, .033, .04), brass)
+              for y in (height*.38, height*.61)],
+        ])
+    assemble("ClubTable", [
+        box("Top", (0, .59, 0), (1.78, .12, 1.04), oak, .047),
+        *[box("Leg", (x, .285, z), (.093, .56, .095), steel)
+          for x in (-.70, .70) for z in (-.36, .36)],
+        box("Magazine", (.23, .666, .02), (.35, .028, .39), teal, .01),
+        box("Cover", (.23, .685, .02), (.29, .011, .28), paper, .008),
+        rod("Mug", (-.37, .66, -.21), (-.37, .79, -.21), .053, .066, paper),
+    ])
+    plant = [rod("Pot", (0, .015, 0), (0, .47, 0), .23, .32, rust, 14),
+             rod("Soil", (0, .455, 0), (0, .478, 0), .29, .29, edge, 14)]
+    for i in range(7):
+        angle = i*tau/7
+        x, z = cos(angle)*(.28+(i%2)*.10), sin(angle)*(.28+(i%2)*.10)
+        y = .85+(i%3)*.13
+        plant.append(rod("Stem", (0, .43, 0), (x, y, z), .013, .01, leaf, 6))
+        blade = oval("Leaf", (x, y, z), (.131, .24, .071), leaf, None, 8)
+        blade.rotation_euler.y = -.43 if x > 0 else .43
+        plant.append(blade)
+    assemble("FloorPlant", plant)
+    assemble("FlightCaseCart", [
+        box("Case", (0, .385, 0), (1.18, .57, .69), charcoal, .034),
+        box("Lid", (0, .70, 0), (1.21, .12, .72), steel, .031),
+        *[box("CornerBand", (x, .385, .348), (.058, .57, .037), steel) for x in (-.54, .54)],
+        *[box("Latch", (x, .586, .371), (.108, .10, .04), brass) for x in (-.30, .30)],
+        *[box("Wheel", (x, .055, z), (.125, .11, .145), charcoal, .032)
+          for x in (-.49, .49) for z in (-.25, .25)],
+    ])
+    assemble("CostumeRail", [
+        *[rod("Post", (x, .06, 0), (x, 1.68, 0), .036, .034, steel) for x in (-.72, .72)],
+        *[box("Foot", (x, .038, 0), (.10, .075, .50), charcoal) for x in (-.72, .72)],
+        rod("Rail", (-.73, 1.65, 0), (.73, 1.65, 0), .024, .024, brass),
+        *[box("Garment", (x, 1.105 + (i%2)*.13, 0), (.17, .91 - (i%2)*.26, .39),
+              (rust, paper, teal)[i%3], .065)
+          for i, x in enumerate((-.52, -.30, -.08, .14, .36, .56))],
+    ])
+    assemble("CableRun", [
+        box("Guard", (0, .028, 0), (.35, .055, 2.22), charcoal, .015),
+        *[box("Stripe", (0, .056, z), (.35, .01, .052), accent, .002)
+          for z in (-.92, -.46, 0, .46, .92)],
+    ])
 
 
 def build():
@@ -130,6 +267,7 @@ def build():
     ]
     assemble("BedMattress", mattress)
     assemble("BedPillow", [box("Cushion", (0, 0, 0), (.78, .154, .46), paper, .068)])
+    build_interior_details(oak, edge, steel, charcoal, teal, paper, screen, accent)
 
     root = HERE.parents[1]
     source = root / "art_source" / "furniture" / "office_furniture.blend"

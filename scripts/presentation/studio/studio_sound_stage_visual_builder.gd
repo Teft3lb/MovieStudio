@@ -1,6 +1,8 @@
 extends RefCounted
 class_name StudioSoundStageVisualBuilder
 
+const FURNITURE = preload("res://scripts/presentation/studio/studio_office_furniture.gd")
+
 const BUILDING_CATALOG_SCRIPT = preload(
 	"res://scripts/domain/studio/studio_building_catalog.gd"
 )
@@ -65,6 +67,22 @@ func _create_light_stand(
 	)
 
 
+func _place_director_desk(node_name: String, center: Vector3, width_scale: float) -> void:
+	var desk := Node3D.new()
+	desk.name = node_name
+	desk.position = center
+	_interior_root.add_child(desk)
+	var mesh := FURNITURE.place(desk, "WriterDesk", "DeskMesh", Vector3(0, -center.y, 0))
+	mesh.scale.x = width_scale
+
+
+func _place_spare_camera(location: Vector3, metal_color: Color, equipment_color: Color) -> void:
+	var spare := _visual_factory.call(
+		"create_camera_rig", _interior_root, _camera_rigs.size(), location, metal_color, equipment_color
+	) as Node3D
+	spare.name = "SpareCameraProp"
+
+
 func _create_film_slate() -> void:
 	var labels: Dictionary = _visual_factory.call(
 		"create_film_slate",
@@ -125,7 +143,7 @@ func _build_small_sound_stage(
 		Vector3(0.0, height + 0.05, 0.0)
 	)
 	_visual_factory.call("create_box",
-		_actor,
+		_actor.call("get_wall_group_for_visual_builder", "front"),
 		"SmallStageLoadingCanopy",
 		Vector3(4.0, 0.18, 1.0),
 		trim_color,
@@ -196,7 +214,7 @@ func _build_medium_sound_stage(
 		Vector3(width * 0.26, height + 0.35, -depth * 0.18)
 	)
 	_visual_factory.call("create_box",
-		_actor,
+		_actor.call("get_wall_group_for_visual_builder", "front"),
 		"RollDoorRaisedPanel",
 		Vector3(4.4, 0.35, 0.16),
 		trim_color,
@@ -269,7 +287,7 @@ func _build_large_sound_stage(
 			Vector3(skylight_x, height + 0.025, 0.0)
 		)
 	_visual_factory.call("create_box",
-		_actor,
+		_actor.call("get_wall_group_for_visual_builder", "front"),
 		"HighBayLoadingDoorHeader",
 		Vector3(7.2, 0.32, 0.2),
 		truss_color,
@@ -356,20 +374,12 @@ func _build_small_sound_stage_interior() -> void:
 	)
 	_create_light_stand( Vector3(-3.5, 0.0, -3.0), metal_color)
 	_create_light_stand( Vector3(3.5, 0.0, -3.0), metal_color)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"SmallStageEquipmentRack",
-		Vector3(0.85, 1.45, 0.55),
-		equipment_color,
-		Vector3(3.75, 0.72, 2.55)
-	)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"SmallStageDirectorDesk",
-		Vector3(1.25, 0.78, 0.58),
-		Color(0.23, 0.20, 0.18),
-		Vector3(-3.65, 0.42, 2.55)
-	)
+	FURNITURE.place(_interior_root, "EquipmentRack", "SmallStageEquipmentRack",
+		Vector3(3.75, 0, 2.55)).scale.x = 0.7
+	_place_director_desk("SmallStageDirectorDesk", Vector3(-3.65, 0.42, 2.55), 0.71)
+	FURNITURE.place(_interior_root, "OfficeMonitor", "SmallStageMonitor", Vector3(-3.65, 0.90, 2.72)).rotation.y = PI
+	FURNITURE.place(_interior_root, "CableRun", "SmallStageCableRun", Vector3(4.13, 0, 0.90))
+	FURNITURE.place(_interior_root, "FlightCaseCart", "SmallStageFlightCase", Vector3(2.47, 0, 2.88))
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.35, 0.0, -1.1),
@@ -447,27 +457,15 @@ func _build_medium_sound_stage_interior() -> void:
 	)
 	_create_light_stand( Vector3(-5.6, 0.0, -4.1), metal_color)
 	_create_light_stand( Vector3(5.6, 0.0, -4.1), metal_color)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"TechnicalEquipmentRack",
-		Vector3(1.3, 1.8, 0.65),
-		equipment_color,
-		Vector3(6.0, 0.9, 5.0)
-	)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"DirectorMonitorDesk",
-		Vector3(1.8, 0.9, 0.65),
-		Color(0.23, 0.20, 0.18),
-		Vector3(-5.9, 0.48, 5.0)
-	)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"DirectorMonitor",
-		Vector3(0.85, 0.48, 0.08),
-		Color(0.10, 0.25, 0.30),
-		Vector3(-5.9, 1.18, 5.0)
-	)
+	FURNITURE.place(_interior_root, "EquipmentRack", "TechnicalEquipmentRack",
+		Vector3(6.0, 0, 5.0)).scale.x = 1.0
+	_place_director_desk("DirectorMonitorDesk", Vector3(-5.9, 0.48, 5.0), 1.0)
+	FURNITURE.place(_interior_root, "OfficeMonitor", "DirectorMonitor", Vector3(-5.9, 0.9, 5.19)).rotation.y = PI
+	FURNITURE.place(_interior_root, "CableRun", "StageCableRun", Vector3(6.4, 0, 1.5))
+	FURNITURE.place(_interior_root, "FlightCaseCart", "StageFlightCase", Vector3(5.9, 0, 3.65))
+	FURNITURE.place(_interior_root, "CostumeRail", "StageCostumeRail", Vector3(-6.25, 0, 2.2)).rotation.y = PI * 0.5
+	FURNITURE.place(_interior_root, "OfficeChair", "StageWaitingChair", Vector3(-4.54, 0, 5.1))
+	_place_spare_camera(Vector3(6.02, 0, -2.35), metal_color, equipment_color)
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -539,27 +537,18 @@ func _build_large_sound_stage_interior() -> void:
 			Vector3(light_x, 0.0, -6.1 if absf(light_x) > 4.0 else -1.0),
 			metal_color
 		)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"HighBayTechnicalEquipmentRack",
-		Vector3(1.7, 2.1, 0.8),
-		equipment_color,
-		Vector3(9.2, 1.05, 6.8)
-	)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"HighBayDirectorControlDesk",
-		Vector3(2.5, 1.0, 0.85),
-		Color(0.20, 0.22, 0.24),
-		Vector3(-9.2, 0.55, 6.8)
-	)
-	_visual_factory.call("create_box",
-		_interior_root,
-		"HighBayDirectorControlMonitor",
-		Vector3(1.35, 0.72, 0.08),
-		Color(0.10, 0.29, 0.37),
-		Vector3(-9.2, 1.38, 6.8)
-	)
+	FURNITURE.place(_interior_root, "EquipmentRack", "HighBayTechnicalEquipmentRack",
+		Vector3(9.2, 0, 6.8)).scale.x = 1.3
+	_place_director_desk("HighBayDirectorControlDesk", Vector3(-9.2, 0.55, 6.8), 1.36)
+	for index in range(2):
+		FURNITURE.place(_interior_root, "OfficeMonitor", "HighBayDirectorControlMonitor_%d" % index,
+			Vector3(-9.2 + (index - 0.5) * 0.88, 0.9, 6.99)).rotation.y = PI
+	for side in [-1, 1]:
+		FURNITURE.place(_interior_root, "CableRun", "HighBayCableRun_%d" % side, Vector3(side * 9.5, 0, 3.2))
+		FURNITURE.place(_interior_root, "FlightCaseCart", "HighBayFlightCase_%d" % side, Vector3(side * 9.25, 0, 5.04))
+	FURNITURE.place(_interior_root, "CostumeRail", "HighBayCostumeRail", Vector3(7.1, 0, 6.8))
+	FURNITURE.place(_interior_root, "ClubSofa", "HighBayWaitingBench", Vector3(-6.85, 0, 6.8)).rotation.y = PI
+	_place_spare_camera(Vector3(8.95, 0, -4.68), metal_color, equipment_color)
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-4.0, 0.0, -3.0),

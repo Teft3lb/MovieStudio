@@ -806,3 +806,7 @@ func _update_cutaway() -> void:
 	for wall_id in _wall_groups:
 		var wall_group: Node3D = _wall_groups[wall_id]
 		wall_group.visible = str(wall_id) != hidden_wall
+	for child in get_children():
+		var child_name := str(child.name)
+		if child is Node3D and (child_name.ends_with("Sign") or child_name.ends_with("SignText")):
+			child.visible = hidden_wall != "front"
