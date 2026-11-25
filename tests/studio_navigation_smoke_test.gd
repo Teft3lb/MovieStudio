@@ -41,6 +41,17 @@ func _run_tests() -> void:
 		_path_clears_obstacles(outdoor_path, building_obstacles),
 		"Smoothed outdoor routes must retain building clearance."
 	)
+	var repeated: Array[Vector3] = navigation.call("build_path", start, target,
+		building_obstacles.duplicate(true), 0.5)
+	_expect(repeated == outdoor_path and navigation.get("_grids").size() == 1,
+		"Equivalent obstacle sets must reuse the same navigation grid and route.")
+	building_obstacles[0]["center"] = Vector2(0.0, 4.0)
+	var relocated: Array[Vector3] = navigation.call("build_path", start, target, building_obstacles, 0.5)
+	_expect(relocated != outdoor_path and navigation.get("_grids").size() == 2,
+		"Moving an obstacle must produce a new grid even when the input array is reused.")
+	building_obstacles[0]["center"] = Vector2.ZERO
+	_expect(navigation.call("build_path", start, target, building_obstacles, 0.5) == outdoor_path,
+		"Restoring obstacles must retrieve the original grid.")
 
 	var stage_obstacles: Array[Dictionary] = [
 		{

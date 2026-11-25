@@ -3,6 +3,9 @@ class_name StudioNavigationSystem
 
 const DEFAULT_CELL_SIZE: float = 0.75
 const DEFAULT_CLEARANCE: float = 0.48
+const GRID_CACHE_CAPACITY: int = 48
+
+var _grids: Dictionary = {}
 
 
 func build_path(
@@ -53,20 +56,8 @@ func build_path(
 			maxi(ceili((max_z - origin.y) / step) + 1, 8)
 		)
 
-	var astar := AStarGrid2D.new()
-	astar.region = Rect2i(Vector2i.ZERO, grid_size)
-	astar.cell_size = Vector2(step, step)
-	astar.offset = origin
-	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	astar.update()
-
 	var clearance: float = maxf(step * 0.55, DEFAULT_CLEARANCE)
-	for x in range(grid_size.x):
-		for z in range(grid_size.y):
-			var point_id := Vector2i(x, z)
-			var point: Vector2 = astar.get_point_position(point_id)
-			if _is_blocked(point, obstacles, clearance):
-				astar.set_point_solid(point_id, true)
+	var astar := _get_grid(origin, grid_size, step, obstacles, clearance)
 
 	var start_id: Vector2i = _get_cell_id(
 		Vector2(start_position.x, start_position.z),
@@ -107,6 +98,30 @@ func build_path(
 	else:
 		result[result.size() - 1] = target_position
 	return result
+
+
+func _get_grid(
+	origin: Vector2, grid_size: Vector2i, step: float, obstacles: Array, clearance: float
+) -> AStarGrid2D:
+	var key := [origin, grid_size, step, obstacles]
+	var cached: AStarGrid2D = _grids.get(key)
+	if cached != null:
+		return cached
+	var astar := AStarGrid2D.new()
+	astar.region = Rect2i(Vector2i.ZERO, grid_size)
+	astar.cell_size = Vector2(step, step)
+	astar.offset = origin
+	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
+	astar.update()
+	for x in range(grid_size.x):
+		for z in range(grid_size.y):
+			var point_id := Vector2i(x, z)
+			if _is_blocked(astar.get_point_position(point_id), obstacles, clearance):
+				astar.set_point_solid(point_id, true)
+	if _grids.size() >= GRID_CACHE_CAPACITY:
+		_grids.erase(_grids.keys()[0])
+	_grids[key.duplicate(true)] = astar
+	return astar
 
 
 func _get_cell_id(point: Vector2, origin: Vector2, cell_size: float) -> Vector2i:
