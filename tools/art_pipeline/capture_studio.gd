@@ -85,6 +85,15 @@ func _capture() -> void:
 	await _save_frame("side")
 	_aim(camera, samples[0].global_position + Vector3.UP * 2.0, Vector3(-0.35, 0.2, -2.0))
 	await _save_frame("portrait")
+	var portrait_target := samples[0].global_position + Vector3.UP * 2.10
+	_aim(camera, portrait_target, Vector3(0.0, 0.03, -1.90))
+	await _save_frame("portrait-front")
+	_aim(camera, portrait_target, Vector3(-1.90, 0.03, 0.0))
+	await _save_frame("portrait-profile")
+	_aim(camera, portrait_target, Vector3(-1.06, 0.12, -1.58))
+	await _save_frame("portrait-three-quarter")
+	_aim(camera, samples[0].global_position + Vector3.UP * 1.20, Vector3(-.26, 0.20, -4.25))
+	await _save_frame("full-length")
 	_aim(camera, gallery.position + Vector3(.58, 1.65, 0), Vector3(-1.12, 1.33, -6.50))
 	await _save_frame("crew-close")
 
