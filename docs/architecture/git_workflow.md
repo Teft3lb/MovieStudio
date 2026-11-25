@@ -2,6 +2,7 @@
 
 ## Branch policy
 
+- `D:/Develop/MovieStudio` is the sole working checkout and Godot project. Keep project archives outside it.
 - `main` is the only working and integration branch.
 - Do not create feature/fix branches or pull requests for normal project development.
 - Make changes directly on `main`, in small, reviewable commits.
@@ -13,44 +14,34 @@ Run from the repository root:
 
 ```bash
 git status --short --branch
-git log -1 --oneline
+git rev-parse --show-toplevel
+git branch --show-current
 ```
 
 Confirm that the current branch is `main` and inspect every local modification before editing. Never overwrite or remove user-owned local changes.
 
 ## Synchronizing main
 
-Use fast-forward-only pulls:
+Fetch and inspect before integrating remote changes.
 
 ```bash
-git switch main
-git pull --ff-only origin main
+git fetch origin
+git log --left-right --oneline HEAD...origin/main
 ```
 
-After a change, inspect the diff and test results before committing. Push ordinary project commits directly to `main`:
+Fast-forward when the remote only leads. When both sides have commits, merge on `main`, resolve conflicts and rerun affected checks. After a completed and tested change, commit it, check for remote changes again and publish it directly to `main`.
 
 ```bash
 git status --short
 git diff --check
 git diff
 git push origin main
+git rev-parse HEAD
+git ls-remote origin refs/heads/main
 ```
+
+The stage is complete when all required changes are published and the local and remote SHAs match.
 
 ## Local generated files
 
-Godot may create `.uid` files during import and editor scans. Keep valid resource UID files; do not delete them as cleanup. Treat logs and other untracked files as user data unless their purpose has been confirmed.
-
-## Accidental branches
-
-Do not create new branches. If an accidental branch is created and confirmed to contain no unique commits, delete it explicitly rather than merging it. For a remote branch:
-
-```bash
-git push origin --delete <branch-name>
-```
-
-For a local branch, first switch to `main`, then use a non-forced delete:
-
-```bash
-git switch main
-git branch -d <branch-name>
-```
+Commit valid Godot resource UIDs alongside their sources. Preserve local logs and other untracked files until their purpose has been confirmed. Keep caches outside commits.

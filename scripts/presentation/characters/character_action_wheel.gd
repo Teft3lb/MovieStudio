@@ -63,7 +63,7 @@ func get_action_button_count() -> int:
 
 
 func _build_center() -> void:
-	var center_panel := PanelContainer.new()
+	var center_panel := Panel.new()
 	center_panel.name = "CharacterCenterCard"
 	center_panel.position = CENTER - Vector2(58.0, 54.0)
 	center_panel.custom_minimum_size = Vector2(116.0, 108.0)
@@ -72,47 +72,59 @@ func _build_center() -> void:
 	center_panel.add_theme_stylebox_override("panel", _make_center_style())
 	add_child(center_panel)
 
+	var content := MarginContainer.new()
+	content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	content.add_theme_constant_override("margin_left", 6)
+	content.add_theme_constant_override("margin_top", 5)
+	content.add_theme_constant_override("margin_right", 6)
+	content.add_theme_constant_override("margin_bottom", 5)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center_panel.add_child(content)
+
 	var layout := VBoxContainer.new()
+	layout.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	layout.add_theme_constant_override("separation", 1)
 	layout.alignment = BoxContainer.ALIGNMENT_CENTER
 	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	center_panel.add_child(layout)
+	content.add_child(layout)
 
 	_center_initials = Label.new()
 	_center_initials.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_center_initials.custom_minimum_size = Vector2(0.0, 20.0)
-	_center_initials.add_theme_font_size_override("font_size", 18)
+	_center_initials.custom_minimum_size = Vector2(0.0, 18.0)
+	_center_initials.add_theme_font_size_override("font_size", 17)
 	_center_initials.add_theme_color_override("font_color", Color(0.98, 0.78, 0.43, 1.0))
 	layout.add_child(_center_initials)
 
 	_center_name = Label.new()
 	_center_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_center_name.custom_minimum_size = Vector2(0.0, 15.0)
-	_center_name.add_theme_font_size_override("font_size", 12)
+	_center_name.custom_minimum_size = Vector2(0.0, 14.0)
+	_center_name.add_theme_font_size_override("font_size", 11)
 	_center_name.add_theme_color_override("font_color", Color(0.96, 0.84, 0.62, 1.0))
 	layout.add_child(_center_name)
 
 	_center_profession = Label.new()
 	_center_profession.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center_profession.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_center_profession.custom_minimum_size = Vector2(0.0, 13.0)
-	_center_profession.add_theme_font_size_override("font_size", 9)
+	_center_profession.custom_minimum_size = Vector2(0.0, 12.0)
+	_center_profession.add_theme_font_size_override("font_size", 8)
 	_center_profession.add_theme_color_override("font_color", Color(0.81, 0.75, 0.67, 1.0))
 	layout.add_child(_center_profession)
 
 	_center_status = Label.new()
 	_center_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center_status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_center_status.custom_minimum_size = Vector2(104.0, 18.0)
-	_center_status.add_theme_font_size_override("font_size", 9)
+	_center_status.custom_minimum_size = Vector2(104.0, 20.0)
+	_center_status.add_theme_font_size_override("font_size", 8)
 	_center_status.add_theme_color_override("font_color", Color(0.65, 0.79, 0.68, 1.0))
 	layout.add_child(_center_status)
 
 	_center_close = Button.new()
 	_center_close.text = "ЗАКРЫТЬ"
-	_center_close.custom_minimum_size = Vector2(84.0, 22.0)
-	_center_close.add_theme_font_size_override("font_size", 9)
+	_center_close.custom_minimum_size = Vector2(76.0, 18.0)
+	_center_close.add_theme_font_size_override("font_size", 8)
+	_center_close.focus_mode = Control.FOCUS_NONE
 	_center_close.pressed.connect(close)
 	layout.add_child(_center_close)
 

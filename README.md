@@ -44,10 +44,14 @@
 
 ## Разработка
 
-- **main** — единственная рабочая и интеграционная ветка.
-- Новые ветки и Pull Request для обычной разработки не создаются.
-- Все изменения выполняются непосредственно в `main` после проверки `git status` и `git log`.
-- Локальные пользовательские изменения не перезаписываются; `reset --hard`, `clean` и force-push запрещены.
+- Единственный рабочий проект — `D:/Develop/MovieStudio`. В Godot Project Manager открывайте именно `D:/Develop/MovieStudio/project.godot`.
+- Единственная рабочая ветка — `main`. Вложенные копии проекта и новые рабочие ветки запрещены.
+- Перед каждой задачей проверяйте `git rev-parse --show-toplevel`, `git branch --show-current` и `git status --short --branch`.
+- После завершённого и протестированного этапа создайте коммит, выполните `git fetch origin`, интегрируйте удалённые изменения при их наличии и опубликуйте результат обычным `git push origin main`.
+- Сверьте `git rev-parse HEAD` и `git ls-remote origin refs/heads/main`. Этап завершён после публикации всех необходимых изменений и совпадения SHA.
+- Сохраняйте пользовательские наработки. `git reset --hard`, `git clean -fd` и force push запрещены.
+
+Подробные правила собраны в [AGENTS.md](AGENTS.md) и [Git workflow](docs/architecture/git_workflow.md).
 
 Для локальной проверки в PowerShell укажите путь к консольному исполняемому файлу Godot 4.7.2 и выполните команды из корня проекта.
 
