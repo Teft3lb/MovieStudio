@@ -5,6 +5,7 @@ const VISUAL_SCRIPT = preload("res://scripts/presentation/characters/character_v
 
 const PROFESSIONS: Array[String] = [
 	"actor", "camera_operator", "technician", "screenwriter", "film_editor", "producer", "director",
+	"producer", "screenwriter",
 ]
 
 var _output: String
@@ -64,7 +65,7 @@ func _capture() -> void:
 			"appearance": {
 				"skin_tone": index,
 				"hair_color": index,
-				"hair_style": index,
+				"hair_style": index - 1 if index > 6 else index,
 				"outfit_color": index,
 				"silhouette": index % 2,
 				"wardrobe_style": 2 if index == 0 else index % 3,
@@ -76,9 +77,9 @@ func _capture() -> void:
 		samples.append(visual)
 	gallery.position = Vector3(-51.0, 0.0, 41.0)
 	var target := gallery.position + Vector3.UP * 1.2
-	_aim(camera, target, Vector3(0.0, 0.45, -10.0))
+	_aim(camera, target + Vector3.RIGHT * 1.15, Vector3(0.0, 0.45, -11.3))
 	await _save_frame("front")
-	_aim(camera, target, Vector3(0.0, 0.6, 10.0))
+	_aim(camera, target + Vector3.RIGHT * 1.15, Vector3(0.0, 0.6, 11.3))
 	await _save_frame("back")
 	_aim(camera, samples[0].global_position + Vector3.UP * 1.2, Vector3(-4.0, 0.3, -0.35))
 	await _save_frame("side")
