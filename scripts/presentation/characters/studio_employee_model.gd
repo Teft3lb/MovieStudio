@@ -63,7 +63,8 @@ func setup(
 	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), HAIR_STYLE_COUNT)
 	_idle_state = &"Idle" if identity_hash % 2 == 0 else &"IdleLook"
 	_phase_offset = float(identity_hash % 997) / 997.0
-	_head_scale = Vector3(facial_scale * lerpf(0.91, 1.04, _phase_offset), facial_scale, facial_scale)
+	var width := lerpf(0.96, 1.09, _phase_offset)
+	_head_scale = Vector3(width, 1.025, lerpf(1.00, 1.06, face_style)) * facial_scale
 	_outfit = outfit
 
 	var mouth: MeshInstance3D
