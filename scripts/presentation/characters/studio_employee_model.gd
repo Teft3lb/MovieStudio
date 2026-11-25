@@ -15,6 +15,8 @@ const COSTUME_MESHES: Dictionary = {
 	"classic_period_costumes": "CostumePeriod",
 	"science_fiction_costumes": "CostumeFuturistic",
 }
+const VEST_ROLES: Array[String] = ["RoleCamera", "RoleTechnician", "RoleWriter"]
+const TORSO_MESHES: Array[StringName] = [&"Jacket", &"CanvasVest", &"WoolVest"]
 const POSE_BONES: Array[String] = [
 	"LeftArm", "RightArm", "LeftThigh", "RightThigh", "LeftShin", "RightShin",
 ]
@@ -32,6 +34,7 @@ var _playback: AnimationNodeStateMachinePlayback
 var _mesh_nodes: Array[MeshInstance3D] = []
 var _bone_indices: Dictionary[String, int] = {}
 var _role_name: String
+var _everyday_torso: StringName
 var _hair_name: String
 var _idle_state: StringName
 var _animation_state: StringName
@@ -41,6 +44,7 @@ var _phase_offset: float
 var _started: bool = false
 var _costume_id: String
 var _pending_delta: float = 0.0
+var _has_skirt: bool
 
 
 func setup(
@@ -60,7 +64,10 @@ func setup(
 	var wardrobe_style := posmod(int(appearance.get("wardrobe_style", identity_hash / 3)), 3)
 	var face_style := clampf(float(appearance.get("cheekbones", (identity_hash >> 5) % 5 / 4.0)), 0.0, 1.0)
 	_role_name = str(ROLE_MESHES.get(str(payload.get("profession_id", "")), "RoleOffice"))
-	var skirt := wardrobe_style == 2 and _role_name in ["RoleOffice", "RoleActor"]
+	_has_skirt = wardrobe_style == 2 and _role_name in ["RoleOffice", "RoleActor"]
+	_everyday_torso = &"Jacket"
+	if _role_name in VEST_ROLES:
+		_everyday_torso = &"WoolVest" if _role_name == "RoleWriter" else &"CanvasVest"
 	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), HAIR_STYLE_COUNT)
 	_idle_state = &"Idle" if identity_hash % 2 == 0 else &"IdleLook"
 	_phase_offset = float(identity_hash % 997) / 997.0
@@ -94,17 +101,30 @@ func setup(
 				model_mesh.free()
 				continue
 		elif model_mesh.name == &"WardrobeSkirt":
-			if not skirt:
+			if not _has_skirt:
 				model_mesh.free()
 				continue
-		elif model_mesh.name == &"WardrobeBody":
-			model_mesh.set_blend_shape_value(0, silhouette)
-			model_mesh.set_blend_shape_value(1, 0.75 if wardrobe_style == 1 else 0.0)
-			model_mesh.set_blend_shape_value(2, 0.85 if wardrobe_style == 2 else 0.0)
-			model_mesh.set_blend_shape_value(3, 1.0 if skirt else 0.0)
+		elif model_mesh.name in TORSO_MESHES:
+			if model_mesh.name not in [&"Jacket", _everyday_torso]:
+				model_mesh.free()
+				continue
+			model_mesh.visible = model_mesh.name == _everyday_torso
+		elif model_mesh.name == &"Tights":
+			if not _has_skirt:
+				model_mesh.free()
+				continue
+		elif model_mesh.name == &"Trousers":
+			model_mesh.visible = not _has_skirt
 		elif model_mesh.name == &"Face":
 			model_mesh.set_blend_shape_value(0, silhouette)
 			model_mesh.set_blend_shape_value(1, face_style)
+		if (
+			model_mesh.name == &"WardrobeBody" or model_mesh.name in TORSO_MESHES
+			or (model_mesh.name == _role_name and _role_name in VEST_ROLES)
+		):
+			model_mesh.set_blend_shape_value(0, silhouette)
+			model_mesh.set_blend_shape_value(1, 0.75 if wardrobe_style == 1 else 0.0)
+			model_mesh.set_blend_shape_value(2, 0.85 if wardrobe_style == 2 else 0.0)
 		_mesh_nodes.append(model_mesh)
 	mouth.owner = null
 	mouth.get_parent().remove_child(mouth)
@@ -113,6 +133,7 @@ func setup(
 	_tint_surfaces("Iris", IRIS_TONES[posmod(identity_hash >> 3, IRIS_TONES.size())])
 	_tint_surfaces("Hair", hair)
 	_tint_surfaces("Cloth", outfit)
+	_tint_surfaces("TailoringEdge", outfit.lightened(.09))
 	if wardrobe_style == 1:
 		_tint_surfaces("ShoeUpper", Color(0.23, 0.18, 0.15))
 		var knit := outfit.lerp(Color(0.65, 0.62, 0.51), 0.46)
@@ -134,12 +155,18 @@ func set_costume(costume_id: String) -> void:
 	_costume_id = costume_id
 	var costume: Dictionary = COSTUME_CATALOG.get_costume_definition(costume_id)
 	var costume_mesh: String = COSTUME_MESHES.get(costume_id, "")
-	_tint_surfaces("Cloth", costume.get("visual_color", _outfit))
+	var garment_color: Color = costume.get("visual_color", _outfit)
+	_tint_surfaces("Cloth", garment_color)
+	_tint_surfaces("TailoringEdge", garment_color.lightened(.09))
 	for part in _mesh_nodes:
 		if part.name == _role_name:
 			part.visible = costume.is_empty()
-		elif part.name == &"WardrobeSkirt":
+		elif part.name in [&"WardrobeSkirt", &"Tights"]:
 			part.visible = costume.is_empty()
+		elif part.name == &"Trousers":
+			part.visible = not _has_skirt or not costume.is_empty()
+		elif part.name in TORSO_MESHES:
+			part.visible = part.name == (_everyday_torso if costume.is_empty() else &"Jacket")
 		elif part.name == _hair_name:
 			part.visible = costume_mesh != "CostumeWestern" and (
 				_role_name != "RoleDirector" or not costume.is_empty()

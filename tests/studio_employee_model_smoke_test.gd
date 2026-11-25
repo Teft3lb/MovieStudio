@@ -20,11 +20,16 @@ func _run_tests() -> void:
 	var tree := visual.find_child("EmployeeAnimationTree", true, false) as AnimationTree
 	var body := visual.find_child("WardrobeBody", true, false) as MeshInstance3D
 	var role := visual.find_child("RoleTechnician", true, false) as MeshInstance3D
+	var vest := visual.find_child("CanvasVest", true, false) as MeshInstance3D
+	var jacket := visual.find_child("Jacket", true, false) as MeshInstance3D
 	var hair := visual.find_child("Hair1", true, false) as MeshInstance3D
 	var western := visual.find_child("CostumeWestern", true, false) as MeshInstance3D
 	_expect(skeleton.get_bone_count() == 13 and body.skin != null, "The employee wardrobe must be skinned to the shared rig.")
 	_expect(is_equal_approx(body.get_blend_shape_value(0), 1.0), "Saved silhouette parameters must select the authored morph.")
 	_expect(role.visible and hair.visible, "Profession equipment and saved hair must select their respective modules.")
+	_expect(vest.visible and not jacket.visible and vest.skin != null
+		and is_equal_approx(vest.get_blend_shape_value(0), body.get_blend_shape_value(0)),
+		"Workwear should replace the jacket and use the same rig and silhouette.")
 	_expect(player.has_animation("Walk") and player.has_animation("Camera") and player.has_animation("Rest"),
 		"The imported source must expose the authored locomotion and activity clips.")
 	_expect(tree.callback_mode_process == AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL,
@@ -55,10 +60,12 @@ func _run_tests() -> void:
 	_expect(western.visible and not hair.visible and not role.visible
 		and not _surface_color(body, "Cloth").is_equal_approx(original_cloth),
 		"A set costume must use the wardrobe palette and hide the daily role accessory.")
+	_expect(jacket.visible and not vest.visible, "A costume must replace the daily vest with the jacket.")
 	visual.set_costume("")
 	_expect(role.visible and hair.visible and not western.visible
 		and _surface_color(body, "Cloth").is_equal_approx(original_cloth),
 		"Returning from a set must restore the regular outfit.")
+	_expect(vest.visible and not jacket.visible, "The daily vest should be restored on leaving the set.")
 	var original_hair := _surface_color(hair, "Hair")
 	visual.set_character_age(72)
 	_expect(not _surface_color(hair, "Hair").is_equal_approx(original_hair),
@@ -80,6 +87,8 @@ func _check_authored_variants() -> void:
 		root.add_child(visual)
 		var face := visual.find_child("Face", true, false) as MeshInstance3D
 		var skirt := visual.find_child("WardrobeSkirt", true, false) as MeshInstance3D
+		var tights := visual.find_child("Tights", true, false) as MeshInstance3D
+		var trousers := visual.find_child("Trousers", true, false) as MeshInstance3D
 		_expect(visual.find_child("Hair7", true, false) != null
 			and visual.find_child("Hair0", true, false) == null
 			and visual.find_child("CollarFold", true, false) != null,
@@ -93,9 +102,11 @@ func _check_authored_variants() -> void:
 		else:
 			_expect(iris.is_equal_approx(first_iris), "The same employee ID must retain their iris color.")
 		visual.set_costume("western_costumes")
-		_expect(not skirt.visible, "A production costume should cover the everyday skirt.")
+		_expect(not skirt.visible and not tights.visible and trousers.visible,
+			"A production costume should hide the everyday skirt and restore the trousers.")
 		visual.set_costume("")
-		_expect(skirt.visible, "Everyday clothing should return after production.")
+		_expect(skirt.visible and tights.visible and not trousers.visible,
+			"Everyday clothing should return after production.")
 		visual.free()
 
 
