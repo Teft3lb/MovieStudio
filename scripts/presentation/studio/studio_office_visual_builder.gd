@@ -121,6 +121,9 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		FURNITURE.place(_interior_root, "OfficeKeyboard", "EditingKeyboard_%d" % slot_index, keyboard)
 		FURNITURE.place(_interior_root, "AudioMixer", "AudioMixer_%d" % slot_index,
 			Vector3(desk_x + 0.77, 0.9, -0.31))
+		for side in [-1, 1]:
+			FURNITURE.place(_interior_root, "StudioSpeaker", "EditingSpeaker_%d_%d" % [slot_index, side],
+				Vector3(desk_x + side * 1.02, 0.9, -0.87))
 		if slot_index != 1:
 			FURNITURE.place(_interior_root, "TaskLamp", "EditingLamp_%d" % slot_index,
 				Vector3(desk_x - 0.91, 0.9, -0.68))
@@ -130,6 +133,18 @@ func _build_editing_suite_interior(width: float, depth: float) -> void:
 		Vector3(0.0, 2.25, -depth * 0.5 + 0.25))
 	FURNITURE.place(_interior_root, "EquipmentRack", "AudioEquipmentRack",
 		Vector3(width * 0.5 - 0.72, 0, -2.55))
+	FURNITURE.place(_interior_root, "ServiceCredenza", "EditingMediaStorage", Vector3(-3.64, 0, -3.25))
+	for side in [-1, 1]:
+		FURNITURE.place(_get_wall_group("back"), "AcousticBaffles", "EditingBaffles_%d" % side,
+			Vector3(side * 2.8, 2.31, -depth * 0.5 + 0.22))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "EditingConsoleFloor", Vector2(0, -.38), Vector2(8.6, 2.65))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "EditingReviewFloor", Vector2(3.68, 2.58), Vector2(2.16, 2.08))
+	FURNITURE.place(_get_wall_group("right"), "PreviewWall", "EditingScreeningDisplay", Vector3(4.77, 1.81, 2.0)).rotation.y = -PI * 0.5
+	FURNITURE.place(_interior_root, "ClubChair", "EditingReviewSeat", Vector3(3.68, 0, 2.58), true).rotation.y = PI * 0.5
+	FURNITURE.place(_interior_root, "ClubSofa", "EditingBreakSofa", Vector3(-3.61, 0, 3.19), true).rotation.y = PI
+	var cable := FURNITURE.place(_interior_root, "CableRun", "EditingCableChannel", Vector3(0, 0, -1.45))
+	cable.scale.z = 3.5
+	cable.rotation.y = PI * 0.5
 
 func _build_script_department(
 	footprint: Vector2,
@@ -224,9 +239,19 @@ func _build_script_department_interior(width: float, depth: float) -> void:
 	FURNITURE.place(_interior_root, "StoryBoard", "ResearchBoard",
 		Vector3(width * 0.5 - 1.28, 1.92, -depth * 0.5 + 0.23))
 	FURNITURE.place(_interior_root, "ClubTable", "ScriptReviewTable",
-		Vector3(width * 0.5 - 1.52, 0, depth * 0.5 - 1.75))
+		Vector3(width * 0.5 - 1.52, 0, depth * 0.5 - 1.75), true)
 	FURNITURE.place(_interior_root, "ClubChair", "ScriptReviewChair",
 		Vector3(width * 0.5 - 1.52, 0, depth * 0.5 - 0.45)).rotation.y = PI
+	FURNITURE.floor_zone(_interior_root, "RestInset", "ScriptReviewRug", Vector2(2.47, 1.73), Vector2(2.28, 2.25))
+	FURNITURE.place(_get_wall_group("back"), "StoryboardFrames", "ScriptShotStudies", Vector3(-1.82, 2.08, -depth * 0.5 + 0.24))
+	FURNITURE.place(_get_wall_group("back"), "WallClock", "ScriptClock", Vector3(.39, 2.55, -depth * 0.5 + 0.24))
+	FURNITURE.place(_get_wall_group("right"), "WallSconce", "ScriptReviewLight", Vector3(width * 0.5 - .23, 2.47, 1.55)).rotation.y = -PI * .5
+	var coffee := Vector3(-width * .5 + .54, 0, 1.97)
+	FURNITURE.place(_interior_root, "ServiceCredenza", "ScriptCoffeeStation", coffee, true).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "CoffeeMachine", "ScriptCoffeeMaker", coffee + Vector3(0, .9, .31)).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "CupService", "ScriptCoffeeCups", coffee + Vector3(0, .9, -.38)).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "WasteStation", "ScriptWaste", Vector3(-3.48, 0, .74)).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "FloorPlant", "ScriptPlant", Vector3(-3.42, 0, -2.42)).scale = Vector3.ONE * .75
 
 
 func _add_workstation(index: int, seat: Vector3, keyboard: Vector3) -> void:

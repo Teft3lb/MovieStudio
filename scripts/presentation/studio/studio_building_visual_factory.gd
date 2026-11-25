@@ -90,7 +90,12 @@ func create_light_stand(
 	_add_equipment_mesh(interior_root, "StudioLight", local_position)
 
 
-func _add_equipment_mesh(parent: Node3D, mesh_name: String, local_position: Vector3) -> void:
+func attach_tv_camera(rig: Node3D) -> void:
+	_add_equipment_mesh(rig, "CinemaCameraBody", Vector3.UP * CAMERA_PIVOT_HEIGHT).name = "TVStudioCameraBody"
+	_add_equipment_mesh(rig, "CameraTripodBase", Vector3.ZERO).name = "TVStudioCameraTripod"
+
+
+func _add_equipment_mesh(parent: Node3D, mesh_name: String, local_position: Vector3) -> MeshInstance3D:
 	if _equipment_meshes.is_empty():
 		var equipment := STAGE_EQUIPMENT.instantiate()
 		for node in equipment.find_children("*", "MeshInstance3D", true, false):
@@ -102,6 +107,7 @@ func _add_equipment_mesh(parent: Node3D, mesh_name: String, local_position: Vect
 	instance.mesh = _equipment_meshes[mesh_name]
 	instance.position = local_position
 	parent.add_child(instance)
+	return instance
 
 
 func create_wall_panel(

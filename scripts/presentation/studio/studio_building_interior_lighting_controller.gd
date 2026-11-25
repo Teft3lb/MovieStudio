@@ -19,7 +19,8 @@ func setup(
 ) -> void:
 	_building = building
 	_footprint = footprint
-	var columns: int = 2 if footprint.x >= 18.0 else 1
+	var split_light: bool = footprint.x >= 12.0 or building_type_id in ["editing_suite", "script_department"]
+	var columns: int = 2 if split_light else 1
 	var rows: int = 2 if footprint.y >= 15.0 else 1
 	for col in range(columns):
 		for row in range(rows):
@@ -31,7 +32,7 @@ func setup(
 				(float(row) - float(rows - 1) * 0.5) * footprint.y * 0.48
 			)
 			lamp.omni_range = maxf(footprint.x, footprint.y) * 0.79
-			lamp.light_energy = 1.75
+			lamp.light_energy = 1.34 if split_light else 1.75
 			lamp.light_color = (
 				Color(0.92, 0.95, 1.0)
 				if building_type_id in ["sound_stage", "tv_studio", "editing_suite"]

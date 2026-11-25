@@ -1,6 +1,8 @@
 extends RefCounted
 class_name StudioTVStudioVisualBuilder
 
+const FURNITURE = preload("res://scripts/presentation/studio/studio_office_furniture.gd")
+
 var _actor: Node3D
 var _interior_root: Node3D
 var _visual_factory: RefCounted
@@ -182,20 +184,8 @@ func _build_interior(_footprint: Vector2) -> void:
 
 	for guest_index in range(2):
 		var guest_x: float = -2.3 if guest_index == 0 else 2.3
-		_create_box(
-			_interior_root,
-			"TVStudioGuestChair_%d" % guest_index,
-			Vector3(1.1, 0.78, 0.95),
-			Color(0.20, 0.25, 0.31),
-			Vector3(guest_x, 0.42, -0.75)
-		)
-		_create_box(
-			_interior_root,
-			"TVStudioGuestChairBack_%d" % guest_index,
-			Vector3(1.1, 0.9, 0.16),
-			Color(0.12, 0.17, 0.22),
-			Vector3(guest_x, 0.86, -0.32)
-		)
+		FURNITURE.place(_interior_root, "ClubChair", "TVStudioGuestChair_%d" % guest_index,
+			Vector3(guest_x, 0, -.75)).rotation.y = PI - signf(guest_x) * .26
 
 	for camera_index in range(3):
 		var camera_x: float = [-6.5, 0.0, 6.5][camera_index]
@@ -204,34 +194,8 @@ func _build_interior(_footprint: Vector2) -> void:
 		camera_rig.name = "TVStudioCameraRig_%d" % camera_index
 		camera_rig.position = Vector3(camera_x, 0.0, camera_z)
 		_interior_root.add_child(camera_rig)
-		_create_box(
-			camera_rig,
-			"TVStudioCameraTripod",
-			Vector3(0.22, 1.45, 0.22),
-			metal_color,
-			Vector3(0.0, 0.72, 0.0)
-		)
-		_create_box(
-			camera_rig,
-			"TVStudioCameraBody",
-			Vector3(0.92, 0.52, 0.62),
-			equipment_color,
-			Vector3(0.0, 1.55, -0.18)
-		)
-		_create_box(
-			camera_rig,
-			"TVStudioCameraLens",
-			Vector3(0.3, 0.3, 0.62),
-			accent_color,
-			Vector3(0.0, 1.55, -0.72)
-		)
-		_create_box(
-			camera_rig,
-			"TVStudioCameraMonitor",
-			Vector3(0.42, 0.32, 0.08),
-			Color(0.12, 0.48, 0.58),
-			Vector3(0.56, 1.52, -0.12)
-		)
+		_visual_factory.call("attach_tv_camera", camera_rig)
+		camera_rig.rotation.y = signf(camera_x) * .53
 
 	_create_box(
 		_interior_root,
@@ -265,20 +229,7 @@ func _build_interior(_footprint: Vector2) -> void:
 			seat.name = "TVStudioAudienceSeat_%d" % audience_index
 			seat.position = Vector3(seat_x, 0.0, seat_z)
 			_interior_root.add_child(seat)
-			_create_box(
-				seat,
-				"TVStudioSeatBase",
-				Vector3(0.95, 0.2, 0.82),
-				Color(0.17, 0.24, 0.30),
-				Vector3(0.0, 0.42, 0.0)
-			)
-			_create_box(
-				seat,
-				"TVStudioSeatBack",
-				Vector3(0.95, 0.85, 0.16),
-				Color(0.10, 0.16, 0.22),
-				Vector3(0.0, 0.86, 0.32)
-			)
+			FURNITURE.place(seat, "AudienceSeat", "TVStudioSeatBase", Vector3.ZERO)
 			audience_index += 1
 
 	var control_desk := Node3D.new()
@@ -309,6 +260,24 @@ func _build_interior(_footprint: Vector2) -> void:
 			Vector3(monitor_x, 1.58, -0.39)
 		)
 
+	FURNITURE.place(host_desk, "CupService", "HostDeskService", Vector3(-1.55, 1.13, .11))
+	FURNITURE.place(_interior_root, "DirectorChair", "TVHostChair", Vector3(1.1, .23, -3.54)).rotation.y = PI
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "TVAudienceFloor", Vector2(0, 3.64), Vector2(12.3, 3.68))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "TVControlFloor", Vector2(-5.7, 6.47), Vector2(4.73, 1.91))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "TVGuestFloor", Vector2(0, -.45), Vector2(6.75, 1.68))
+	FURNITURE.place(control_desk, "AudioMixer", "BroadcastAudio", Vector3(1.37, .91, .29))
+	FURNITURE.place(control_desk, "OfficeKeyboard", "BroadcastSwitcher", Vector3(-.31, .91, .25))
+	FURNITURE.place(_interior_root, "EquipmentRack", "TVPatchRack", Vector3(-9.16, 0, 4.15)).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "WorkshopBench", "TVEngineeringDesk", Vector3(-9.10, 0, 1.05), true).rotation.y = PI * .5
+	FURNITURE.place(_interior_root, "PrivacyScreen", "TVControlDivider", Vector3(-5.51, 0, 7.18), true).scale.x = 2.62
+	FURNITURE.place(_interior_root, "ClubSofa", "TVGreenRoomSeat", Vector3(9.06, 0, 3.01), true).rotation.y = -PI * .5
+	FURNITURE.place(_interior_root, "WaterCooler", "TVGreenRoomWater", Vector3(9.18, 0, 4.81)).rotation.y = -PI * .5
+	for side in [-1, 1]:
+		var group := _get_wall_group("left" if side < 0 else "right")
+		for panel in range(3):
+			FURNITURE.place(group, "AcousticBaffles", "TVAcousticPanel_%d" % panel,
+				Vector3(side * 9.77, 2.69, -4.32 + panel * 2.08)).rotation.y = -side * PI * .5
+		_visual_factory.call("create_light_stand", _interior_root, Vector3(side * 8.41, 0, -6.32), metal_color)
 	_workplace_points = [
 		Vector3(0.0, 0.0, -0.75),
 		Vector3(-2.3, 0.0, -0.8),

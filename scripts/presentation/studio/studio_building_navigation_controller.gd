@@ -12,6 +12,7 @@ var _workplace_points: Array[Vector3] = []
 var _entrance_inside: Vector3 = Vector3.ZERO
 var _entrance_outside: Vector3 = Vector3.ZERO
 var _set_dressing_root: Node3D
+var _furniture_obstacles: Array[Dictionary] = []
 
 
 func setup(
@@ -30,6 +31,18 @@ func setup(
 	_entrance_inside = entrance_inside
 	_entrance_outside = entrance_outside
 	_set_dressing_root = set_dressing_root
+	_furniture_obstacles.clear()
+	for child in _interior_root.get_children():
+		var fixture := child as MeshInstance3D
+		if fixture == null or not fixture.has_meta("blocks_passage"):
+			continue
+		var bounds: AABB = fixture.transform * fixture.get_aabb()
+		var center := bounds.get_center()
+		_furniture_obstacles.append({
+			"center": Vector2(center.x, center.z),
+			"half_extents": Vector2(bounds.size.x, bounds.size.z) * 0.5,
+			"clearance": 0.18,
+		})
 
 
 func get_workplace_position(slot_index: int) -> Vector3:
@@ -356,6 +369,7 @@ func _get_interior_navigation_obstacles(slot_index: int) -> Array[Dictionary]:
 				"half_extents": Vector2(2.8, 0.45),
 				"clearance": 0.18,
 			})
+	obstacles.append_array(_furniture_obstacles)
 	return obstacles
 
 func get_scene_path(

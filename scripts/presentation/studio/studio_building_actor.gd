@@ -342,12 +342,12 @@ func set_wardrobe_inventory(costume_ids: Array) -> void:
 		_wardrobe_inventory_root.remove_child(child)
 		child.queue_free()
 	var rack_positions: Array[Vector3] = []
-	for row_index in range(2):
+	for side in [-1.0, 1.0]:
 		for column_index in range(5):
 			rack_positions.append(Vector3(
-				-3.8 + float(column_index) * 1.9,
-				0.0,
-				-1.45 + float(row_index) * 3.0
+				side * 4.65,
+				0.64,
+				-2.35 + float(column_index) * 1.10
 			))
 	for costume_index in range(costume_ids.size()):
 		var costume_id: String = str(costume_ids[costume_index])
@@ -361,6 +361,7 @@ func set_wardrobe_inventory(costume_ids: Array) -> void:
 		garment_root.position = rack_positions[
 			posmod(costume_index, rack_positions.size())
 		]
+		garment_root.rotation.y = -signf(garment_root.position.x) * PI * 0.5
 		_wardrobe_inventory_root.add_child(garment_root)
 		var garment_color: Color = definition.get(
 			"visual_color", Color(0.38, 0.38, 0.42)
@@ -808,5 +809,8 @@ func _update_cutaway() -> void:
 		wall_group.visible = str(wall_id) != hidden_wall
 	for child in get_children():
 		var child_name := str(child.name)
-		if child is Node3D and (child_name.ends_with("Sign") or child_name.ends_with("SignText")):
+		if child is Node3D and (
+			child_name.ends_with("Sign") or child_name.ends_with("SignText")
+			or child_name.ends_with("EntranceCanopy")
+		):
 			child.visible = hidden_wall != "front"

@@ -96,35 +96,35 @@ func _build_film_promotion(
 		Vector3(0.0, 3.0, depth * 0.5 + 0.32),
 		18
 	)
-	var poster_colors: Array[Color] = [
-		Color(0.48, 0.23, 0.20),
-		Color(0.20, 0.37, 0.46),
-		Color(0.42, 0.38, 0.22),
-	]
-	for poster_index in range(3):
+	var poster_assets := ["PosterPremiere", "PosterSummit", "PosterMidnight"]
+	var poster_titles := ["ПРЕМЬЕРА", "ВЫШЕ ОБЛАКОВ", "ПОСЛЕ ПОЛУНОЧИ"]
+	for poster_index in range(poster_assets.size()):
 		var poster_x: float = -3.8 + float(poster_index) * 3.8
-		_create_box(
-			_interior_root,
-			"PromotionPosterFrame_%d" % poster_index,
-			Vector3(2.45, 2.9, 0.12),
-			Color(0.16, 0.17, 0.19),
-			Vector3(poster_x, 2.05, -4.55)
-		)
-		_create_box(
-			_interior_root,
-			"PromotionPoster_%d" % poster_index,
-			Vector3(2.18, 2.62, 0.08),
-			poster_colors[poster_index],
-			Vector3(poster_x, 2.05, -4.43)
-		)
-	FURNITURE.place(_interior_root, "DiningTable", "PromotionConferenceTable", Vector3(0, 0, 1.25)).scale.x = 2.15
+		_create_box(_interior_root, "PromotionPosterFrame_%d" % poster_index,
+			Vector3(2.45, 2.9, 0.12), Color(0.16, 0.17, 0.19), Vector3(poster_x, 2.05, -4.55))
+		FURNITURE.place(_interior_root, poster_assets[poster_index], "PromotionPoster_%d" % poster_index,
+			Vector3(poster_x, 2.05, -4.44))
+		_create_label(_interior_root, "PromotionPosterTitle_%d" % poster_index, poster_titles[poster_index],
+			Vector3(poster_x, 1.12, -4.37), 16)
+	FURNITURE.place(_interior_root, "ConferenceTable", "PromotionConferenceTable", Vector3(0, 0, 1.25))
 	for side in [-1, 1]:
 		for column in range(3):
 			FURNITURE.place(_interior_root, "OfficeChair", "PromotionChair_%d_%d" % [side, column],
 				Vector3((column - 1) * 1.27, 0, 1.25 + side * 1.13)).rotation.y = PI if side < 0 else 0.0
 	FURNITURE.place(_interior_root, "FloorPlant", "PromotionPlant", Vector3(5.3, 0, 3.4))
 	FURNITURE.place(_interior_root, "PreviewWall", "PromotionPresentationScreen",
-		Vector3(0.0, 2.15, 4.38)).rotation.y = PI
+		Vector3(width * .5 - .24, 2.15, 1.22)).rotation.y = -PI * .5
+
+	FURNITURE.floor_zone(_interior_root, "RestInset", "CampaignMeetingZone", Vector2(0, 1.26), Vector2(5.45, 3.49))
+	for side in [-1, 1]:
+		var x: float = side * 2.31
+		FURNITURE.place(_interior_root, "WriterDesk", "CampaignDesk_%d" % side, Vector3(x, 0, -2.67))
+		FURNITURE.place(_interior_root, "OfficeMonitor", "CampaignMonitor_%d" % side, Vector3(x, .90, -2.87))
+		FURNITURE.place(_interior_root, "OfficeKeyboard", "CampaignKeyboard_%d" % side, Vector3(x, .90, -2.42))
+		FURNITURE.place(_interior_root, "OfficeChair", "CampaignSeat_%d" % side, Vector3(x, 0, -1.75))
+	FURNITURE.place(_interior_root, "PrintStation", "CampaignPlotter", Vector3(4.58, 0, -3.40)).rotation.y = -PI * .5
+	FURNITURE.place(_interior_root, "ServiceCredenza", "CampaignMockupArchive", Vector3(-4.79, 0, -1.65)).rotation.y = PI * .5
+	FURNITURE.place(_get_wall_group("left"), "StoryBoard", "CampaignPlan", Vector3(-5.72, 1.90, 1.45)).rotation.y = PI * .5
 
 
 func _build_costume_wardrobe(
@@ -167,9 +167,9 @@ func _build_costume_wardrobe(
 		_create_box(
 			_interior_root,
 			"WardrobeRackFrame_%d" % int(side),
-			Vector3(0.16, 2.6, 5.7),
+			Vector3(0.16, 0.23, 5.7),
 			Color(0.22, 0.24, 0.25),
-			Vector3(side * 5.0, 1.3, -0.2)
+			Vector3(side * 4.65, 0.17, -0.2)
 		)
 		_create_box(
 			_interior_root,
@@ -179,6 +179,7 @@ func _build_costume_wardrobe(
 			Vector3(side * 4.65, 2.25, -0.2)
 		)
 		for support_index in range(2):
+			var support_z: float = -2.82 + float(support_index) * 5.25
 			_create_box(
 				_interior_root,
 				"WardrobeRackFoot_%d_%d" % [int(side), support_index],
@@ -187,23 +188,30 @@ func _build_costume_wardrobe(
 				Vector3(
 					side * 4.65,
 					0.08,
-					-2.6 + float(support_index) * 4.8
+					support_z
 				)
 			)
-	_create_box(
-		_interior_root,
-		"WardrobeFittingMirror",
-		Vector3(1.65, 2.55, 0.10),
-		Color(0.34, 0.48, 0.52),
-		Vector3(0.0, 1.55, -4.55)
-	)
-	_create_box(
-		_interior_root,
-		"WardrobeFittingScreen",
-		Vector3(2.6, 2.1, 0.12),
-		Color(0.54, 0.47, 0.40),
-		Vector3(0.0, 1.25, 4.45)
-	)
+			_create_box(_interior_root, "WardrobeRackPost_%d_%d" % [int(side), support_index],
+				Vector3(.087, 2.21, .095), Color(.25, .28, .29),
+				Vector3(side * 4.65, 1.12, support_z))
+	FURNITURE.place(_interior_root, "FittingMirror", "WardrobeFittingMirror", Vector3(0, 1.48, -4.76))
+	FURNITURE.place(_interior_root, "PrivacyScreen", "WardrobeFittingScreen",
+		Vector3(1.24, 0, -3.93), true).rotation.y = PI * .5
+	FURNITURE.floor_zone(_interior_root, "RestInset", "WardrobeFittingMat", Vector2(0, -3.68), Vector2(2.75, 1.85))
+	FURNITURE.place(_interior_root, "ClubChair", "WardrobeFittingSeat", Vector3(.37, 0, -3.39))
+	FURNITURE.place(_interior_root, "DressForm", "WardrobeFittingMannequin", Vector3(-1.66, 0, -4.04))
+	FURNITURE.place(_interior_root, "TailorBench", "WardrobeTailorStation", Vector3(-2.74, 0, -.57), true)
+	FURNITURE.place(_interior_root, "IronStation", "WardrobeIronStation", Vector3(3.01, 0, -3.80), true)
+	FURNITURE.place(_interior_root, "LaundryHamper", "WardrobeLaundry", Vector3(4.41, 0, -4.28))
+	for side in [-1, 1]:
+		FURNITURE.place(_interior_root, "CostumeRail", "WardrobeSampleRail_%d" % side,
+			Vector3(side * 6.07, 0, -1.42)).rotation.y = -side * PI * .5
+		FURNITURE.place(_interior_root, "Wardrobe", "WardrobeSupplyCabinet_%d" % side,
+			Vector3(side * 6.03, 0, 3.48)).rotation.y = -side * PI * .5
+		FURNITURE.place(_get_wall_group("back"), "WallSconce", "WardrobeSconce_%d" % side,
+			Vector3(side * 1.58, 2.62, -depth * .5 + .23))
+	FURNITURE.place(_interior_root, "ServiceCredenza", "WardrobeTextileTable", Vector3(2.92, 0, .14)).rotation.y = -PI * .5
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "WardrobeSewingMat", Vector2(-2.74, -.42), Vector2(2.10, 1.67))
 	_wardrobe_inventory_root = Node3D.new()
 	_wardrobe_inventory_root.name = "WardrobeInventory"
 	_wardrobe_inventory_root.position = Vector3(0.0, 0.0, 0.0)
@@ -293,6 +301,22 @@ func _build_prop_exchange(
 			)
 		)
 
+	FURNITURE.place(_interior_root, "OfficeMonitor", "ExchangeRegister", Vector3(2.53, 1.15, -4.31))
+	FURNITURE.place(_interior_root, "CupService", "ExchangeDeskCups", Vector3(-2.93, 1.15, -4.18))
+	FURNITURE.floor_zone(_interior_root, "DiningInset", "ExchangeDisplayArea", Vector2(0, 1.45), Vector2(8.32, 2.05))
+	FURNITURE.place(_get_wall_group("back"), "StoryBoard", "ExchangeIntakeBoard", Vector3(0, 2.26, -depth * .5 + .23))
+	for display_index in range(3):
+		FURNITURE.place(_interior_root, "PropStock", "ExchangeSamples_%d" % display_index,
+			Vector3(-3 + display_index * 3, .72, 1.45)).scale = Vector3.ONE * .65
+	for side in [-1, 1]:
+		FURNITURE.place(_interior_root, "FlightCaseCart", "ExchangeTransferCart_%d" % side,
+			Vector3(side * 5.71, 0, 3.55)).rotation.y = -side * PI * .5
+		for shelf_index in range(3):
+			var stock := FURNITURE.place(_interior_root, "PropStock", "ExchangeShelfStock_%d_%d" % [side, shelf_index],
+				Vector3(side * 4.96, .51 + shelf_index * .78, -1.77 + shelf_index * 1.68))
+			stock.rotation.y = -side * PI * .5
+			stock.scale = Vector3.ONE * .78
+
 
 func _build_prop_warehouse(
 	footprint: Vector2,
@@ -333,13 +357,7 @@ func _build_prop_warehouse(
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_create_box(
-		_actor,
-		"WarehouseBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color, "WarehouseBaseTrim")
 	_create_box(
 		_actor,
 		"WarehouseSign",
@@ -387,6 +405,19 @@ func _build_prop_warehouse(
 				Vector3(side * 3.75, 1.8, support_z)
 			)
 
+	for side in [-1, 1]:
+		_create_box(_interior_root, "WarehouseReserveShelf_%d" % side,
+			Vector3(.98, .14, 5.9), shelf_color, Vector3(side * 3.75, 3.55, -.25))
+		for bay in range(2):
+			var stock := FURNITURE.place(_interior_root, "PropStock", "WarehouseReserveStock_%d_%d" % [side, bay],
+				Vector3(side * 3.75, 3.62, -1.97 + bay * 3.47))
+			stock.rotation.y = -side * PI * .5
+			stock.scale = Vector3.ONE * .85
+	FURNITURE.place(_interior_root, "WorkshopBench", "WarehouseSortingBench", Vector3(0, 0, -3.31), true)
+	FURNITURE.place(_interior_root, "EquipmentRack", "WarehouseToolStorage", Vector3(-2.23, 0, -3.44), true)
+	FURNITURE.place(_interior_root, "FlightCaseCart", "WarehouseReceivingCart", Vector3(3.44, 0, 3.0), true)
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "WarehouseSortingFloor", Vector2(0, -3.18), Vector2(4.2, 1.35))
+	FURNITURE.place(_get_wall_group("back"), "StoryBoard", "WarehouseIntakeBoard", Vector3(0, 2.11, -depth * .5 + .23))
 	_warehouse_storage_positions = [
 		Vector3(-2.55, 0.0, -2.1),
 		Vector3(-0.85, 0.0, -2.1),
@@ -481,28 +512,9 @@ func _build_fitness_center(
 		)
 	for station_index in range(4):
 		var station_x: float = -3.75 + float(station_index) * 2.5
-		_create_box(
-			_interior_root,
-			"FitnessTreadmillBase_%d" % station_index,
-			Vector3(0.92, 0.18, 1.85),
-			trim_color,
-			Vector3(station_x, 0.22, -2.1)
-		)
-		_create_box(
-			_interior_root,
-			"FitnessTreadmillConsole_%d" % station_index,
-			Vector3(0.68, 0.78, 0.16),
-			Color(0.12, 0.24, 0.29),
-			Vector3(station_x, 0.92, -2.72)
-		)
-		_create_cylinder(
-			_interior_root,
-			"FitnessTreadmillHandle_%d" % station_index,
-			0.045,
-			0.82,
-			Color(0.38, 0.43, 0.45),
-			Vector3(station_x, 0.82, -1.28)
-		)
+		var station := Vector3(station_x, 0, -2.1)
+		FURNITURE.place(_interior_root, "TreadmillDeck", "FitnessTreadmillBase_%d" % station_index, station)
+		FURNITURE.place(_interior_root, "TreadmillConsole", "FitnessTreadmillConsole_%d" % station_index, station)
 	_create_box(
 		_interior_root,
 		"FitnessWeightRack",
@@ -524,6 +536,14 @@ func _build_fitness_center(
 		Color(0.30, 0.37, 0.36),
 		Vector3(5.2, 0.8, -3.0)
 	)
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "FitnessCardioArea", Vector2(0, -2.32), Vector2(9.12, 2.63))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "FitnessRecoveryMat", Vector2(4.63, 2.68), Vector2(2.25, 2.75))
+	for mat_index in range(2):
+		FURNITURE.floor_zone(_interior_root, "RestInset", "FitnessStretchMat_%d" % mat_index,
+			Vector2(-2.50 + mat_index * 4.62, 2.36), Vector2(1.35, 2.03))
+	FURNITURE.place(_interior_root, "GymWeights", "FitnessFreeWeights", Vector3(-5.01, 0, 2.89), true)
+	FURNITURE.place(_interior_root, "WaterCooler", "FitnessHydration", Vector3(5.28, 0, 3.62))
+	FURNITURE.place(_get_wall_group("back"), "WallClock", "FitnessIntervalClock", Vector3(0, 3.55, -depth * .5 + .23))
 	_workplace_points = [
 		Vector3(-3.75, 0.0, 0.15),
 		Vector3(-1.25, 0.0, 0.15),
@@ -625,6 +645,15 @@ func _build_studio_lounge(
 		FURNITURE.place(_interior_root, "FloorPlant", "LoungePlant" + suffix,
 			Vector3(side * 5.8, 0.0, -3.0))
 	FURNITURE.place(_interior_root, "WaterCooler", "LoungeWaterCooler", Vector3(3.0, 0, -4.45))
+	FURNITURE.place(_interior_root, "CupService", "LoungeCupService", Vector3(-0.67, 1.12, -4.34))
+	FURNITURE.place(_interior_root, "ServiceCredenza", "LoungeRefreshmentStorage", Vector3(4.53, 0, -4.63))
+	FURNITURE.place(_get_wall_group("back"), "StoryboardFrames", "LoungeFilmStills", Vector3(0, 2.20, -depth * 0.5 + 0.23))
+	FURNITURE.place(_get_wall_group("back"), "WallClock", "LoungeClock", Vector3(2.2, 2.5, -depth * 0.5 + 0.22))
+	for side in [-1, 1]:
+		FURNITURE.floor_zone(_interior_root, "RestInset", "LoungeSeatingRug_%d" % side,
+			Vector2(side * 4.42, 0.20), Vector2(2.15, 2.55))
+		FURNITURE.place(_get_wall_group("back"), "WallSconce", "LoungeSconce_%d" % side,
+			Vector3(side * 3.45, 2.56, -depth * 0.5 + 0.22))
 	_workplace_points = [
 		Vector3(-2.6, 0.0, -1.65),
 		Vector3(0.0, 0.0, -2.15),
@@ -669,13 +698,7 @@ func _build_cafeteria(
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_create_box(
-		_actor,
-		"CafeteriaBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color, "CafeteriaBaseTrim")
 	_create_box(
 		_actor,
 		"CafeteriaSign",
@@ -743,6 +766,23 @@ func _build_cafeteria(
 		FURNITURE.place(_interior_root, "ClubChair", "CafeteriaBreakChair_%d" % side,
 			Vector3(end_x, 0, 2.94))
 
+	FURNITURE.place(_get_wall_group("back"), "CafeMenu", "CafeteriaMenu",
+		Vector3(0, 3.13, -depth * 0.5 + 0.23))
+	FURNITURE.place(_interior_root, "KitchenFridge", "ColdStorage", Vector3(-5.35, 0, -5.08), true)
+	FURNITURE.place(_interior_root, "KitchenSink", "KitchenWashStation", Vector3(4.48, 0, -5.02), true)
+	FURNITURE.place(_interior_root, "CupService", "CafeteriaCupService", Vector3(3.42, 1.16, -4.40))
+	FURNITURE.place(_interior_root, "WasteStation", "KitchenWasteSorting", Vector3(-6.30, 0, -3.64)).rotation.y = PI * 0.5
+	for side in [-1, 1]:
+		var suffix := str(side)
+		FURNITURE.place(_interior_root, "FloorPlant", "CafeteriaPlant" + suffix, Vector3(side * 6.34, 0, 4.95))
+		FURNITURE.place(_get_wall_group("back"), "WallSconce", "CafeteriaSconce" + suffix,
+			Vector3(side * 2.24, 3.25, -depth * 0.5 + 0.22))
+		FURNITURE.floor_zone(_interior_root, "DiningInset", "CafeteriaBreakout" + suffix,
+			Vector2(side * 5.54, 3.70), Vector2(2.22, 2.68))
+	for table_index in range(3):
+		FURNITURE.floor_zone(_interior_root, "DiningInset", "DiningBay_%d" % table_index,
+			Vector2((table_index - 1) * 4.0, 0.35), Vector2(2.76, 3.78))
+
 	var seat_positions: Array[Vector3] = []
 	var table_centers: Array[float] = [-4.0, 0.0, 4.0]
 	var table_center_z: float = 0.35
@@ -803,13 +843,7 @@ func _build_staff_housing(
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_create_box(
-		_actor,
-		"StaffHousingBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color, "StaffHousingBaseTrim")
 	_create_box(
 		_actor,
 		"StaffHousingSign",
@@ -855,16 +889,30 @@ func _build_staff_housing(
 			sleeping_positions.append(
 				Vector3(bed_position.x, 0.0, bed_z + 0.75)
 			)
+		for panel_index in range(3):
+			var divider_z: float = (bed_z_positions[panel_index] + bed_z_positions[panel_index + 1]) * 0.5
+			FURNITURE.place(_interior_root, "PrivacyScreen", "BedPrivacy_%d_%d" % [int(side), panel_index],
+				Vector3(side * 5.44, 0, divider_z), true)
+		var wall_group := _get_wall_group("left" if side < 0 else "right")
+		for bed_index in bed_z_positions.size():
+			var sconce := FURNITURE.place(wall_group, "WallSconce", "DormSconce_%d" % bed_index,
+				Vector3(side * (width * 0.5 - 0.19), 2.10, bed_z_positions[bed_index]))
+			sconce.rotation.y = -side * PI * 0.5
+		FURNITURE.floor_zone(_interior_root, "RestInset", "DormitoryBedBay_%d" % int(side),
+			Vector2(side * 5.16, 0), Vector2(2.26, 9.45))
 		FURNITURE.place(_interior_root, "Locker", "StaffLocker_%d" % int(side),
-			Vector3(side * 5.5, 0, 0.0)).rotation.y = -side * PI * 0.5
+			Vector3(side * 6.42, 0, 0.0)).rotation.y = -side * PI * 0.5
 		FURNITURE.place(_interior_root, "Nightstand", "StaffBedside_%d" % int(side),
-			Vector3(side * 4.42, 0, 0))
+			Vector3(side * 3.91, 0, 0), true)
 		FURNITURE.place(_interior_root, "TaskLamp", "StaffBedsideLamp_%d" % int(side),
-			Vector3(side * 4.42, 0.70, 0))
+			Vector3(side * 3.91, 0.70, 0))
 		FURNITURE.place(_interior_root, "FloorPlant", "StaffPlant_%d" % int(side),
 			Vector3(side * 2.65, 0, -depth * 0.5 + 0.75))
-	_create_box(_interior_root, "DormitoryRunner", Vector3(1.55, 0.032, depth - 2.2),
-		Color(0.25, 0.32, 0.30), Vector3(0.0, 0.042, 0.0))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "DormitoryRunner",
+		Vector2(0, 0), Vector2(1.65, depth - 2.80))
+	FURNITURE.place(_get_wall_group("back"), "StoryboardFrames", "DormitoryGallery",
+		Vector3(0, 1.89, -depth * 0.5 + 0.24))
+	FURNITURE.place(_interior_root, "LaundryHamper", "DormitoryLaundry", Vector3(6.03, 0, 4.98))
 	FURNITURE.place(_interior_root, "ClubSofa", "DormitoryBench", Vector3(0, 0, -depth * 0.5 + 0.74))
 	_workplace_points = sleeping_positions
 
@@ -895,13 +943,7 @@ func _build_star_bungalow(
 		roof_color,
 		Vector3(0.0, height - 0.275, 0.0)
 	)
-	_create_box(
-		_actor,
-		"StarBungalowBaseTrim",
-		Vector3(width + 0.12, 0.28, depth + 0.12),
-		trim_color,
-		Vector3(0.0, 0.14, 0.0)
-	)
+	_build_base_trim(width, depth, trim_color, "StarBungalowBaseTrim")
 	_create_box(
 		_actor,
 		"StarBungalowSign",
@@ -946,7 +988,19 @@ func _build_star_bungalow(
 	FURNITURE.place(_interior_root, "TaskLamp", "StarBedsideLamp", Vector3(2.65, 0.70, -1.3))
 	FURNITURE.place(_interior_root, "ClubChair", "StarLoungeChair", Vector3(2.65, 0, 1.05)).rotation.y = -PI * 0.5
 	FURNITURE.place(_interior_root, "FloorPlant", "StarPlant", Vector3(-3.32, 0, 1.63))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "BungalowBedRug", Vector2(0, -1.2), Vector2(3.4, 3.0))
+	FURNITURE.place(_interior_root, "ClubTable", "BungalowReadingTable", Vector3(3.6, 0, 2.25), true).scale = Vector3(0.66, 0.84, 0.72)
+	FURNITURE.place(_get_wall_group("back"), "StoryboardFrames", "BungalowPhotoWall", Vector3(0, 2.17, -depth * 0.5 + 0.24))
+	FURNITURE.place(_get_wall_group("back"), "WallSconce", "BungalowSconce", Vector3(3.15, 2.3, -depth * 0.5 + 0.23))
 	_workplace_points = [Vector3(0.0, 0.0, -1.3)]
+
+
+func _build_base_trim(width: float, depth: float, color: Color, node_name: String) -> void:
+	for side in [-1, 1]:
+		_create_box(_get_wall_group("left" if side < 0 else "right"), node_name + "Side",
+			Vector3(.14, .26, depth), color, Vector3(side * width * .5, .13, 0))
+	_create_box(_get_wall_group("back"), node_name + "Back",
+		Vector3(width, .26, .14), color, Vector3(0, .13, -depth * .5))
 
 
 func _create_floor(

@@ -380,6 +380,11 @@ func _build_small_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "OfficeMonitor", "SmallStageMonitor", Vector3(-3.65, 0.90, 2.72)).rotation.y = PI
 	FURNITURE.place(_interior_root, "CableRun", "SmallStageCableRun", Vector3(4.13, 0, 0.90))
 	FURNITURE.place(_interior_root, "FlightCaseCart", "SmallStageFlightCase", Vector3(2.47, 0, 2.88))
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "SmallStagePrepZone", Vector2(3.57, 2.74), Vector2(2.64, 1.82))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "SmallStageDirectionZone", Vector2(-3.56, 2.68), Vector2(2.70, 1.62))
+	FURNITURE.place(_interior_root, "DirectorChair", "SmallStageDirectorChair", Vector3(-4.38, 0, 1.78)).rotation.y = PI * .76
+	FURNITURE.place(_interior_root, "CableReel", "SmallStageCableReel", Vector3(4.58, 0, -.29))
+	FURNITURE.place(_interior_root, "WorkshopBench", "SmallStagePrepBench", Vector3(4.37, 0, -1.67), true).rotation.y = -PI * .5
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.35, 0.0, -1.1),
@@ -464,8 +469,16 @@ func _build_medium_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "CableRun", "StageCableRun", Vector3(6.4, 0, 1.5))
 	FURNITURE.place(_interior_root, "FlightCaseCart", "StageFlightCase", Vector3(5.9, 0, 3.65))
 	FURNITURE.place(_interior_root, "CostumeRail", "StageCostumeRail", Vector3(-6.25, 0, 2.2)).rotation.y = PI * 0.5
-	FURNITURE.place(_interior_root, "OfficeChair", "StageWaitingChair", Vector3(-4.54, 0, 5.1))
+	FURNITURE.place(_interior_root, "DirectorChair", "StageWaitingChair", Vector3(-4.54, 0, 5.1))
 	_place_spare_camera(Vector3(6.02, 0, -2.35), metal_color, equipment_color)
+	_create_light_stand(Vector3(-6.21, 0, -1.80), metal_color)
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "StagePrepZone", Vector2(5.91, 4.27), Vector2(1.73, 2.93))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "StageDirectionZone", Vector2(-5.49, 4.90), Vector2(2.65, 1.61))
+	FURNITURE.place(_interior_root, "WorkshopBench", "StagePrepBench", Vector3(6.29, 0, .56), true).rotation.y = -PI * .5
+	FURNITURE.place(_interior_root, "CableReel", "StageCableReel", Vector3(6.18, 0, 2.78))
+	var stock := FURNITURE.place(_interior_root, "PropStock", "StagePrepStock", Vector3(6.29, 1.02, .16))
+	stock.rotation.y = -PI * .5
+	stock.scale = Vector3.ONE * .56
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-1.8, 0.0, -1.6),
@@ -549,6 +562,16 @@ func _build_large_sound_stage_interior() -> void:
 	FURNITURE.place(_interior_root, "CostumeRail", "HighBayCostumeRail", Vector3(7.1, 0, 6.8))
 	FURNITURE.place(_interior_root, "ClubSofa", "HighBayWaitingBench", Vector3(-6.85, 0, 6.8)).rotation.y = PI
 	_place_spare_camera(Vector3(8.95, 0, -4.68), metal_color, equipment_color)
+	_create_light_stand(Vector3(-9.45, 0, -4.42), metal_color)
+	FURNITURE.floor_zone(_interior_root, "TechnicalInset", "HighBayPrepZone", Vector2(9.37, 2.98), Vector2(2.20, 8.58))
+	FURNITURE.floor_zone(_interior_root, "RestInset", "HighBayDirectionZone", Vector2(-8.45, 6.66), Vector2(4.18, 2.03))
+	FURNITURE.place(_interior_root, "WorkshopBench", "HighBayPrepBench", Vector3(9.60, 0, -.47), true).rotation.y = -PI * .5
+	var stock := FURNITURE.place(_interior_root, "PropStock", "HighBayPrepStock", Vector3(9.60, 1.02, -.89))
+	stock.rotation.y = -PI * .5
+	stock.scale = Vector3.ONE * .58
+	FURNITURE.place(_interior_root, "CableReel", "HighBayCableReel", Vector3(9.86, 0, 1.95))
+	FURNITURE.place(_interior_root, "DirectorChair", "HighBayDirectorSeat", Vector3(-10.25, 0, 6.03)).rotation.y = PI * .39
+	FURNITURE.place(_interior_root, "EquipmentRack", "HighBaySceneryStore", Vector3(-9.71, 0, -6.98)).rotation.y = PI * .5
 	_create_film_slate()
 	_workplace_points = [
 		Vector3(-4.0, 0.0, -3.0),
