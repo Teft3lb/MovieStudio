@@ -20,7 +20,7 @@ const POSE_BONES: Array[String] = [
 ]
 const DISTANT_ANIMATION_DISTANCE_SQUARED: float = 32.0 * 32.0
 const DISTANT_ANIMATION_INTERVAL: float = 1.0 / 30.0
-const HAIR_STYLE_COUNT: int = 6
+const HAIR_STYLE_COUNT: int = 8
 
 static var _tinted_materials: Dictionary[String, StandardMaterial3D] = {}
 static var _states: AnimationNodeStateMachine
@@ -63,7 +63,7 @@ func setup(
 	_hair_name = "Hair%d" % posmod(int(appearance.get("hair_style", 0)), HAIR_STYLE_COUNT)
 	_idle_state = &"Idle" if identity_hash % 2 == 0 else &"IdleLook"
 	_phase_offset = float(identity_hash % 997) / 997.0
-	_head_scale = Vector3(facial_scale * lerpf(0.94, 1.06, _phase_offset), facial_scale, facial_scale)
+	_head_scale = Vector3(facial_scale * lerpf(0.91, 1.04, _phase_offset), facial_scale, facial_scale)
 	_outfit = outfit
 
 	var mouth: MeshInstance3D
@@ -73,7 +73,9 @@ func setup(
 			mouth = model_mesh
 			continue
 		if str(model_mesh.name).begins_with("Role"):
-			model_mesh.visible = model_mesh.name == _role_name
+			if model_mesh.name != _role_name:
+				model_mesh.free()
+				continue
 		elif str(model_mesh.name).begins_with("Costume"):
 			model_mesh.hide()
 		elif str(model_mesh.name).begins_with("Hair"):

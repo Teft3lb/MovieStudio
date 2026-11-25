@@ -71,7 +71,7 @@ func _run_tests() -> void:
 func _check_authored_variants() -> void:
 	var payload := {
 		"id": "EMP-VISUAL-V3", "profession_id": "actor",
-		"appearance": {"hair_style": 5, "wardrobe_style": 2, "cheekbones": 0.75},
+		"appearance": {"hair_style": 7, "wardrobe_style": 2, "cheekbones": 0.75},
 	}
 	for instance in range(2):
 		var visual := VISUAL.new()
@@ -79,7 +79,7 @@ func _check_authored_variants() -> void:
 		root.add_child(visual)
 		var face := visual.find_child("Face", true, false) as MeshInstance3D
 		var skirt := visual.find_child("WardrobeSkirt", true, false) as MeshInstance3D
-		_expect(visual.find_child("Hair5", true, false) != null
+		_expect(visual.find_child("Hair7", true, false) != null
 			and visual.find_child("Hair0", true, false) == null
 			and visual.find_child("CollarFold", true, false) != null,
 			"Saved appearance should reproduce the same selected hair and collar.")
