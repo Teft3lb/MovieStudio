@@ -43,6 +43,8 @@ func _capture() -> void:
 	await _shot(camera, "creative-block", Vector3(-14, 1.8, -9), Vector3(16, 28, 42), 25.0)
 	await _shot(camera, "broadcast-block", Vector3(26, 2, -3), Vector3(31, 31, 42), 31.0)
 	await _shot(camera, "gate", Vector3(10, 1.4, -61), Vector3(16, 27, -37), 24.0)
+	await _shot(camera, "crew-yard", Vector3(-4.4, 0.75, 11.6), Vector3(13, 21, 29), 12.0)
+	await _shot(camera, "service-yard", Vector3(19, 0.75, -31.4), Vector3(17, 28, 28), 16.0)
 	quit(1 if _failed else 0)
 
 

@@ -85,6 +85,8 @@ func _capture() -> void:
 	await _save_frame("side")
 	_aim(camera, samples[0].global_position + Vector3.UP * 2.0, Vector3(-0.35, 0.2, -2.0))
 	await _save_frame("portrait")
+	_aim(camera, gallery.position + Vector3(.58, 1.65, 0), Vector3(-1.12, 1.33, -6.50))
+	await _save_frame("crew-close")
 
 	samples[0].call("set_performance_action", "speaking")
 	samples[6].call("set_performance_action", "directing")

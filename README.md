@@ -36,6 +36,7 @@
 - [Visual Overhaul v3, интерьеры, сотрудники и карта ресурсов](docs/architecture/visual_overhaul_v3.md)
 - [Interior Design Overhaul v4, планировки и визуальная проверка](docs/architecture/interior_design_v4.md)
 - [Stylized Semi-Realistic Upgrade, архитектура, материалы и территория](docs/architecture/stylized_semi_realistic.md)
+- [Studio Look Pass, персонажи, кампус и павильоны](docs/architecture/studio_look_pass.md)
 - [Архитектурные решения](docs/decisions/0001-project-foundation.md)
 
 ## Технологии
